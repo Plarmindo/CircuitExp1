@@ -648,6 +648,30 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   window.addEventListener('metro:fit', onFit!);
   window.addEventListener('metro:exportPNG', onExport!);
   window.addEventListener('metro:exportPng', elevatedHandleExportPNG); // fallback event name used in tests
+  // Dynamic theme restyle (VIS-14 partial): recolor existing sprites without layout recompute
+  const handleThemeChanged = () => {
+    if (!appRef.current || pixiFailedRef.current) return;
+    const style = tokens();
+    // Recolor node sprites
+    for (const [key, g] of spriteNodes.current) {
+      const info = layoutIndexRef.current.get(key);
+      const node = adapterRef.current?.getNode(key);
+      if (!info || !g) continue;
+      g.clear();
+      let radius = style.stationRadius.directory;
+      let fill = style.palette.directory;
+      if (info.aggregated) { radius = style.stationRadius.aggregated; fill = style.palette.aggregated; }
+      else if (node?.kind === 'file') { radius = style.stationRadius.file; fill = style.palette.file; }
+      const isSelected = selectedKeyRef.current === key;
+      const strokeColor = isSelected ? style.palette.selected : (info.aggregated ? style.palette.lineAgg : 0);
+      const strokeWidth = isSelected ? style.lineThickness + 1.5 : (info.aggregated ? style.lineThickness : 0);
+      g.beginFill(fill, 1); g.drawCircle(0,0,radius); g.endFill();
+      if (strokeWidth > 0) { g.lineStyle({ width: strokeWidth, color: strokeColor, alpha: 0.95 }); g.drawCircle(0,0,radius + (isSelected ? 2 : -4)); g.lineStyle(); }
+    }
+    // Recolor line sprites
+  // Lines will recolor on next redraw; we deliberately avoid forcing full layout here.
+  };
+  window.addEventListener('metro:themeChanged', handleThemeChanged);
 
       const redraw = (applyPending = true) => {
   if (pixiFailedRef.current) return; // skip heavy drawing logic in fallback
@@ -1113,6 +1137,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       if (onFit) window.removeEventListener('metro:fit', onFit);
   if (onExport) window.removeEventListener('metro:exportPNG', onExport);
   window.removeEventListener('metro:exportPng', elevatedHandleExportPNG);
+  window.removeEventListener('metro:themeChanged', handleThemeChanged);
       // Destroy application
   if (!pixiFailedRef.current && appRef.current) {
         appRef.current.destroy(true);

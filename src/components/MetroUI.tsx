@@ -52,6 +52,8 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
     setCurrentTheme(newTheme);
     setTheme(newTheme);
+  // Notify stage for dynamic restyle without full layout recompute
+  window.dispatchEvent(new CustomEvent('metro:themeChanged', { detail: { theme: newTheme } }));
   };
 
   // Scan controls
