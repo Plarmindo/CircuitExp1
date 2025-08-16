@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>CodeFlix Metro Map UI - Avan�ado</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #181818 0%, #232526 100%);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .metro-container {
+      margin-top: 60px;
+      background: rgba(30,30,40,0.97);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
+      padding: 36px 36px 24px 36px;
+      max-width: 1200px;
+      min-width: 600px;
+      text-align: center;
+      border: 1.5px solid #ffb30044;
+    }
+    h1 {
+      font-size: 2.1em;
+      color: #ffb300;
+      margin-bottom: 0.2em;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 8px #000a;
+    }
+    svg {
+      width: 1000px;
+      height: 400px;
+      margin: 30px 0 10px 0;
+      background: none;
+      display: block;
+    }
+    .metro-legend {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 18px;
+    }
+    .metro-legend span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1em;
+      color: #ffd54f;
+    }
+    .metro-legend .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+    }
+    .metro-legend .ai { background: #ffb300; }
+    .metro-legend .user { background: #29b6f6; }
+    .metro-legend .merge { background: #66bb6a; }
+    .metro-legend .conflict { background: #e53935; }
+    .metro-legend .branch { background: #ab47bc; }
+    .metro-panel {
+      margin-top: 24px;
+      background: #232526;
+      border-radius: 12px;
+      padding: 18px 32px;
+      box-shadow: 0 2px 12px #0006;
+      max-width: 600px;
+      text-align: left;
+      border: 1.5px solid #ffb30033;
+    }
+    .metro-panel h2 {
+      color: #ffd54f;
+      margin-bottom: 0.5em;
+      font-size: 1.2em;
+    }
+    .metro-panel pre {
+      background: #181818;
+      color: #ffb300;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 1em;
+      overflow-x: auto;
+      margin-bottom: 1em;
+    }
+    .metro-btn {
+      background: #ffb300;
+      color: #181818;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 22px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #0004;
+      transition: background 0.2s;
+      margin-right: 12px;
+    }
+    .metro-btn:hover {
+      background: #ffd54f;
+    }
+    .metro-btn:disabled {
+      background: #888;
+      color: #ccc;
+      cursor: not-allowed;
+    }
+    .metro-tooltip {
+      position: absolute;
+      pointer-events: none;
+      z-index: 10;
+      background: #232526ee;
+      color: #ffd54f;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 1em;
+      box-shadow: 0 2px 12px #000a;
+      border: 2px solid #ffb30099;
+      min-width: 220px;
+      max-width: 340px;
+      display: none;
+      text-align: left;
+    }
+    .metro-tooltip img {
+      max-width: 100%;
+      max-height: 90px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .metro-bookmark {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      background: #ffd54f;
+      color: #232526;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      box-shadow: 0 2px 8px #0006;
+      border: 2px solid #ffb300;
+      cursor: pointer;
+    }
+    .metro-bookmark.fav {
+      background: #e53935;
+      color: #fff;
+      border: 2px solid #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class='metro-container'>
+    <h1>Project Metro Map (Avan�ado)</h1>
+    <div class='metro-legend'>
+      <span><span class='dot ai'></span>AI Patch</span>
+      <span><span class='dot user'></span>User Edit</span>
+      <span><span class='dot merge'></span>Merge</span>
+      <span><span class='dot branch'></span>Branch</span>
+      <span><span class='dot conflict'></span>Conflict</span>
+      <span><span class='dot' style='background:#ffd54f;'></span>Bookmark</span>
+      <span><span class='dot' style='background:#e53935;'></span>Favorito</span>
+      <span><span class='dot' style='background:#888;'></span>Planeado</span>
+    </div>
+    <div style='text-align:right;max-width:1000px;margin:0 auto 8px auto;'>
+      <button class='metro-btn' onclick='zoom(-0.2)'>-</button>
+      <button class='metro-btn' onclick='zoom(0.2)'>+</button>
+      <button class='metro-btn' onclick='fitMap()'>Fit</button>
+    </div>
+    <div style='position:relative;width:1000px;height:400px;'>
+      <svg id='metro-map' viewBox='0 0 1000 400'></svg>
+      <div class='metro-tooltip' id='metro-tooltip'></div>
+    </div>
+    <div class='metro-panel' id='metro-panel'>
+      <h2>Seleciona um n� para ver detalhes</h2>
+      <pre>// Detalhes do estado do projeto aqui...</pre>
+      <button class='metro-btn' disabled>Restaurar</button>
+      <button class='metro-btn' onclick='alert("Preview de altera��es")'>Ver altera��es</button>
+    </div>
+  </div>
+  <script>
+    // Mock de n�s e liga��es do metro map
+    const nodes = [
+      {x:80, y:200, label:'Start', type:'user', code:'// C�digo original', desc:'In�cio do projeto', img:'https://placehold.co/180x90?text=Start', commit:'a1b2c3', author:'Paulo', date:'2024-06-01', bookmarks:[]},
+      {x:220, y:200, label:'AI Refactor', type:'ai', code:'// Refactor AI', desc:'Refatora��o autom�tica por AI', img:'https://placehold.co/180x90?text=AI+Refactor', commit:'b2c3d4', author:'AI', date:'2024-06-02', bookmarks:["fav"]},
+      {x:360, y:120, label:'Branch A', type:'branch', code:'// Branch A', desc:'Nova branch A', img:'', commit:'c3d4e5', author:'Paulo', date:'2024-06-03', bookmarks:[]},
+      {x:360, y:280, label:'Branch B', type:'branch', code:'// Branch B', desc:'Nova branch B', img:'', commit:'d4e5f6', author:'Paulo', date:'2024-06-03', bookmarks:["bookmark"]},
+      {x:500, y:120, label:'AI Patch', type:'ai', code:'// AI Patch A', desc:'Patch AI na branch A', img:'https://placehold.co/180x90?text=AI+Patch', commit:'e5f6g7', author:'AI', date:'2024-06-04', bookmarks:[]},
+      {x:500, y:280, label:'User Edit', type:'user', code:'// User Edit B', desc:'Edi��o manual na branch B', img:'', commit:'f6g7h8', author:'Paulo', date:'2024-06-04', bookmarks:[]},
+      {x:640, y:200, label:'Merge', type:'merge', code:'// Merge result', desc:'Merge das branches', img:'', commit:'g7h8i9', author:'Paulo', date:'2024-06-05', bookmarks:[]},
+      {x:780, y:200, label:'Conflict', type:'conflict', code:'// Conflito!', desc:'Conflito detectado', img:'https://placehold.co/180x90?text=Conflict', commit:'h8i9j0', author:'AI', date:'2024-06-06', bookmarks:["bookmark","fav"]}
+    ];
+    const edges = [
+      [0,1],[1,2],[1,3],[2,4],[3,5],[4,6],[5,6],[6,7]
+    ];
+    const colors = {
+      ai:'#ffb300', user:'#29b6f6', merge:'#66bb6a', conflict:'#e53935', branch:'#ab47bc'
+    };
+    let zoomLevel = 1;
+    let offsetX = 0, offsetY = 0;
+    const svg = document.getElementById('metro-map');
+    const tooltip = document.getElementById('metro-tooltip');
+    // Adiciona n�s futuros (planeamento/checklist visual)
+    nodes.push(
+      {x:900, y:120, label:'Feature X', type:'future', code:'// Planeado: Feature X', desc:'Planeado: Implementar Feature X\nChecklist:\n- [ ] Especifica��o\n- [ ] Testes\n- [ ] Review', img:'https://placehold.co/180x90?text=Feature+X', commit:'', author:'', date:'2024-06-10', bookmarks:[], future:true, tasks:["Especifica��o","Testes","Review"]},
+      {x:900, y:280, label:'Bugfix Y', type:'future', code:'// Planeado: Corrigir Bug Y', desc:'Planeado: Corrigir Bug Y\nChecklist:\n- [ ] Reproduzir\n- [ ] Corrigir\n- [ ] Testar', img:'https://placehold.co/180x90?text=Bugfix+Y', commit:'', author:'', date:'2024-06-12', bookmarks:[], future:true, tasks:["Reproduzir","Corrigir","Testar"]}
+    );
+    edges.push([7,8],[7,9]); // Caminhos alternativos (tracejados)
+    colors.future = '#888';
+    function renderMap() {
+      svg.innerHTML = '';
+      // Edges
+      edges.forEach(([from,to]) => {
+        const n1 = nodes[from], n2 = nodes[to];
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',n1.x*zoomLevel+offsetX); line.setAttribute('y1',n1.y*zoomLevel+offsetY);
+        line.setAttribute('x2',n2.x*zoomLevel+offsetX); line.setAttribute('y2',n2.y*zoomLevel+offsetY);
+        line.setAttribute('stroke',colors[n2.type]);
+        line.setAttribute('stroke-width','7');
+        line.setAttribute('opacity', n2.future ? '0.4' : '0.7');
+        if (n2.future) line.setAttribute('stroke-dasharray','18,12');
+        svg.appendChild(line);
+      });
+      // Nodes
+      nodes.forEach((n,i) => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        circle.setAttribute('cx',n.x*zoomLevel+offsetX); circle.setAttribute('cy',n.y*zoomLevel+offsetY); circle.setAttribute('r','22');
+        circle.setAttribute('fill',colors[n.type] || '#888');
+        circle.setAttribute('stroke',n.future ? '#bbb' : '#fff');
+        circle.setAttribute('stroke-width',n.future ? '2' : '3');
+        circle.setAttribute('style','cursor:pointer;'+(n.future?'opacity:0.7;':''));
+        circle.onmouseover = e => showTooltip(n, e);
+        circle.onmouseout = hideTooltip;
+        circle.onclick = () => selectNode(i);
+        circle.oncontextmenu = e => showContextMenu(n, i, e);
+        g.appendChild(circle);
+        // Bookmark/fav
+        if (n.bookmarks && n.bookmarks.length) {
+          n.bookmarks.forEach((b,idx) => {
+            const icon = document.createElementNS('http://www.w3.org/2000/svg','text');
+            icon.setAttribute('x',n.x*zoomLevel+offsetX+18+idx*18);
+            icon.setAttribute('y',n.y*zoomLevel+offsetY-18);
+            icon.setAttribute('font-size','1.3em');
+            icon.setAttribute('fill',b==="fav"?"#e53935":"#ffd54f");
+            icon.setAttribute('font-weight','bold');
+            icon.textContent = b==="fav"?"?":"??";
+            g.appendChild(icon);
+          });
+        }
+        const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+        text.setAttribute('x',n.x*zoomLevel+offsetX); text.setAttribute('y',n.y*zoomLevel+offsetY+6);
+        text.setAttribute('text-anchor','middle');
+        text.setAttribute('font-size','1.1em');
+        text.setAttribute('fill','#232526');
+        text.setAttribute('font-weight','bold');
+        text.setAttribute('pointer-events','none');
+        text.textContent = i+1;
+        g.appendChild(text);
+        svg.appendChild(g);
+      });
+      // Labels
+      nodes.forEach((n,i) => {
+        const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+        label.setAttribute('x',n.x*zoomLevel+offsetX); label.setAttribute('y',n.y*zoomLevel+offsetY+44);
+        label.setAttribute('text-anchor','middle');
+        label.setAttribute('font-size','0.95em');
+        label.setAttribute('fill',n.future ? '#bbb' : '#ffd54f');
+        label.textContent = n.label;
+        svg.appendChild(label);
+      });
+    }
+    function showTooltip(n, e) {
+      tooltip.style.display = 'block';
+      tooltip.innerHTML =
+        (n.img ? `<img src='${n.img}' alt='img'>` : '') +
+        `<b>${n.label}</b><br>${n.desc}<br><br>`+
+        (n.tasks ? `<b>Checklist:</b><ul style='margin:6px 0 0 18px;'>`+n.tasks.map(t=>`<li>? ${t}</li>`).join('')+`</ul><br>` : '')+
+        (n.commit ? `<b>Commit:</b> ${n.commit}<br>` : '')+
+        (n.author ? `<b>Autor:</b> ${n.author}<br>` : '')+
+        (n.date ? `<b>Data:</b> ${n.date}` : '');
+      tooltip.style.left = (e.clientX+20)+'px';
+      tooltip.style.top = (e.clientY-30)+'px';
+    }
+    function hideTooltip() {
+      tooltip.style.display = 'none';
+    }
+    function selectNode(idx) {
+      document.querySelectorAll('circle').forEach((c,i) => {
+        c.setAttribute('stroke', i===idx ? '#ffd54f' : '#fff');
+        c.setAttribute('stroke-width', i===idx ? '5' : '3');
+      });
+      const panel = document.getElementById('metro-panel');
+      panel.querySelector('h2').textContent = 'Estado selecionado: ' + nodes[idx].label;
+      panel.querySelector('pre').textContent = nodes[idx].code;
+      panel.querySelectorAll('.metro-btn')[0].disabled = idx === 0;
+    }
+    function showContextMenu(n, idx, e) {
+      e.preventDefault();
+      hideTooltip();
+      // Mock: right-click menu (real seria um menu flutuante com a��es Git)
+      alert(`A��es Git para ${n.label}:\n- Checkout\n- Branch\n- Merge\n- Diff\n- Revert`);
+    }
+    function zoom(delta) {
+      zoomLevel = Math.max(0.4, Math.min(2.5, zoomLevel+delta));
+      renderMap();
+    }
+    function fitMap() {
+      zoomLevel = 1;
+      offsetX = 0;
+      offsetY = 0;
+      renderMap();
+    }
+    renderMap();
+  </script>
+</body>
+</html>
