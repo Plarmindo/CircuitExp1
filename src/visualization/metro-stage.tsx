@@ -51,6 +51,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   const hoveredKeyRef = useRef<string | null>(null);
   const selectedKeyRef = useRef<string | null>(null);
   const layoutIndexRef = useRef<Map<string, { x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>>(new Map());
+  // Cache last layout node list to allow redraw without recomputing layout (theme restyle)
+  const lastLayoutNodesRef = useRef<Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>>([]);
   // Track expanded aggregation synthetic node paths
   const expandedAggregationsRef = useRef<Set<string>>(new Set());
   // Performance overlay (dev only)
@@ -673,21 +675,27 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   };
   window.addEventListener('metro:themeChanged', handleThemeChanged);
 
-      const redraw = (applyPending = true) => {
+  interface RedrawOptions { skipLayout?: boolean }
+  const redraw = (applyPending = true, opts?: RedrawOptions) => {
   if (pixiFailedRef.current) return; // skip heavy drawing logic in fallback
         const style = tokens();
         if (!adapterRef.current || !appRef.current) return;
         const t0 = performance.now();
-        if (applyPending && pendingDelta.current.length) {
-          adapterRef.current.applyDelta(pendingDelta.current);
-          pendingDelta.current = [];
+        if (!opts?.skipLayout) {
+          if (applyPending && pendingDelta.current.length) {
+            adapterRef.current.applyDelta(pendingDelta.current);
+            pendingDelta.current = [];
+          }
+          const layoutStart = performance.now();
+          const layout = layoutHierarchicalV2(adapterRef.current, { expandedAggregations: expandedAggregationsRef.current });
+          const layoutEnd = performance.now();
+          lastLayoutMsRef.current = layoutEnd - layoutStart;
+          setNodeCount(layout.nodes.length);
+          layoutIndexRef.current = layout.nodeIndex as unknown as Map<string, { x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
+          lastLayoutNodesRef.current = layout.nodes as Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
         }
-        const layoutStart = performance.now();
-        const layout = layoutHierarchicalV2(adapterRef.current, { expandedAggregations: expandedAggregationsRef.current });
-        const layoutEnd = performance.now();
-        lastLayoutMsRef.current = layoutEnd - layoutStart;
-        setNodeCount(layout.nodes.length);
-        layoutIndexRef.current = layout.nodeIndex as unknown as Map<string, { x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
+        // Either from fresh layout or cached
+        const effectiveNodes = opts?.skipLayout ? lastLayoutNodesRef.current : lastLayoutNodesRef.current;
 
         // Mark seen keys to remove orphans after update
         const seenNodeKeys = new Set<string>();
@@ -696,7 +704,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         // Lines first so z-order is correct
         const gridSize = 20; // snap simples estilo grelha
         const snap = (v: number) => Math.round(v / gridSize) * gridSize;
-  for (const lp of layout.nodes) {
+        for (const lp of effectiveNodes) {
           if (lp.aggregated) continue;
           const node = adapterRef.current.getNode(lp.path);
           if (!node || !node.parentPath) continue;
@@ -919,6 +927,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
                 culledAvgMs: culledAvg,
                 improvementPct,
                 reusePct: reuseStatsRef.current.reusedPct,
+                nodeCount: layoutIndexRef.current.size,
                 nodeCount: layoutIndexRef.current.size,
                 lastCulled: lastCulledCountRef.current
               }));
