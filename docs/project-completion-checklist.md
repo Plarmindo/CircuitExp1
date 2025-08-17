@@ -88,7 +88,7 @@ Legend:
   - Debug: `window.__metroDebug.getLayoutCallCount()` stable across theme changes.
   - Commit: feat(VIS-14): complete dynamic theme refresh (skipLayout restyle + test) – hash 0f263fd
 
-- [ ] VIS-15 Export Snapshot (Finalize)
+- [x] VIS-15 Export Snapshot (Finalize)
   Acceptance:
   - UI export button yields PNG with: correct dimensions (within ±1px of canvas), background color or optional transparent mode (toggle or query param).
   - Errors (WebGL lost) produce user-facing message and safe fallback (attempt 2D extraction if possible).
@@ -97,7 +97,9 @@ Legend:
   - Code: `src/visualization/metro-stage.tsx` (enhanced `handleExportPNG` adding dimension metadata, transparent mode via `transparentExport=1` query param, debug `exportDataUrl` function) lines containing `handleExportPNG`, `exportDataUrl`, and `transparentExportParam`.
   - UI: `src/components/MetroUI.tsx` export button unchanged (query param controls transparency); if URL includes `?transparentExport=1` exports are transparent.
   - Debug: `window.__lastExportPng` now includes `{ size, width, height, transparent }` for test assertions; `window.__metroDebug.exportDataUrl(transparent?: boolean)` returns `{ dataUrl, width, height, size, transparent }`.
-  - Pending: Playwright test `tests/e2e/export-snapshot.spec.ts` (to be validated) will assert dimensions & size; add user-facing error overlay test on simulated failure (future refinement if WebGL lost can be simulated).
+  - Tests: `tests/e2e/export-snapshot.spec.ts` (2 passing: opaque/transparent export; context lost fallback) executed successfully – confirms size >1KB opaque, transparent variant, and fallback path after simulated context loss.
+  - Overlay: Context lost overlay DOM message 'Rendering context lost – fallback export available' appended on simulation (manual & test verification).
+  - Commit: feat(VIS-15): context lost fallback overlay + export metadata & E2E tests – hash a97300d.
 
 - [ ] VIS-16 Keyboard Navigation Skeleton
   Acceptance:
