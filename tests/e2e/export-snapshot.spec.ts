@@ -29,3 +29,20 @@ test('VIS-15 export snapshot opaque & transparent', async ({ page }) => {
   expect(transparentMeta.size).toBeGreaterThan(512); // still non-trivial
   expect(transparentMeta.transparent).toBeTruthy();
 });
+
+test('VIS-15 export after simulated context lost uses fallback', async ({ page }) => {
+  await page.goto('/');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.waitForFunction(() => !!(window as any).__metroDebug);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.evaluate(() => (window as any).__metroDebug.genTree?.(2,2,1));
+  // Simulate context lost
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lost = await page.evaluate(() => (window as any).__metroDebug.simulateContextLost?.());
+  expect(lost).toBeTruthy();
+  // Attempt export (opaque)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const meta = await page.evaluate(() => (window as any).__metroDebug.exportDataUrl(false));
+  expect(meta).toBeTruthy();
+  expect(meta.size).toBeGreaterThan(256);
+});

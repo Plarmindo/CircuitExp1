@@ -84,6 +84,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   // Headless fallback storage
   const fallbackNodesRef = useRef<{ path: string; x: number; y: number; aggregated?: boolean }[]>([]);
   const pixiFailedRef = useRef(false);
+  // VIS-15: track WebGL/context lost to surface user-facing fallback message
+  const contextLostRef = useRef(false);
+  const contextLostOverlayRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let offPartial: (() => void) | undefined;
@@ -588,7 +591,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         app.stage.y = (viewH / 2) - worldCenterY * newScale;
       };
 
-      const handleExportPNG = () => {
+  const handleExportPNG = () => {
         // Support optional transparent export via query param (?transparentExport=1) or custom event detail
         const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined;
         const transparentParam = searchParams?.get('transparentExport') === '1';
@@ -624,6 +627,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           }
         };
         try {
+          if (contextLostRef.current) {
+            console.warn('[MetroStage] Export after context lost – attempting 2D fallback');
+          }
           if (transparentParam) {
             // Create an offscreen canvas with cleared background, draw current content via drawImage
             const off = document.createElement('canvas');
@@ -665,7 +671,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       };
 
       // Debug helper: allow tests to get data URL & metadata without triggering download
-      if (typeof window !== 'undefined' && window.__metroDebug) {
+  if (typeof window !== 'undefined' && window.__metroDebug) {
         // Preserve any existing functions (extend object)
         const prev = window.__metroDebug;
         window.__metroDebug = {
@@ -688,9 +694,57 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
               const dataUrl = canvas.toDataURL('image/png');
               return { dataUrl, width: canvas.width, height: canvas.height, size: Math.round((dataUrl.length*3)/4), transparent: false };
             } catch (err) { console.error('[MetroStage] exportDataUrl error', err); return null; }
+          },
+          simulateContextLost: () => {
+            if (contextLostRef.current) return true;
+            contextLostRef.current = true;
+            // Show overlay message
+            if (containerRef.current && !contextLostOverlayRef.current) {
+              const ov = document.createElement('div');
+              ov.style.position = 'absolute';
+              ov.style.left = '0'; ov.style.top = '0'; ov.style.right = '0'; ov.style.bottom = '0';
+              ov.style.display = 'flex'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
+              ov.style.background = 'rgba(0,0,0,0.6)';
+              ov.style.color = '#fff';
+              ov.style.font = '16px sans-serif';
+              ov.style.zIndex = '50';
+              ov.textContent = 'Rendering context lost – fallback export available';
+              containerRef.current.appendChild(ov);
+              contextLostOverlayRef.current = ov;
+            }
+            return true;
           }
         };
       }
+
+      // Attach WebGL/context lost listeners (best-effort; may not fire in headless tests)
+      const attachContextLostListeners = (cnv: HTMLCanvasElement | null) => {
+        if (!cnv) return;
+        const handler = (ev: Event) => {
+          contextLostRef.current = true;
+          if ('preventDefault' in ev) {
+            try { (ev as WebGLContextEvent).preventDefault(); } catch { /* ignore */ }
+          }
+          if (containerRef.current && !contextLostOverlayRef.current) {
+            const ov = document.createElement('div');
+            ov.style.position = 'absolute';
+            ov.style.left = '0'; ov.style.top = '0'; ov.style.right = '0'; ov.style.bottom = '0';
+            ov.style.display = 'flex'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
+            ov.style.background = 'rgba(0,0,0,0.6)';
+            ov.style.color = '#fff'; ov.style.font = '16px sans-serif'; ov.style.zIndex = '50';
+            ov.textContent = 'Rendering context lost – using fallback';
+            containerRef.current.appendChild(ov);
+            contextLostOverlayRef.current = ov;
+          }
+        };
+        cnv.addEventListener('webglcontextlost', handler as EventListener, false);
+        cnv.addEventListener('contextlost', handler as EventListener, false);
+      };
+      // Attempt to find canvas now (Pixi may have appended) for listener binding
+      // @ts-expect-error dynamic
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialCanvas: HTMLCanvasElement | null = (app && (app as any).canvas) ? (app as any).canvas : containerRef.current?.querySelector('canvas');
+      attachContextLostListeners(initialCanvas);
 
       // Global control listeners (UI -> Stage)
       const safeViewRect = () => {
