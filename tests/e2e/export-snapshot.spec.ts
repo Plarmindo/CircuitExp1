@@ -1,0 +1,31 @@
+import { test, expect } from '@playwright/test';
+// eslint-disable @typescript-eslint/no-explicit-any
+
+// VIS-15 Export Snapshot (PNG) validation test
+// Validates: non-empty PNG (size), dimensions, transparent export path
+
+test('VIS-15 export snapshot opaque & transparent', async ({ page }) => {
+  await page.goto('/');
+  // The evaluation context is the browser; using any to access injected debug object
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.waitForFunction(() => !!(window as any).__metroDebug);
+  // Generate deterministic medium tree
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.evaluate(() => (window as any).__metroDebug.genTree?.(3,2,2));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const opaqueMeta = await page.evaluate(() => (window as any).__metroDebug.exportDataUrl(false));
+  expect(opaqueMeta).toBeTruthy();
+  expect(opaqueMeta.width).toBeGreaterThan(100);
+  expect(opaqueMeta.height).toBeGreaterThan(100);
+  expect(opaqueMeta.size).toBeGreaterThan(1024); // >1KB ensures meaningful pixels
+  expect(opaqueMeta.transparent).toBeFalsy();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transparentMeta = await page.evaluate(() => (window as any).__metroDebug.exportDataUrl(true));
+  expect(transparentMeta).toBeTruthy();
+  expect(transparentMeta.width).toBe(opaqueMeta.width);
+  expect(transparentMeta.height).toBe(opaqueMeta.height);
+  expect(transparentMeta.size).toBeGreaterThan(512); // still non-trivial
+  expect(transparentMeta.transparent).toBeTruthy();
+});

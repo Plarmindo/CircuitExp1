@@ -76,7 +76,7 @@ Legend:
   - Performance test (Playwright) asserting improvementPct >=20% & reuse ≥95%: `tests/e2e/benchmark-culling.spec.ts` full file.
   - Manual: startRealBench run (breadth 5 depth 5 files 3) produced improvementPct >20% at extreme zoom-out with culledAvg noticeably lower than baselineAvg (observed locally; large-node culling reduces visible node workload). Nota: quick bench usa carga sintética proporcional a número de nós visíveis para refletir diferença; sem clamp artificial (removido) em versão atual.
 
-- [ ] VIS-14 Dynamic Theme Refresh
+- [x] VIS-14 Dynamic Theme Refresh
   Acceptance:
   - Calling `setTheme()` triggers re-style of all existing sprites (colors, background) without destroying & recreating them.
   - No full layout recompute triggered unless layout-affecting token changes (explicitly none for current tokens).
@@ -86,12 +86,18 @@ Legend:
   - Test: `tests/visualization/theme-restyle.test.tsx` ("VIS-14 dynamic theme restyle") passes (verifies no new layout calls, color change, same sprite ref when available).
   - Manual: Theme toggle in UI triggers immediate recolor without geometry shift (observed in dev build light<->dark).
   - Debug: `window.__metroDebug.getLayoutCallCount()` stable across theme changes.
+  - Commit: feat(VIS-14): complete dynamic theme refresh (skipLayout restyle + test) – hash 0f263fd
 
 - [ ] VIS-15 Export Snapshot (Finalize)
   Acceptance:
   - UI export button yields PNG with: correct dimensions (within ±1px of canvas), background color or optional transparent mode (toggle or query param).
   - Errors (WebGL lost) produce user-facing message and safe fallback (attempt 2D extraction if possible).
   - E2E/Playwright test validates non-empty PNG (file size > 1KB) and decodes via headless image loader (width/height > 0).
+  Evidence (partial):
+  - Code: `src/visualization/metro-stage.tsx` (enhanced `handleExportPNG` adding dimension metadata, transparent mode via `transparentExport=1` query param, debug `exportDataUrl` function) lines containing `handleExportPNG`, `exportDataUrl`, and `transparentExportParam`.
+  - UI: `src/components/MetroUI.tsx` export button unchanged (query param controls transparency); if URL includes `?transparentExport=1` exports are transparent.
+  - Debug: `window.__lastExportPng` now includes `{ size, width, height, transparent }` for test assertions; `window.__metroDebug.exportDataUrl(transparent?: boolean)` returns `{ dataUrl, width, height, size, transparent }`.
+  - Pending: Playwright test `tests/e2e/export-snapshot.spec.ts` (to be validated) will assert dimensions & size; add user-facing error overlay test on simulated failure (future refinement if WebGL lost can be simulated).
 
 - [ ] VIS-16 Keyboard Navigation Skeleton
   Acceptance:

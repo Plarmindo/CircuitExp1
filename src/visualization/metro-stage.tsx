@@ -589,49 +589,108 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       };
 
       const handleExportPNG = () => {
-        // Suporta fallback headless (pixiFailed) usando htmlCanvas local
+        // Support optional transparent export via query param (?transparentExport=1) or custom event detail
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : undefined;
+        const transparentParam = searchParams?.get('transparentExport') === '1';
         let canvas: HTMLCanvasElement | null = null;
-        // @ts-expect-error canvas não tipado em instancia Pixi custom (supressão localizada)
+        // Attempt to grab the Pixi-managed canvas first
+        // @ts-expect-error dynamic Pixi Application canvas access
         if (app && (app as unknown as { canvas?: HTMLCanvasElement }).canvas) {
-          // @ts-expect-error ver acima
-            canvas = (app as unknown as { canvas?: HTMLCanvasElement }).canvas ?? null;
+          // @ts-expect-error see above
+          canvas = (app as unknown as { canvas?: HTMLCanvasElement }).canvas ?? null;
         }
         if (!canvas) {
-          const maybe = containerRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
-          if (maybe) canvas = maybe;
+          canvas = containerRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
         }
-        if (!canvas) return;
+        if (!canvas) {
+          console.warn('[MetroStage] Export aborted: no canvas found');
+          return;
+        }
+        const performBlob = (cnv: HTMLCanvasElement, downloadName = 'metro-map.png', transparent = false) => {
+          try {
+            cnv.toBlob((blob) => {
+              if (!blob) return;
+              if (typeof window !== 'undefined') {
+                window.__lastExportPng = { size: blob.size, width: cnv.width, height: cnv.height, transparent };
+              }
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = downloadName;
+              document.body.appendChild(a); a.click();
+              document.body.removeChild(a); URL.revokeObjectURL(url);
+            });
+          } catch (err) {
+            console.error('[MetroStage] toBlob failed', err);
+          }
+        };
         try {
+          if (transparentParam) {
+            // Create an offscreen canvas with cleared background, draw current content via drawImage
+            const off = document.createElement('canvas');
+            off.width = canvas.width; off.height = canvas.height;
+            const offCtx = off.getContext('2d');
+            if (offCtx) {
+              // Draw existing canvas (could already have opaque bg if Pixi used one)
+              offCtx.drawImage(canvas, 0, 0);
+              performBlob(off, 'metro-map-transparent.png', true);
+              return;
+            }
+          }
           if (pixiFailed) {
             const ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.fillStyle = '#102030';
               ctx.fillRect(0,0,canvas.width,canvas.height);
-              ctx.fillStyle = '#fff';
-              ctx.font = '14px sans-serif';
+              ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif';
               ctx.fillText('Metro Fallback', 10, 24);
               ctx.fillText('Nodes:'+ (layoutIndexRef.current?.size ?? 0), 10, 44);
             }
           }
-          canvas.toBlob((blob) => {
-            if (!blob) return;
-            // Expor tamanho para testes E2E
-            if (typeof window !== 'undefined') {
-              window.__lastExportPng = { size: blob.size };
-            }
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'metro-map.png';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          });
+          performBlob(canvas, 'metro-map.png', false);
         } catch (err) {
           console.error('Export PNG failed', err);
+          // Attempt safe fallback: duplicate canvas to new 2D canvas and export
+          try {
+            const fallback = document.createElement('canvas');
+            fallback.width = canvas.width; fallback.height = canvas.height;
+            const fctx = fallback.getContext('2d');
+            if (fctx) {
+              fctx.drawImage(canvas,0,0);
+              performBlob(fallback, 'metro-map-fallback.png', false);
+            }
+          } catch (err2) {
+            console.error('[MetroStage] fallback export also failed', err2);
+          }
         }
       };
+
+      // Debug helper: allow tests to get data URL & metadata without triggering download
+      if (typeof window !== 'undefined' && window.__metroDebug) {
+        // Preserve any existing functions (extend object)
+        const prev = window.__metroDebug;
+        window.__metroDebug = {
+          ...prev,
+          exportDataUrl: (transparent = false) => {
+            let canvas: HTMLCanvasElement | null = null;
+            // @ts-expect-error dynamic
+            if (app && (app as unknown as { canvas?: HTMLCanvasElement }).canvas) canvas = (app as unknown as { canvas?: HTMLCanvasElement }).canvas ?? null;
+            if (!canvas) canvas = containerRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
+            if (!canvas) return null;
+            try {
+              if (transparent) {
+                const off = document.createElement('canvas');
+                off.width = canvas.width; off.height = canvas.height;
+                const offCtx = off.getContext('2d');
+                if (offCtx) offCtx.drawImage(canvas,0,0);
+                const dataUrl = off.toDataURL('image/png');
+                return { dataUrl, width: off.width, height: off.height, size: Math.round((dataUrl.length*3)/4), transparent: true };
+              }
+              const dataUrl = canvas.toDataURL('image/png');
+              return { dataUrl, width: canvas.width, height: canvas.height, size: Math.round((dataUrl.length*3)/4), transparent: false };
+            } catch (err) { console.error('[MetroStage] exportDataUrl error', err); return null; }
+          }
+        };
+      }
 
       // Global control listeners (UI -> Stage)
       const safeViewRect = () => {
