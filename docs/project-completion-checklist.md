@@ -113,10 +113,14 @@ Legend:
   - Guard: key handler ignores inputs when focus in editable elements; Enter only expands (no collapse), Escape clears selection via dispatch `metro:select` null.
   - Manual (pending UI verification): Arrow keys should highlight next nearest node; logic purely geometric (distance + angle tie-break).
 
-- [ ] VIS-17 Late Parent Hydration Test
+- [x] VIS-17 Late Parent Hydration Test
   Acceptance:
   - Add unit test explicitly feeding child path before parent; ensure placeholder replaced with real parent retaining children array.
   - Adapter tracks `isPlaceholder=false` after hydration.
+  Evidence:
+  - Code: `src/visualization/graph-adapter.ts` (applyDelta hydration branch lines setting `existing.isPlaceholder = false`).
+  - Test: `tests/visualization/graph-adapter.test.ts` case "late parent hydration retains existing children chain (VIS-17)" (deep file first -> placeholders /root, /root/a, /root/a/b; second delta hydrates parents; asserts placeholderHydrated includes all; children arrays preserved; isPlaceholder flags cleared).
+  - Verified via `npm test -- tests/visualization/graph-adapter.test.ts` (4 passing including VIS-17 case).
 
 - [ ] VIS-18 Expanded Coverage >85% (Adapter + Layout)
   Acceptance:
