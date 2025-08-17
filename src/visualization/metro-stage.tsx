@@ -26,6 +26,9 @@ declare global {
   getReusePct?: () => number;
   getBenchResult?: () => { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
   benchResult?: { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
+  getLayoutCallCount?: () => number;
+  getNodeColor?: (path: string) => number | undefined;
+  getNodeSprite?: (path: string) => PIXI.Graphics | undefined;
     };
     __lastExportPng?: { size: number };
   }
@@ -59,6 +62,10 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   const overlayEnabledRef = useRef(false);
   const fpsTimesRef = useRef<number[]>([]);
   const lastLayoutMsRef = useRef(0);
+  // VIS-14: count layout invocations (should not increment on pure theme restyle)
+  const layoutCallCountRef = useRef(0);
+  // VIS-14: track last fill color per node for test/debug (updated in redraw + theme restyle)
+  const nodeColorRef = useRef(new Map<string, number>());
   const lastBatchApplyMsRef = useRef(0);
   const overlayDivRef = useRef<HTMLDivElement | null>(null);
   const overlayAvgCostRef = useRef<number | null>(null); // micro-benchmark average updateOverlay() cost (ms)
@@ -209,6 +216,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           },
           getReusePct: () => reuseStatsRef.current.reusedPct,
           getBenchResult: () => benchResultRef.current,
+          getLayoutCallCount: () => layoutCallCountRef.current,
+          getNodeColor: (p: string) => nodeColorRef.current.get(p),
+          getNodeSprite: (p: string) => spriteNodes.current.get(p),
           // Execução rápida de benchmark sintético sem animação de frames em loop RAF
           startQuickBench: (p?: { breadth?: number; depth?: number; files?: number; baselineIters?: number; culledIters?: number }) => {
             if (!adapterRef.current) return null;
@@ -500,12 +510,14 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       };
 
       // Register canvas pan & zoom listeners (wheel non-passive to allow preventDefault)
-      const canvasEl = app.canvas as HTMLCanvasElement;
-  if (!pixiFailedRef.current && canvasEl) {
-        canvasEl.addEventListener('wheel', handleWheel, { passive: false });
-        canvasEl.addEventListener('pointerdown', handlePointerDown);
-        canvasEl.addEventListener('pointermove', handlePointerMove);
-        canvasEl.addEventListener('pointerup', handlePointerUp);
+      if (!pixiFailedRef.current) {
+        const canvasEl = app.canvas as HTMLCanvasElement;
+        if (canvasEl) {
+          canvasEl.addEventListener('wheel', handleWheel, { passive: false });
+          canvasEl.addEventListener('pointerdown', handlePointerDown);
+          canvasEl.addEventListener('pointermove', handlePointerMove);
+          canvasEl.addEventListener('pointerup', handlePointerUp);
+        }
       }
 
       // Reset initial transform
@@ -650,11 +662,13 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   window.addEventListener('metro:fit', onFit!);
   window.addEventListener('metro:exportPNG', onExport!);
   window.addEventListener('metro:exportPng', elevatedHandleExportPNG); // fallback event name used in tests
-  // Dynamic theme restyle (VIS-14 partial): recolor existing sprites without layout recompute
+  // Dynamic theme restyle (VIS-14): recolor existing sprites & lines without layout recompute
   const handleThemeChanged = () => {
-    if (!appRef.current || pixiFailedRef.current) return;
+    if (!appRef.current) return;
     const style = tokens();
-    // Recolor node sprites
+    // Update renderer background
+    try { (appRef.current.renderer as PIXI.Renderer).background.color = style.palette.background; } catch { /* ignore */ }
+    // Recolor node sprites (no geometry or layout changes)
     for (const [key, g] of spriteNodes.current) {
       const info = layoutIndexRef.current.get(key);
       const node = adapterRef.current?.getNode(key);
@@ -664,23 +678,25 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       let fill = style.palette.directory;
       if (info.aggregated) { radius = style.stationRadius.aggregated; fill = style.palette.aggregated; }
       else if (node?.kind === 'file') { radius = style.stationRadius.file; fill = style.palette.file; }
+      nodeColorRef.current.set(key, fill);
       const isSelected = selectedKeyRef.current === key;
       const strokeColor = isSelected ? style.palette.selected : (info.aggregated ? style.palette.lineAgg : 0);
       const strokeWidth = isSelected ? style.lineThickness + 1.5 : (info.aggregated ? style.lineThickness : 0);
       g.beginFill(fill, 1); g.drawCircle(0,0,radius); g.endFill();
       if (strokeWidth > 0) { g.lineStyle({ width: strokeWidth, color: strokeColor, alpha: 0.95 }); g.drawCircle(0,0,radius + (isSelected ? 2 : -4)); g.lineStyle(); }
     }
-    // Recolor line sprites
-  // Lines will recolor on next redraw; we deliberately avoid forcing full layout here.
+    // Redraw lines & badges using cached layout (skip layout recompute)
+    redraw(false, { skipLayout: true });
   };
   window.addEventListener('metro:themeChanged', handleThemeChanged);
 
   interface RedrawOptions { skipLayout?: boolean }
   const redraw = (applyPending = true, opts?: RedrawOptions) => {
-  if (pixiFailedRef.current) return; // skip heavy drawing logic in fallback
         const style = tokens();
         if (!adapterRef.current || !appRef.current) return;
         const t0 = performance.now();
+        let layoutNodes: Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }> = lastLayoutNodesRef.current;
+        let nodeIndexLocal = layoutIndexRef.current;
         if (!opts?.skipLayout) {
           if (applyPending && pendingDelta.current.length) {
             adapterRef.current.applyDelta(pendingDelta.current);
@@ -688,14 +704,16 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           }
           const layoutStart = performance.now();
           const layout = layoutHierarchicalV2(adapterRef.current, { expandedAggregations: expandedAggregationsRef.current });
+          layoutCallCountRef.current++;
           const layoutEnd = performance.now();
           lastLayoutMsRef.current = layoutEnd - layoutStart;
           setNodeCount(layout.nodes.length);
           layoutIndexRef.current = layout.nodeIndex as unknown as Map<string, { x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
           lastLayoutNodesRef.current = layout.nodes as Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
+          layoutNodes = lastLayoutNodesRef.current;
+          nodeIndexLocal = layoutIndexRef.current;
         }
-        // Either from fresh layout or cached
-        const effectiveNodes = opts?.skipLayout ? lastLayoutNodesRef.current : lastLayoutNodesRef.current;
+        const effectiveNodes = layoutNodes;
 
         // Mark seen keys to remove orphans after update
         const seenNodeKeys = new Set<string>();
@@ -708,10 +726,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           if (lp.aggregated) continue;
           const node = adapterRef.current.getNode(lp.path);
           if (!node || !node.parentPath) continue;
+          if (pixiFailedRef.current) { continue; } // sem linhas no fallback
           // Suportar diferença de separadores (scan Windows vs normalização)
-          let parentPoint = layout.nodeIndex.get(node.parentPath);
-          if (!parentPoint) parentPoint = layout.nodeIndex.get(node.parentPath.replace(/\\/g,'/'));
-          if (!parentPoint) parentPoint = layout.nodeIndex.get(node.parentPath.replace(/\//g,'\\'));
+          let parentPoint = nodeIndexLocal.get(node.parentPath);
+          if (!parentPoint) parentPoint = nodeIndexLocal.get(node.parentPath.replace(/\\/g,'/'));
+          if (!parentPoint) parentPoint = nodeIndexLocal.get(node.parentPath.replace(/\//g,'\\'));
           if (!parentPoint) continue;
           const parentNode = adapterRef.current.getNode(node.parentPath);
           // Determinar raios (usa tokens para evitar linha atravessar círculo)
@@ -752,9 +771,17 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         // Stations / nodes (with culling / basic LOD)
         const scaleNow = scaleRef.current;
         let culled = 0;
-        for (const lp of layout.nodes) {
+        for (const lp of layoutNodes) {
           const node = adapterRef.current.getNode(lp.path);
           const key = lp.path;
+          if (pixiFailedRef.current) {
+            // Apenas atualiza mapa de cores para teste (VIS-14) e contagem de nós
+            let fill = style.palette.directory;
+            if (lp.aggregated) fill = style.palette.aggregated; else if (node?.kind === 'file') fill = style.palette.file;
+            nodeColorRef.current.set(key, fill);
+            seenNodeKeys.add(key);
+            continue;
+          }
           const g = getNodeSprite(key);
           g.clear();
           let radius = style.stationRadius.directory;
@@ -766,6 +793,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             radius = style.stationRadius.file;
             fill = style.palette.file;
           }
+          nodeColorRef.current.set(key, fill);
           // Projected radius (screen space) for culling
           const projectedRadius = radius * scaleNow;
           const cullThreshold = 0.5; // px
@@ -934,7 +962,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             }
           }
         }
-        if (overlayEnabledRef.current) updateOverlay();
+  if (overlayEnabledRef.current && !pixiFailedRef.current) updateOverlay();
       };
 
       const schedule = () => {

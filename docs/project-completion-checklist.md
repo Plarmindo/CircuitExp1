@@ -81,6 +81,11 @@ Legend:
   - Calling `setTheme()` triggers re-style of all existing sprites (colors, background) without destroying & recreating them.
   - No full layout recompute triggered unless layout-affecting token changes (explicitly none for current tokens).
   - Unit test: mock tokens swap; sprite fill colors updated; object references unchanged.
+  Evidence:
+  - Code: `src/visualization/metro-stage.tsx` (handleThemeChanged listener & redraw skipLayout path; layoutCallCountRef, nodeColorRef) lines containing `handleThemeChanged` and `layoutCallCountRef`.
+  - Test: `tests/visualization/theme-restyle.test.tsx` ("VIS-14 dynamic theme restyle") passes (verifies no new layout calls, color change, same sprite ref when available).
+  - Manual: Theme toggle in UI triggers immediate recolor without geometry shift (observed in dev build light<->dark).
+  - Debug: `window.__metroDebug.getLayoutCallCount()` stable across theme changes.
 
 - [ ] VIS-15 Export Snapshot (Finalize)
   Acceptance:
