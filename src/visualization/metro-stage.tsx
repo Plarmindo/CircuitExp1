@@ -1121,7 +1121,6 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
                 improvementPct,
                 reusePct: reuseStatsRef.current.reusedPct,
                 nodeCount: layoutIndexRef.current.size,
-                nodeCount: layoutIndexRef.current.size,
                 lastCulled: lastCulledCountRef.current
               }));
             }

@@ -311,6 +311,8 @@ async function _processSlice(st) {
 }
 
 function _emitProgress(st) {
+  // Guard: avoid emitting progress after completion or cancellation (post-finish race safety)
+  if (st.done || st.cancelled) return;
   const now = _hrNow();
   const elapsedMs = st.hrStart ? Number((now - st.hrStart) / 1000000n) : 0;
   const totalProcessed = st.dirsProcessed + st.filesProcessed;
