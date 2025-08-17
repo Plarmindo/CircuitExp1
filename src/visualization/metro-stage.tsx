@@ -12,6 +12,7 @@ import * as PIXI from 'pixi.js';
 import { createGraphAdapter, GraphAdapter } from './graph-adapter';
 import { layoutHierarchicalV2 } from './layout-v2';
 import { toggleAggregation } from './selection-helpers';
+import { findNextDirectional } from './navigation-helpers';
 import type { ScanNode } from '../shared/scan-types';
 import { tokens } from './style-tokens';
 
@@ -110,9 +111,54 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           const t1 = performance.now();
           overlayAvgCostRef.current = (t1 - t0)/iterations;
           console.log(`[MetroStage][Overlay] avg updateOverlay ${overlayAvgCostRef.current.toFixed(4)}ms`);
-  } catch { /* ignore benchmark errors */ }
+        } catch { /* ignore benchmark errors */ }
         updateOverlay();
       }
+      return;
+    }
+    // Keyboard navigation (VIS-16)
+    const ae = document.activeElement as HTMLElement | null;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+    const dirKeyMap: Record<string, 'up'|'down'|'left'|'right'> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    if (e.key in dirKeyMap) {
+      e.preventDefault();
+      const entries: { path: string; x: number; y: number; aggregated?: boolean }[] = [];
+      for (const [p,v] of layoutIndexRef.current.entries()) entries.push({ path: p, x: v.x, y: v.y, aggregated: v.aggregated });
+      const next = findNextDirectional(selectedKeyRef.current, dirKeyMap[e.key], entries);
+      if (next && next !== selectedKeyRef.current) {
+        selectedKeyRef.current = next;
+        const info = layoutIndexRef.current.get(next);
+        window.dispatchEvent(new CustomEvent('metro:select', { detail: { path: next, type: info?.aggregated ? 'aggregated' : 'node' } }));
+        redraw(false, { skipLayout: true });
+      }
+      return;
+    }
+    if (e.key === 'Enter') {
+      const sel = selectedKeyRef.current;
+      if (sel) {
+        const info = layoutIndexRef.current.get(sel);
+        if (info?.aggregated && !expandedAggregationsRef.current.has(sel)) {
+          const toggled = toggleAggregation({
+            aggregatedPath: sel,
+            childPaths: info.aggregatedChildrenPaths || [],
+            expandedBefore: false,
+            currentSelection: selectedKeyRef.current,
+          });
+          if (toggled.expandedAfter) expandedAggregationsRef.current.add(sel);
+          selectedKeyRef.current = toggled.newSelection;
+          window.dispatchEvent(new CustomEvent('metro:select', { detail: selectedKeyRef.current ? { path: selectedKeyRef.current, type: 'aggregated' } : null }));
+          redraw(false);
+        }
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (selectedKeyRef.current) {
+        selectedKeyRef.current = null;
+        window.dispatchEvent(new CustomEvent('metro:select', { detail: null }));
+        redraw(false, { skipLayout: true });
+      }
+      return;
     }
   };
 
@@ -741,10 +787,16 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         cnv.addEventListener('contextlost', handler as EventListener, false);
       };
       // Attempt to find canvas now (Pixi may have appended) for listener binding
-      // @ts-expect-error dynamic
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const initialCanvas: HTMLCanvasElement | null = (app && (app as any).canvas) ? (app as any).canvas : containerRef.current?.querySelector('canvas');
-      attachContextLostListeners(initialCanvas);
+      let initialCanvas: HTMLCanvasElement | null = null;
+      try {
+        // @ts-expect-error dynamic
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (app && (app as any).canvas) initialCanvas = (app as any).canvas as HTMLCanvasElement;
+      } catch { /* ignore */ }
+      if (!initialCanvas) {
+        initialCanvas = containerRef.current?.querySelector('canvas') || null;
+      }
+      if (initialCanvas) attachContextLostListeners(initialCanvas);
 
       // Global control listeners (UI -> Stage)
       const safeViewRect = () => {

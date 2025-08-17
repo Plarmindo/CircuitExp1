@@ -101,12 +101,17 @@ Legend:
   - Overlay: Context lost overlay DOM message 'Rendering context lost – fallback export available' appended on simulation (manual & test verification).
   - Commit: feat(VIS-15): context lost fallback overlay + export metadata & E2E tests – hash a97300d.
 
-- [ ] VIS-16 Keyboard Navigation Skeleton
+ - [x] VIS-16 Keyboard Navigation Skeleton
   Acceptance:
   - Arrow keys move selection to nearest node in the pressed direction (simple geometric search within angular window ±45°).
   - Enter key expands aggregated node (if current selection aggregated) else no-op.
   - Escape clears selection.
   - Unit tests for directional pick logic on a small synthetic layout.
+  Evidence:
+  - Code: `src/visualization/navigation-helpers.ts` (findNextDirectional logic full file), `src/visualization/metro-stage.tsx` (keyHandler integration adding arrow/Enter/Escape handling, import of findNextDirectional).
+  - Tests: `tests/visualization/navigation-helpers.test.ts` (8 passing cases: directional moves, default selection, cone filtering, no-candidate stay-in-place) – all green in `npm test` run.
+  - Guard: key handler ignores inputs when focus in editable elements; Enter only expands (no collapse), Escape clears selection via dispatch `metro:select` null.
+  - Manual (pending UI verification): Arrow keys should highlight next nearest node; logic purely geometric (distance + angle tie-break).
 
 - [ ] VIS-17 Late Parent Hydration Test
   Acceptance:
