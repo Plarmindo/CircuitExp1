@@ -1,30 +1,61 @@
 /**
- * Layout Engine v2 (Checklist Item 4)
- * -----------------------------------
- * Extends v1 hierarchical deterministic layout with:
- * 1. Dynamic horizontal spacing when sibling count exceeds spacingThreshold.
- * 2. Aggregation: if sibling count > aggregationThreshold we collapse them into
- *    a single aggregated placeholder node that is expandable later (future UI).
+ * Layout Engine v2 (VIS series)
+ * =============================
+ * Deterministic hierarchical (top‑down) layout that augments v1 with adaptive horizontal
+ * spacing and sibling aggregation. It produces a stable (order‑independent except for
+ * explicit sibling sort) set of (x,y,depth) coordinates for all visible (real + synthetic) nodes.
  *
- * Spacing Logic:
- *  - Base horizontalSpacing (default 140).
- *  - If siblings > spacingThreshold: effectiveSpacing = base * min(maxSpacingFactor,
- *    1 + (siblings - spacingThreshold) / spacingThreshold * spacingGrowthRate)
- *  - This spreads wide clusters without recomputing parent centering.
+ * Core Features
+ * 1. Adaptive horizontal spacing once a sibling set grows beyond a threshold.
+ * 2. Aggregation / clustering of very wide sibling sets into a single synthetic expandable node.
+ * 3. Deterministic hashing for synthetic aggregation node path ids (stable across runs / deltas).
  *
- * Aggregation Logic:
- *  - If siblings > aggregationThreshold: create one synthetic node with:
- *      aggregated=true, aggregatedCount, aggregatedChildrenPaths[]
- *    Real children are NOT individually positioned (saves perf / clutter).
- *  - Synthetic path pattern: parentPath + '/*__agg__' + hash(count + firstChildPath)
- *  - Deterministic so repeated runs stable.
+ * Complexity & Performance
+ * - Each node is visited exactly once => O(n) traversal work.
+ * - For every sibling set we sort: O(s * log s). Let k = max sibling set size actually laid out.
+ *   Worst case: O(n log k). (If many large sibling sets exist this dominates.)
+ * - Aggregated sets short‑circuit recursion for hidden children lowering effective cost.
  *
- * Trade-offs Documented:
- *  - Loss of individual visibility of collapsed children; mitigated by future
- *    expand-on-click behavior (not implemented yet).
- *  - Aggregation sacrifices exact horizontal span; simplifies first pass.
+ * Adaptive Spacing Formula
+ * Let:
+ *   base = horizontalSpacing
+ *   t = spacingThreshold
+ *   g = spacingGrowthRate
+ *   m = maxSpacingFactor
+ *   s = siblingCount
+ * If s <= t: effectiveSpacing = base
+ * Else:      effectiveSpacing = base * min( m, 1 + ((s - t) / t) * g )
+ * This linear growth (clamped by m) prevents extreme overlap while avoiding exponential expansion.
  *
- * Complexity: O(n log k) where k is max siblings (sort cost) on non-aggregated sets.
+ * Aggregation Semantics
+ * - Trigger: s > aggregationThreshold (o.aggregationThreshold)
+ * - Replacement: one synthetic node with flags { aggregated:true, aggregatedCount, aggregatedChildrenPaths[] }
+ * - Synthetic path format: parentPath + '/*__agg__' + hash(count + firstChildPath)
+ * - Expansion (handled externally by MetroStage via expandedAggregations set) optionally lays out real children immediately after the synthetic placeholder maintaining order stability.
+ *
+ * Limitations (CURRENT)
+ * - No edge crossing minimization: purely orders siblings by stable comparator, so long horizontal runs may cross visually when rendered with routing (handled later by orthogonal routing in `metro-stage.tsx`).
+ * - No force / physics refinement: overlapping large subtrees are not automatically repelled.
+ * - Global left‑to‑right cursor; wide early sibling sets push later columns (no re‑centering of parents after adaptive expansion).
+ * - Aggregated synthetic node occupies single horizontal slot regardless of hidden children width distribution.
+ * - Vertical spacing fixed (no adaptive density vertical compaction yet).
+ *
+ * Planned / Future Enhancements
+ * - Subtree incremental recompute (dirty partition) to avoid full traversal (see PERF items).
+ * - Overlap / lateral jitter mitigation for dense sibling clusters (VIS-23 follow‑up).
+ * - Label collision avoidance & lane reservation.
+ * - Optional edge routing pre‑pass to reserve orthogonal channels.
+ *
+ * Culling & LOD Rationale Link
+ * - Downstream rendering may hide (cull) nodes whose projected radius < threshold (VIS-13) – this layout deliberately does not pre‑cull; it supplies full coordinates then stage decides visibility. See `metro-stage.tsx` (culling logic lines ~700+ in current version) for rationale & reuse metrics.
+ *
+ * Determinism Guarantees
+ * - Given identical adapter state + options the result (ordering, coordinates, synthetic ids) is stable.
+ * - Hash function for synthetic paths uses child path seed to avoid collisions across sibling sets.
+ *
+ * @param adapter GraphAdapter providing hierarchical nodes (must have stable children arrays).
+ * @param opts LayoutOptionsV2 overriding defaults (spacing, aggregation, expansion state).
+ * @returns {LayoutResultV2} positioned nodes + bounding box + index map.
  */
 import { GraphAdapter } from './graph-adapter';
 import type { GraphNode } from './graph-adapter';

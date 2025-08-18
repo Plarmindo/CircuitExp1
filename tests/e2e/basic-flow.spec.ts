@@ -1,10 +1,9 @@
 // Playwright test file (executado via npm run test:e2e)
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // Basic UI flow: loads app, waits for scan items, selection, zooms, exports PNG (size check >1KB).
 
 test('basic UI flow: generate tree, zoom, select, export PNG (>1KB)', async ({ page }) => {
-  await page.goto('http://localhost:5175/#forceStage');
   page.on('console', msg => console.log('[page console]', msg.type(), msg.text()));
   page.on('pageerror', err => console.log('[page error]', err.message));
 

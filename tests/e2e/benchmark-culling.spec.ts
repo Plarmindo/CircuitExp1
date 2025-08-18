@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from './fixtures';
+import type { Page } from '@playwright/test';
 
 // Headless-stable benchmark: prefer quick synthetic bench (no RAF) if available; fallback to auto event.
 
@@ -13,7 +14,6 @@ async function waitForBench(page: Page): Promise<BenchResult> {
 const AUTO_PARAMS = { breadth: 4, depth: 4, files: 3, frames: 140, extraZoomOut: 2 };
 
 test('culling benchmark >=20% improvement & reuse >=95%', async ({ page }) => {
-  await page.goto('/#forceStage');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.waitForFunction(() => !!(window as any).__metroDebug?.getScale, { timeout: 15000 });
   const usedQuick = await page.evaluate((p) => {

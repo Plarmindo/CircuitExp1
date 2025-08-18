@@ -6,6 +6,18 @@ const scanManager = require('./scan-manager.cjs'); // RESTORED: necessário para
 const DEV_PORT_ENV = process.env.VITE_DEV_PORT || 5173;
 let detectedDevPort = null;
 
+// Simple favorites persistence (CORE-1) – refactored to dedicated module with corruption fallback
+const { createFavoritesStore } = require('./favorites-store.cjs');
+const favoritesStore = createFavoritesStore(() => path.join(app.getPath('userData'), 'favorites.json'));
+// CORE-2 Recent scans store
+const { createRecentScansStore } = require('./recent-scans-store.cjs');
+const recentScansStore = createRecentScansStore(() => path.join(app.getPath('userData'), 'recent-scans.json'), { max: 7 });
+// CORE-3 User settings store
+const { createUserSettingsStore } = require('./user-settings-store.cjs');
+const userSettingsStore = createUserSettingsStore(() => path.join(app.getPath('userData'), 'user-settings.json'));
+let favoritesCache = favoritesStore.list();
+let recentScansCache = recentScansStore.list();
+
 async function probePort(port) {
   // Primeiro GET / para ver assinatura básica; depois se parecer Vite confirmar /@vite/client
   return new Promise((resolve) => {
@@ -73,6 +85,8 @@ async function createWindow() {
       nodeIntegration: false
     }
   });
+  // Load user settings early (theme etc.) and inform renderer after load
+  let initialSettings = userSettingsStore.get();
   const isDev = !app.isPackaged; // re-evaluate here after ready
   if (isDev) {
     if (!detectedDevPort) {
@@ -120,6 +134,7 @@ async function createWindow() {
 
   // Item 9: Start asynchronous scan on startup instead of sending full tree snapshot.
   win.webContents.once('did-finish-load', () => {
+  try { win.webContents.send('settings:loaded', initialSettings); } catch (e) { console.warn('failed to send initial settings', e); }
     const mockFolder = path.join(__dirname, 'mock-root');
     // Only auto-start mock scan in dev; in prod we might wait for user selection
     if (!(!app.isPackaged)) return; // only dev
@@ -136,6 +151,8 @@ async function createWindow() {
     if (canceled || filePaths.length === 0) return { success: false, cancelled: true };
     try {
       const { scanId } = scanManager.startScan(filePaths[0], { includeMetadata: false });
+  // CORE-2 track recent path
+  recentScansCache = recentScansStore.touch(filePaths[0]);
       if (process.env.DEBUG_SCAN) console.log('[selection] async scan started', scanId, filePaths[0]);
       return { success: true, scanId };
     } catch (e) {
@@ -174,6 +191,24 @@ async function createWindow() {
 
   ipcMain.handle('toggle-favorite', async () => {
     return { success: true };
+  });
+
+  // CORE-1 Favorites IPC
+  ipcMain.handle('favorites:list', () => {
+    favoritesCache = favoritesStore.list();
+    return { success: true, favorites: favoritesCache, file: favoritesStore.path() };
+  });
+  ipcMain.handle('favorites:add', (e, absPath) => {
+    try {
+      favoritesCache = favoritesStore.add(absPath);
+      return { success: true, favorites: favoritesCache };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
+  ipcMain.handle('favorites:remove', (e, absPath) => {
+    try {
+      favoritesCache = favoritesStore.remove(absPath);
+      return { success: true, favorites: favoritesCache };
+    } catch (err) { return { success: false, error: err.message }; }
   });
 
   ipcMain.handle('show-properties', async (event, pathArg) => {
@@ -218,10 +253,39 @@ async function createWindow() {
     try {
       if (typeof rootPath !== 'string' || !rootPath.trim()) throw new Error('rootPath must be a non-empty string');
       const result = scanManager.startScan(rootPath, options);
+      // CORE-2 track programmatic start as well
+      recentScansCache = recentScansStore.touch(rootPath);
       return { success: true, ...result };
     } catch (e) {
       return { success: false, error: e.message };
     }
+  });
+
+  // CORE-2 Recent scans IPC
+  ipcMain.handle('recent:list', () => {
+    recentScansCache = recentScansStore.list();
+    return { success: true, recent: recentScansCache, max: recentScansStore.max };
+  });
+  ipcMain.handle('recent:clear', () => {
+    recentScansCache = recentScansStore.clear();
+    return { success: true, recent: recentScansCache };
+  });
+
+  // CORE-3 Settings IPC
+  ipcMain.handle('settings:get', () => {
+    try {
+      const s = userSettingsStore.get();
+      return { success: true, settings: s, file: userSettingsStore.path() };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
+  ipcMain.handle('settings:update', (e, patch) => {
+    try {
+      if (!patch || typeof patch !== 'object') throw new Error('patch must be object');
+      const s = userSettingsStore.update(patch);
+      // Push updated settings to any open windows (single window model assumed)
+      try { win.webContents.send('settings:updated', s); } catch (_) {}
+      return { success: true, settings: s };
+    } catch (err) { return { success: false, error: err.message }; }
   });
 
   ipcMain.handle('scan:cancel', (event, scanId) => {

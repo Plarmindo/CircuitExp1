@@ -1,11 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 // eslint-disable @typescript-eslint/no-explicit-any
 
 // VIS-15 Export Snapshot (PNG) validation test
 // Validates: non-empty PNG (size), dimensions, transparent export path
 
 test('VIS-15 export snapshot opaque & transparent', async ({ page }) => {
-  await page.goto('/');
   // The evaluation context is the browser; using any to access injected debug object
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.waitForFunction(() => !!(window as any).__metroDebug);
@@ -31,7 +30,6 @@ test('VIS-15 export snapshot opaque & transparent', async ({ page }) => {
 });
 
 test('VIS-15 export after simulated context lost uses fallback', async ({ page }) => {
-  await page.goto('/');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.waitForFunction(() => !!(window as any).__metroDebug);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

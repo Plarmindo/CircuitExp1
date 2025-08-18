@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "perf:tree": "tsx scripts/stress-tree.ts"
+  "perf:tree": "tsx scripts/stress-tree.ts",
+  "perf:leak": "node --expose-gc ./node_modules/tsx/dist/cli.mjs scripts/perf-leak.ts"
   },
   "dependencies": {
     "d3": "^7.9.0",
@@ -30,6 +31,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "concurrently": "^9.0.0",
     "cross-env": "^7.0.3",
     "electron": "^37.2.4",

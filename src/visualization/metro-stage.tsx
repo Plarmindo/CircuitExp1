@@ -15,6 +15,8 @@ import { toggleAggregation } from './selection-helpers';
 import { findNextDirectional } from './navigation-helpers';
 import type { ScanNode } from '../shared/scan-types';
 import { tokens } from './style-tokens';
+import { initOverlay as initOverlayBox, updateOverlayBox } from './overlay';
+import { drawOrthogonalRoute, type RouteCommand } from './line-routing';
 
 interface MetroStageProps { width?: number; height?: number; }
 
@@ -24,12 +26,16 @@ declare global {
       getScale: () => number;
       getNodes: () => { path: string; x: number; y: number; aggregated?: boolean }[];
       pickFirstNonAggregated: () => { path: string; clientX: number; clientY: number } | null;
+  getPan?: () => { x: number; y: number };
   getReusePct?: () => number;
   getBenchResult?: () => { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
   benchResult?: { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
   getLayoutCallCount?: () => number;
   getNodeColor?: (path: string) => number | undefined;
   getNodeSprite?: (path: string) => PIXI.Graphics | undefined;
+  // VIS-20: memory / leak utility debug hooks
+  getSpriteCounts?: () => { nodes: number; lines: number; badges: number; labels: number; total: number };
+  runLayoutCycle?: (opts?: { randomizePan?: boolean; randomizeZoom?: boolean }) => { scale: number; pan: { x: number; y: number }; spriteTotal: number } | null;
     };
     __lastExportPng?: { size: number };
   }
@@ -74,6 +80,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   const lastCulledCountRef = useRef(0);
   // Estatística de reutilização (sprites ativos vs total alocados historicamente)
   const reuseStatsRef = useRef<{ totalAllocated: number; reusedPct: number }>({ totalAllocated: 0, reusedPct: 100 });
+  // CORE-3 dynamic aggregation threshold (user settings)
+  const aggregationThresholdRef = useRef<number>(28);
   // Benchmark & culling controls (VIS-13)
   const disableCullingRef = useRef(false); // true durante baseline benchmark
   const benchStateRef = useRef<'idle'|'baseline'|'culled'|'done'>('idle');
@@ -95,6 +103,24 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
     let handleResize: (() => void) | undefined;
     // Global control handlers for cleanup
   let onZoomIn: (() => void) | undefined; let onZoomOut: (() => void) | undefined; let onFit: (() => void) | undefined; let onExport: (() => void) | undefined;
+
+  // Wrapper delegating to overlay module (kept small for ref simplicity)
+  const updateOverlay = () => {
+    updateOverlayBox({
+      overlayDiv: overlayDivRef.current,
+      overlayEnabled: overlayEnabledRef.current,
+      fpsTimes: fpsTimesRef.current,
+      layoutSize: layoutIndexRef.current.size,
+      lastCulled: lastCulledCountRef.current,
+      spriteNodes: spriteNodes.current.size,
+      spriteLines: spriteLines.current.size,
+      reusePct: reuseStatsRef.current.reusedPct,
+      lastLayoutMs: lastLayoutMsRef.current,
+      lastBatchMs: lastBatchApplyMsRef.current,
+      avgCost: overlayAvgCostRef.current,
+      benchResult: benchResultRef.current
+    });
+  };
 
   // keyHandler precisa estar definido antes para evitar ReferenceError em efeitos duplicados StrictMode
   const keyHandler = (e: KeyboardEvent) => {
@@ -186,6 +212,21 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   const spriteLinesMapSnapshot = spriteLines.current;
   const spriteBadgesMapSnapshot = spriteBadges.current;
 
+  // CORE-1: center stage on favorite jump (metro:centerOnPath)
+  const handleCenterOnPath = (e: Event) => {
+    const d = (e as CustomEvent).detail as { path?: string } | null;
+    if (!d?.path) return;
+    const info = layoutIndexRef.current.get(d.path);
+    if (!info) return;
+    const app = appRef.current;
+    if (!app) return;
+    const scale = scaleRef.current;
+    const targetScreenX = width / 2;
+    const targetScreenY = height / 2;
+    app.stage.x = targetScreenX - info.x * scale;
+    app.stage.y = targetScreenY - info.y * scale;
+  };
+
     adapterRef.current = createGraphAdapter();
 
     const setup = async () => {
@@ -264,10 +305,44 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             return { path: first.path, clientX: rect.left + sx + first.x * scale, clientY: rect.top + sy + first.y * scale };
           },
           getReusePct: () => reuseStatsRef.current.reusedPct,
+          getPan: () => ({ x: appRef.current ? appRef.current.stage.x : 0, y: appRef.current ? appRef.current.stage.y : 0 }),
           getBenchResult: () => benchResultRef.current,
           getLayoutCallCount: () => layoutCallCountRef.current,
           getNodeColor: (p: string) => nodeColorRef.current.get(p),
           getNodeSprite: (p: string) => spriteNodes.current.get(p),
+          getAggregationThreshold: () => aggregationThresholdRef.current,
+          setAggregationThreshold: (n: number) => { if (typeof n === 'number' && n > 0) { aggregationThresholdRef.current = n; redraw(true); } },
+          getSpriteCounts: () => ({
+            nodes: spriteNodes.current.size,
+            lines: spriteLines.current.size,
+            badges: spriteBadges.current.size,
+            labels: spriteLabels.current.size,
+            total: spriteNodes.current.size + spriteLines.current.size + spriteBadges.current.size + spriteLabels.current.size,
+          }),
+          runLayoutCycle: (opts?: { randomizePan?: boolean; randomizeZoom?: boolean }) => {
+            try {
+              if (!appRef.current) return null;
+              const app = appRef.current;
+              // Random zoom within a mild range to exercise culling / label allocation without exploding geometry
+              if (opts?.randomizeZoom !== false) {
+                const newScale = 0.5 + Math.random() * 1.2; // 0.5 .. 1.7
+                scaleRef.current = newScale;
+                app.stage.scale.set(newScale);
+              }
+              // Random pan small jitter (±150px)
+              if (opts?.randomizePan !== false) {
+                app.stage.x += (Math.random() - 0.5) * 300;
+                app.stage.y += (Math.random() - 0.5) * 300;
+              }
+              // Force a redraw with layout (skipLayout = false) to exercise layout + sprite reuse
+              // @ts-expect-error internal call
+              redraw(false);
+              return { scale: scaleRef.current, pan: { x: app.stage.x, y: app.stage.y }, spriteTotal: spriteNodes.current.size + spriteLines.current.size + spriteBadges.current.size + spriteLabels.current.size };
+            } catch (err) {
+              console.warn('[MetroStage][runLayoutCycle] error', err);
+              return null;
+            }
+          },
           // Execução rápida de benchmark sintético sem animação de frames em loop RAF
           startQuickBench: (p?: { breadth?: number; depth?: number; files?: number; baselineIters?: number; culledIters?: number }) => {
             if (!adapterRef.current) return null;
@@ -460,6 +535,13 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             s.on('pointerover', () => { hoveredKeyRef.current = key; redraw(false); emitHover(key); });
             s.on('pointerout', () => { if (hoveredKeyRef.current === key) { hoveredKeyRef.current = null; redraw(false); emitHover(null); } });
             s.on('pointertap', () => { handleSelect(key); });
+            // CORE-1 context menu (favorite toggle) emission on right click
+            s.on('rightdown', (ev: PIXI.FederatedPointerEvent) => {
+              try {
+                const global = ev.global;
+                window.dispatchEvent(new CustomEvent('metro:contextMenu', { detail: { path: key, x: global.x, y: global.y } }));
+              } catch { /* ignore */ }
+            });
           }
         }
         return s;
@@ -827,6 +909,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   window.addEventListener('metro:fit', onFit!);
   window.addEventListener('metro:exportPNG', onExport!);
   window.addEventListener('metro:exportPng', elevatedHandleExportPNG); // fallback event name used in tests
+  window.addEventListener('metro:centerOnPath', handleCenterOnPath as EventListener);
   // Dynamic theme restyle (VIS-14): recolor existing sprites & lines without layout recompute
   const handleThemeChanged = () => {
     if (!appRef.current) return;
@@ -854,6 +937,12 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
     redraw(false, { skipLayout: true });
   };
   window.addEventListener('metro:themeChanged', handleThemeChanged);
+  // CORE-3: listen for aggregation threshold changes
+  window.addEventListener('metro:aggregationThresholdChanged', (e: Event) => {
+    // @ts-expect-error detail dynamic
+    const n = e.detail?.aggregationThreshold;
+    if (typeof n === 'number' && n > 0) { aggregationThresholdRef.current = n; redraw(true); }
+  });
 
   interface RedrawOptions { skipLayout?: boolean }
   const redraw = (applyPending = true, opts?: RedrawOptions) => {
@@ -868,7 +957,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             pendingDelta.current = [];
           }
           const layoutStart = performance.now();
-          const layout = layoutHierarchicalV2(adapterRef.current, { expandedAggregations: expandedAggregationsRef.current });
+          const layout = layoutHierarchicalV2(adapterRef.current, { expandedAggregations: expandedAggregationsRef.current, aggregationThreshold: aggregationThresholdRef.current });
           layoutCallCountRef.current++;
           const layoutEnd = performance.now();
           lastLayoutMsRef.current = layoutEnd - layoutStart;
@@ -884,53 +973,55 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         const seenNodeKeys = new Set<string>();
         const seenLineKeys = new Set<string>();
 
-        // Lines first so z-order is correct
-        const gridSize = 20; // snap simples estilo grelha
+        // Lines first so z-order is correct (now via helper drawOrthogonalRoute)
+        const gridSize = 20; // consistent grid for sibling grouping
         const snap = (v: number) => Math.round(v / gridSize) * gridSize;
-        for (const lp of effectiveNodes) {
+        const siblingRouteOffsetMap = new Map<string, number>();
+        const getSiblingOffset = (parentPath: string, snappedCy: number) => {
+          const key = parentPath + '|' + snappedCy;
+          const count = siblingRouteOffsetMap.get(key) || 0;
+          siblingRouteOffsetMap.set(key, count + 1);
+          if (count === 0) return 0;
+          const magnitude = 4 * Math.ceil(count / 2);
+          return (count % 2 === 1 ? 1 : -1) * magnitude;
+        };
+  const collectedRoutes: Array<{ key: string; commands: RouteCommand[] }> = [];
+  for (const lp of effectiveNodes) {
           if (lp.aggregated) continue;
           const node = adapterRef.current.getNode(lp.path);
           if (!node || !node.parentPath) continue;
-          if (pixiFailedRef.current) { continue; } // sem linhas no fallback
-          // Suportar diferença de separadores (scan Windows vs normalização)
+          if (pixiFailedRef.current) continue; // no lines in fallback
           let parentPoint = nodeIndexLocal.get(node.parentPath);
           if (!parentPoint) parentPoint = nodeIndexLocal.get(node.parentPath.replace(/\\/g,'/'));
           if (!parentPoint) parentPoint = nodeIndexLocal.get(node.parentPath.replace(/\//g,'\\'));
           if (!parentPoint) continue;
           const parentNode = adapterRef.current.getNode(node.parentPath);
-          // Determinar raios (usa tokens para evitar linha atravessar círculo)
           const parentRadius = parentPoint.aggregated ? style.stationRadius.aggregated : (parentNode?.kind === 'file' ? style.stationRadius.file : style.stationRadius.directory);
           const childRadius = lp.aggregated ? style.stationRadius.aggregated : (node.kind === 'file' ? style.stationRadius.file : style.stationRadius.directory);
-
-          // Coordenadas (snapped) centrais
-          const pxRaw = parentPoint.x; const pyRaw = parentPoint.y; const cxRaw = lp.x; const cyRaw = lp.y;
-          const px = snap(pxRaw); const py = snap(pyRaw); const cx = snap(cxRaw); const cy = snap(cyRaw);
-          const dx = cx - px; const dy = cy - py;
           const lineKey = `${node.parentPath}__${lp.path}`;
-          const lg = getLineSprite(lineKey); lg.clear();
-          // Debug: se linhas ausentes, garantir alpha alto e cor distinta
-          lg.lineStyle({ width: style.lineThickness, color: style.palette.line || 0x444444, alpha: 0.9, join: 'round', cap: 'round' });
-          const absDx = Math.abs(dx); const absDy = Math.abs(dy);
-          const cornerRadius = Math.min(18, absDx * 0.5, absDy * 0.5);
-          // Ponto inicial deslocado para fora do círculo pai (no sentido de dy)
-          const startY = py + (dy > 0 ? parentRadius : -parentRadius);
-          // Ponto final deslocado horizontalmente até tangenciar círculo filho
-          lg.moveTo(px, startY);
-          if (cornerRadius > 4 && absDx > 6 && absDy > 6) {
-            const vertExtent = (absDy - cornerRadius - childRadius * 0.4);
-            const vertEndY = startY + (dy > 0 ? Math.max(0, vertExtent) : -Math.max(0, vertExtent));
-            lg.lineTo(px, vertEndY);
-            const ctrlX = px;
-            const ctrlY = cy;
-            const horizStartX = px + (dx > 0 ? cornerRadius : -cornerRadius);
-            lg.quadraticCurveTo(ctrlX, ctrlY, horizStartX, cy);
-            lg.lineTo(cx, cy);
-          } else {
-            // fallback segmentação em dois trechos ortogonais simples
-            lg.lineTo(px, cy);
-            lg.lineTo(cx, cy);
-          }
+          const lg = getLineSprite(lineKey);
+          const siblingOffsetX = getSiblingOffset(node.parentPath, snap(lp.y));
+          const computed = drawOrthogonalRoute(lg, {
+            parentX: parentPoint.x,
+            parentY: parentPoint.y,
+            childX: lp.x,
+            childY: lp.y,
+            parentRadius,
+            childRadius,
+            lineThickness: style.lineThickness,
+            color: style.palette.line || 0x444444,
+            siblingOffsetX,
+            gridSize
+          });
+          collectedRoutes.push({ key: lineKey, commands: computed.commands });
           seenLineKeys.add(lineKey);
+        }
+        // Update debug with latest route sample (limited to first 50 to avoid huge payload)
+        if (typeof window !== 'undefined') {
+          const w = window as unknown as { __metroDebug?: { lastRoutes?: Array<{ key: string; commands: RouteCommand[] }> } };
+            if (w.__metroDebug) {
+              w.__metroDebug.lastRoutes = collectedRoutes.slice(0,50);
+            }
         }
 
         // Stations / nodes (with culling / basic LOD)
@@ -1142,44 +1233,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         });
       }
 
-      // Overlay init (dev only)
-      const initOverlay = () => {
-        if (!import.meta.env.DEV) return;
-        if (!containerRef.current) return;
-        const div = document.createElement('div');
-        div.style.position = 'absolute';
-        div.style.top = '4px';
-        div.style.right = '4px';
-        div.style.background = 'rgba(0,0,0,0.55)';
-        div.style.color = '#fff';
-        div.style.font = '11px/1.3 monospace';
-        div.style.padding = '6px 8px';
-        div.style.borderRadius = '4px';
-        div.style.pointerEvents = 'none';
-        div.style.whiteSpace = 'pre';
-        div.style.display = 'none';
-        overlayDivRef.current = div;
-        containerRef.current.style.position = 'relative';
-        containerRef.current.appendChild(div);
-      };
-
-      const updateOverlay = () => {
-        const div = overlayDivRef.current;
-        if (!div || !overlayEnabledRef.current) { if (div) div.style.display = 'none'; return; }
-        div.style.display = 'block';
-        const now = performance.now();
-        fpsTimesRef.current.push(now);
-        while (fpsTimesRef.current.length && now - fpsTimesRef.current[0] > 1000) fpsTimesRef.current.shift();
-        const fps = fpsTimesRef.current.length;
-        const spritesNodes = spriteNodes.current.size;
-        const spritesLines = spriteLines.current.size;
-        const avgCost = overlayAvgCostRef.current;
-    const benchLine = benchResultRef.current ? `\nBench Δ ${(benchResultRef.current.improvementPct).toFixed(1)}% (base ${(benchResultRef.current.baselineAvg).toFixed(2)}ms -> ${(benchResultRef.current.culledAvg).toFixed(2)}ms)` : '';
-  div.textContent = `FPS ${fps}\nNodes ${layoutIndexRef.current.size}\nCulled ${lastCulledCountRef.current}\nSprites N:${spritesNodes} L:${spritesLines}\nReuse ${reuseStatsRef.current.reusedPct.toFixed(1)}%\nLayout ${lastLayoutMsRef.current.toFixed(1)}ms\nBatch ${lastBatchApplyMsRef.current.toFixed(1)}ms${avgCost != null ? `\nOverlay ${avgCost.toFixed(3)}ms` : ''}${benchLine}`;
-      };
-
       window.addEventListener('keydown', keyHandler);
-  if (!pixiFailedRef.current) initOverlay();
+  if (!pixiFailedRef.current && containerRef.current) initOverlayBox(containerRef.current, overlayDivRef);
 
       // Benchmark events (dev only)
       if (import.meta.env.DEV) {
@@ -1308,13 +1363,14 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
 
   // Snapshots para cleanup (evita acessar refs mutáveis diretamente no retorno)
   const labelsMapSnapshot = spriteLabels.current;
+  const overlayDivSnapshot = overlayDivRef.current;
 
     return () => {
   if (offPartial) offPartial();
       // Remove resize listener
       if (handleResize) window.removeEventListener('resize', handleResize);
   window.removeEventListener('keydown', keyHandler);
-  if (overlayDivRef.current && overlayDivRef.current.parentElement) overlayDivRef.current.parentElement.removeChild(overlayDivRef.current);
+  if (overlayDivSnapshot && overlayDivSnapshot.parentElement) overlayDivSnapshot.parentElement.removeChild(overlayDivSnapshot);
       // Destroy tracked sprites and clear maps
   for (const s of Array.from(spriteNodesMapSnapshot.values())) s.destroy();
   for (const s of Array.from(spriteLinesMapSnapshot.values())) s.destroy();
@@ -1339,6 +1395,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   if (onExport) window.removeEventListener('metro:exportPNG', onExport);
   window.removeEventListener('metro:exportPng', elevatedHandleExportPNG);
   window.removeEventListener('metro:themeChanged', handleThemeChanged);
+  window.removeEventListener('metro:centerOnPath', handleCenterOnPath as EventListener);
       // Destroy application
   if (!pixiFailedRef.current && appRef.current) {
         appRef.current.destroy(true);

@@ -1,0 +1,171 @@
+{
+  "cycles": [
+    {
+      "cycle": 1,
+      "heapUsed": 8274624
+    },
+    {
+      "cycle": 2,
+      "heapUsed": 8286392
+    },
+    {
+      "cycle": 3,
+      "heapUsed": 8288104
+    },
+    {
+      "cycle": 4,
+      "heapUsed": 8289760
+    },
+    {
+      "cycle": 5,
+      "heapUsed": 8300880
+    },
+    {
+      "cycle": 6,
+      "heapUsed": 8314808
+    },
+    {
+      "cycle": 7,
+      "heapUsed": 8317144
+    },
+    {
+      "cycle": 8,
+      "heapUsed": 8319000
+    },
+    {
+      "cycle": 9,
+      "heapUsed": 8321240
+    },
+    {
+      "cycle": 10,
+      "heapUsed": 8338296
+    },
+    {
+      "cycle": 11,
+      "heapUsed": 8340808
+    },
+    {
+      "cycle": 12,
+      "heapUsed": 8342376
+    },
+    {
+      "cycle": 13,
+      "heapUsed": 8343944
+    },
+    {
+      "cycle": 14,
+      "heapUsed": 8345512
+    },
+    {
+      "cycle": 15,
+      "heapUsed": 8355256
+    },
+    {
+      "cycle": 16,
+      "heapUsed": 8356856
+    },
+    {
+      "cycle": 17,
+      "heapUsed": 8358568
+    },
+    {
+      "cycle": 18,
+      "heapUsed": 8360152
+    },
+    {
+      "cycle": 19,
+      "heapUsed": 8362096
+    },
+    {
+      "cycle": 20,
+      "heapUsed": 8363680
+    },
+    {
+      "cycle": 21,
+      "heapUsed": 8365264
+    },
+    {
+      "cycle": 22,
+      "heapUsed": 8366848
+    },
+    {
+      "cycle": 23,
+      "heapUsed": 8368432
+    },
+    {
+      "cycle": 24,
+      "heapUsed": 8370016
+    },
+    {
+      "cycle": 25,
+      "heapUsed": 8371600
+    },
+    {
+      "cycle": 26,
+      "heapUsed": 8373184
+    },
+    {
+      "cycle": 27,
+      "heapUsed": 8374768
+    },
+    {
+      "cycle": 28,
+      "heapUsed": 8376352
+    },
+    {
+      "cycle": 29,
+      "heapUsed": 8377936
+    },
+    {
+      "cycle": 30,
+      "heapUsed": 8379520
+    },
+    {
+      "cycle": 31,
+      "heapUsed": 8381104
+    },
+    {
+      "cycle": 32,
+      "heapUsed": 8382696
+    },
+    {
+      "cycle": 33,
+      "heapUsed": 8384280
+    },
+    {
+      "cycle": 34,
+      "heapUsed": 8385864
+    },
+    {
+      "cycle": 35,
+      "heapUsed": 8387448
+    },
+    {
+      "cycle": 36,
+      "heapUsed": 8389032
+    },
+    {
+      "cycle": 37,
+      "heapUsed": 8390616
+    },
+    {
+      "cycle": 38,
+      "heapUsed": 8392200
+    },
+    {
+      "cycle": 39,
+      "heapUsed": 8393784
+    },
+    {
+      "cycle": 40,
+      "heapUsed": 8395368
+    }
+  ],
+  "stable": true,
+  "heapDeltaPct": 1.517119581249462,
+  "notes": [
+    "window not present: script should be executed in browser/electron dev context via Playwright or manual.",
+    "__metroDebug not found: ensure MetroStage mounted (open UI) before running.",
+    "sprite counts unavailable (missing debug API or no sprites present)."
+  ]
+}

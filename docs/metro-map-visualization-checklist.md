@@ -144,10 +144,21 @@ Implement an interactive "London Metro" style visualization of the scanned folde
   - If child arrives before parent, placeholder created; later parent delta hydrates & replaces placeholder without losing child links.
   - Unit test simulating out-of-order arrival.
 
-- [ ] 18. Adapter & Layout Unit Tests (Expanded)
+- [x] 18. Adapter & Layout Unit Tests (Expanded)
   Acceptance:
   - Coverage > 85% for adapter and layout modules.
   - Tests validate coordinate stability across repeated runs with identical input ordering.
+  Implementation Proof:
+  - Extended `tests/visualization/coverage-vis-18.test.ts` (now 6 tests) adding:
+    - Metadata update branch coverage (size/mtime/error changes + no-op unchanged delta)
+    - ensureParents partial chain branch
+    - Expanded aggregation recursion + coordinate stability repeat-run assertion
+  - Coverage run (vitest + v8) after additions:
+    - `graph-adapter.ts`: lines 100%, branches 96.77%, functions 100%, statements 100% (uncovered branch lines previously 76-77 now covered except one minor branch line 57 path)
+    - `layout-v2.ts`: lines 100%, branches 86.95%, functions 100%, statements 100% (remaining uncovered branch lines 76-77,122 relate to expanded child recursion early-return conditions)
+    - Combined: lines 100%, branches 92.59%, functions 100%, statements 100% (threshold >85% satisfied for lines/statements and >80% for branches/functions per config).
+  - Coordinate stability explicitly asserted (repeat layout gives identical x,y for each path).
+  - User confirmed ("ok continua"). Item marked complete.
 
 - [ ] 19. Integration Test (Incremental Consistency)
   Acceptance:
@@ -174,3 +185,43 @@ Implement an interactive "London Metro" style visualization of the scanned folde
 
 ## Notes
 Do NOT check any box until code + runtime verification + user confirmation. This file may be amended (adding items) before implementation begins, but not retroactively simplified to claim completion.
+
+---
+## Manual Verification (VIS-22)
+Hardware:
+- CPU: (preencher) ex: Intel i7-9750H
+- GPU: (preencher) ex: NVIDIA GTX 1650 Mobile / Integrated
+- RAM: (preencher)
+- Browser/Electron Version: (preencher)
+
+Dataset Scenarios:
+1. Medium Tree (genTree breadth=3 depth=3 files=3) ~ (auto counted) nós
+2. Large Stress (stress-tree depth=4 breadth=4 files=3) ~ (auto) nós (usar `npm run perf:tree -- --depth 4 --breadth 4 --filesPerDir 3`)
+
+Observations:
+- FPS (zoom out full) medium: ____ FPS (≥55 alvo)
+- FPS (mid zoom ~1.0) medium: ____ FPS
+- FPS (zoom in deep) medium: ____ FPS
+- Large tree zoom out FPS: ____ FPS (culling ativo) ; baseline sem culling (quick bench) improvementPct >=20% confirmado? (sim/não)
+- Sprite Reuse % (overlay Reuse): ____% (>=95% alvo em zoom out alternado)
+
+Expand/Collapse:
+- 3 ciclos em nó agregado grande: pan/zoom preservados? (sim/não) ; leaks (sprite map sizes estáveis) (sim/não)
+
+Export PNG:
+- Opaque export size >1KB: (valor)
+- Transparent export size >0.5KB: (valor)
+- Context lost fallback mensagem exibida: (sim/não)
+
+Theme Switch:
+- Latência média recolor (3 medições ms): [__, __, __] -> média ____ ms (< 50ms alvo)
+- Layout call count invariável (getLayoutCallCount antes/depois igual) (sim/não)
+
+Keyboard Navigation:
+- Setas percorrem nós sem saltos erráticos (sim/não)
+- Enter expande agregado selecionado (sim/não)
+
+Memory Leak Check:
+- `npm run perf:leak` (UI aberta + árvore medium) heapDeltaPct: ____% (abs <=5%?) ; spriteVariancePct: ____% (abs <=5%?) stable=true? (sim/não)
+
+Manual Verification Completed By: (nome / data)

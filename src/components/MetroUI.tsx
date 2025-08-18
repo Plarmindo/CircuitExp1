@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MetroStage } from '../visualization/metro-stage';
 import { setTheme } from '../visualization/style-tokens';
+import { getUserSettings, onUserSettingsLoaded, onUserSettingsUpdated, updateUserSettings, UserSettings } from '../settings/user-settings-client';
 import './MetroUI.css';
+import { favoritesClient } from '../favorites/favorites-client';
+import { listRecent, clearRecent } from '../recent-scans-client';
 
+interface ScanProgress { dirsProcessed: number; filesProcessed: number; approxCompletion?: number }
+interface NodeEntry { path: string; name: string; kind: 'dir' | 'file'; size?: number }
+interface ScanDone { cancelled?: boolean }
 interface MetroUIProps {
   scanId: string | null;
-  progress: any;
-  nodes: any[];
+  progress: ScanProgress | null;
+  nodes: NodeEntry[];
   receivedNodes: number;
-  done: any;
+  done: ScanDone | null;
 }
 
 interface PerformanceMetrics {
@@ -35,6 +41,12 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
   const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(null);
   const [hoveredNode, setHoveredNode] = useState<SelectedNodeInfo | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [loadingFavs, setLoadingFavs] = useState(false);
+  const [ctxMenu, setCtxMenu] = useState<{ visible: boolean; x: number; y: number; path: string } | null>(null);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(false);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   // NOTE: avoid naming this state variable 'performance' to prevent shadowing the
   // global performance API (was causing runtime errors calling performance.now()).
   const [perfMetrics, setPerfMetrics] = useState<PerformanceMetrics>({
@@ -47,6 +59,39 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
   
   const fpsCounterRef = useRef<number[]>([]);
 
+  // CORE-3: load persisted user settings (theme, defaults) and react to updates from main process
+  useEffect(() => {
+    let cancelled = false;
+    // Initial fetch (in case events already fired before subscription)
+    getUserSettings().then(res => {
+      if (!cancelled && res.success && res.settings) {
+        setSettings(res.settings);
+        if (res.settings.theme !== currentTheme) {
+          setCurrentTheme(res.settings.theme);
+          setTheme(res.settings.theme);
+        }
+      }
+    }).catch(() => {/* ignore */});
+    const offLoaded = onUserSettingsLoaded(s => {
+      setSettings(s);
+      if (s.theme !== currentTheme) {
+        setCurrentTheme(s.theme);
+        setTheme(s.theme);
+      }
+    });
+    const offUpdated = onUserSettingsUpdated(s => {
+      setSettings(s);
+      if (s.theme !== currentTheme) {
+        setCurrentTheme(s.theme);
+        setTheme(s.theme);
+        // Notify visualization for dynamic restyle
+        window.dispatchEvent(new CustomEvent('metro:themeChanged', { detail: { theme: s.theme } }));
+      }
+    });
+    return () => { cancelled = true; offLoaded(); offUpdated(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Theme switcher
   const toggleTheme = () => {
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -54,13 +99,16 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
     setTheme(newTheme);
   // Notify stage for dynamic restyle without full layout recompute
   window.dispatchEvent(new CustomEvent('metro:themeChanged', { detail: { theme: newTheme } }));
+  // Persist
+  updateUserSettings({ theme: newTheme });
   };
 
   // Scan controls
   const handleSelectFolderAndScan = async () => {
     try {
-      if ((window as any).electronAPI?.selectAndScanFolder) {
-        const res = await (window as any).electronAPI.selectAndScanFolder();
+      const w = window as unknown as { electronAPI?: { selectAndScanFolder?: () => Promise<unknown> } };
+      if (w.electronAPI?.selectAndScanFolder) {
+        const res = await w.electronAPI.selectAndScanFolder();
         console.log('Folder selection result', res);
       }
     } catch (err) {
@@ -70,8 +118,9 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
 
   const handleCancelScan = async () => {
     try {
-      if (scanId && (window as any).electronAPI?.cancelScan) {
-        const res = await (window as any).electronAPI.cancelScan(scanId);
+      const w = window as unknown as { electronAPI?: { cancelScan?: (id: string) => Promise<unknown> } };
+      if (scanId && w.electronAPI?.cancelScan) {
+        const res = await w.electronAPI.cancelScan(scanId);
         console.log('Cancel scan result', res);
       }
     } catch (err) {
@@ -81,8 +130,9 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
 
   const handleStartScanDev = async () => {
     try {
-      if ((window as any).electronAPI?.startScan) {
-        await (window as any).electronAPI.startScan('C:/');
+      const w = window as unknown as { electronAPI?: { startScan?: (root: string) => Promise<unknown> } };
+      if (w.electronAPI?.startScan) {
+        await w.electronAPI.startScan('C:/');
       }
     } catch (err) {
       console.error('startScan dev failed', err);
@@ -91,11 +141,16 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
 
   // Listen to metro events
   useEffect(() => {
-    const handleHover = (e: any) => {
+    const handleHover = (e: CustomEvent<{ path: string; type: 'node' | 'aggregated' }> | Event) => {
+      // @ts-expect-error runtime event detail
       if (e.detail) {
+        // @ts-expect-error detail dynamic
         setHoveredNode({
+          // @ts-expect-error detail dynamic
           path: e.detail.path,
+          // @ts-expect-error detail dynamic
           type: e.detail.type,
+          // @ts-expect-error detail dynamic
           name: e.detail.path.split('/').pop() || e.detail.path,
         });
       } else {
@@ -103,11 +158,15 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
       }
     };
 
-    const handleSelect = (e: any) => {
+    const handleSelect = (e: CustomEvent<{ path: string; type: 'node' | 'aggregated' }> | Event) => {
+      // @ts-expect-error detail dynamic
       if (e.detail) {
         setSelectedNode({
+          // @ts-expect-error detail dynamic
           path: e.detail.path,
+          // @ts-expect-error detail dynamic
           type: e.detail.type,
+          // @ts-expect-error detail dynamic
           name: e.detail.path.split('/').pop() || e.detail.path,
         });
       } else {
@@ -117,12 +176,24 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
 
     window.addEventListener('metro:hover', handleHover);
     window.addEventListener('metro:select', handleSelect);
+    const handleCtx = (e: Event) => {
+      const d = (e as CustomEvent).detail as { path: string; x: number; y: number } | null;
+      if (!d?.path) return;
+      setCtxMenu({ visible: true, x: d.x, y: d.y, path: d.path });
+    };
+    window.addEventListener('metro:contextMenu', handleCtx);
+  const dismiss = () => {
+      if (ctxMenu) setCtxMenu(null);
+    };
+    window.addEventListener('click', dismiss);
 
     return () => {
       window.removeEventListener('metro:hover', handleHover);
       window.removeEventListener('metro:select', handleSelect);
+      window.removeEventListener('metro:contextMenu', handleCtx);
+      window.removeEventListener('click', dismiss);
     };
-  }, []);
+  }, [ctxMenu]);
 
   // Performance monitoring
   useEffect(() => {
@@ -136,7 +207,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
         ...prev,
         fps: fpsCounterRef.current.length,
         nodeCount: nodes.length,
-        memoryUsage: (globalThis.performance as any)?.memory?.usedJSHeapSize || 0,
+  memoryUsage: (globalThis.performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize || 0,
       }));
     }, 100);
 
@@ -169,6 +240,50 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
     node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     node.path.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Favorites load on mount
+  useEffect(() => { (async () => { try { setLoadingFavs(true); const list = await favoritesClient.list(); setFavorites(list); } finally { setLoadingFavs(false); } })(); }, []);
+  // Recent scans load
+  useEffect(() => { (async () => { try { setLoadingRecent(true); const r = await listRecent(); if (r.success) setRecent(r.recent); } finally { setLoadingRecent(false); } })(); }, [scanId]);
+
+  // Settings load + subscriptions
+  useEffect(() => {
+    let unsubLoaded: (() => void) | null = null;
+    let unsubUpdated: (() => void) | null = null;
+    (async () => {
+      const res = await getUserSettings();
+      if (res.success && res.settings) {
+        setSettings(res.settings);
+        setCurrentTheme(res.settings.theme);
+        setTheme(res.settings.theme);
+      }
+    })();
+    unsubLoaded = onUserSettingsLoaded((s) => {
+      setSettings(s);
+      setCurrentTheme(s.theme);
+      setTheme(s.theme);
+    });
+    unsubUpdated = onUserSettingsUpdated((s) => {
+      setSettings(s);
+      setCurrentTheme(s.theme);
+      setTheme(s.theme);
+    });
+    return () => { if (unsubLoaded) unsubLoaded(); if (unsubUpdated) unsubUpdated(); };
+  }, []);
+
+  const isFavorite = (p: string) => favorites.includes(p);
+  const toggleFavorite = async () => {
+    if (!selectedNode) return;
+    try {
+      if (isFavorite(selectedNode.path)) {
+        const list = await favoritesClient.remove(selectedNode.path);
+        setFavorites(list);
+      } else {
+        const list = await favoritesClient.add(selectedNode.path);
+        setFavorites(list);
+      }
+    } catch (e) { console.error('favorite toggle failed', e); }
+  };
 
   const theme = currentTheme;
 
@@ -283,6 +398,12 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
                         <span className="value">{selectedNode.children || 'N/A'}</span>
                       </div>
                     )}
+                    <div className="detail-row">
+                      <span className="label">Favorite:</span>
+                      <button className="fav-toggle-btn" onClick={toggleFavorite} title="Toggle Favorite">
+                        {isFavorite(selectedNode.path) ? '★ Remove' : '☆ Add'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -307,7 +428,49 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
                     <div className="stat-value">{progress?.filesProcessed || 0}</div>
                     <div className="stat-label">Files</div>
                   </div>
+                  {settings && (
+                    <div className="stat-item" title="Current aggregation threshold (persisted setting)">
+                      <div className="stat-value">{settings.defaultScan.aggregationThreshold}</div>
+                      <div className="stat-label">Agg Threshold</div>
+                    </div>
+                  )}
                 </div>
+              </div>
+              {/* Favorites List */}
+              <div className="favorites-section">
+                <h4>Favorites {loadingFavs && <span style={{fontSize:10}}>loading...</span>}</h4>
+                {favorites.length === 0 && !loadingFavs && <div className="empty-hint">No favorites yet</div>}
+                <ul className="favorites-list">
+                  {favorites.map(f => (
+                    <li key={f} className="fav-item">
+                      <button className="fav-jump" onClick={() => {
+                        window.dispatchEvent(new CustomEvent('metro:select', { detail: { path: f, type: 'node' } }));
+                        window.dispatchEvent(new CustomEvent('metro:centerOnPath', { detail: { path: f } }));
+                      }} title={f}>{f.split(/[/\\]/).pop()}</button>
+                      <button className="fav-remove" onClick={async () => { const list = await favoritesClient.remove(f); setFavorites(list); }} title="Remove">✕</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {/* Recent Scans */}
+              <div className="recent-section" style={{marginTop:12}}>
+                <h4>Recent Scans {loadingRecent && <span style={{fontSize:10}}>loading...</span>}</h4>
+                {recent.length === 0 && !loadingRecent && <div className="empty-hint">No recent scans</div>}
+                <ul className="recent-list">
+                  {recent.map(r => (
+                    <li key={r} className="recent-item">
+                      <button className="recent-jump" onClick={async () => {
+                        try {
+                          const w = window as unknown as { electronAPI?: { startScan?: (root: string) => Promise<unknown> } };
+                          if (w.electronAPI?.startScan) await w.electronAPI.startScan(r);
+                        } catch (e) { console.error('recent rescan failed', e); }
+                      }} title={r}>{r.length > 28 ? '…'+r.slice(-27) : r}</button>
+                    </li>
+                  ))}
+                </ul>
+                {recent.length > 0 && (
+                  <button style={{marginTop:4,fontSize:11}} onClick={async () => { const res = await clearRecent(); if (res.success) setRecent([]); }}>Clear Recent</button>
+                )}
               </div>
             </>
           )}
@@ -325,6 +488,43 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
             <div className="toolbar-section">
               <button className="tool-btn" onClick={handleExportPNG} title="Export PNG">📸</button>
             </div>
+            {settings && (
+              <div className="toolbar-section" style={{display:'flex',alignItems:'center',gap:6}}>
+                <label style={{fontSize:10,display:'flex',flexDirection:'column',alignItems:'flex-start'}}>Agg Thresh
+                  <input
+                    type="number"
+                    value={settings.defaultScan.aggregationThreshold}
+                    min={1}
+                    style={{width:60}}
+                    onChange={async (e) => {
+                      const v = parseInt(e.target.value,10);
+                      if (!Number.isNaN(v) && v>0) {
+                        const next = { ...settings, defaultScan: { ...settings.defaultScan, aggregationThreshold: v } } as UserSettings;
+                        setSettings(next);
+                        window.dispatchEvent(new CustomEvent('metro:aggregationThresholdChanged', { detail: { aggregationThreshold: v } }));
+                        await updateUserSettings({ defaultScan: next.defaultScan });
+                      }
+                    }}
+                  />
+                </label>
+                <label style={{fontSize:10,display:'flex',flexDirection:'column',alignItems:'flex-start'}}>Max Entries
+                  <input
+                    type="number"
+                    value={settings.defaultScan.maxEntries}
+                    min={0}
+                    style={{width:60}}
+                    onChange={async (e) => {
+                      const v = parseInt(e.target.value,10);
+                      if (!Number.isNaN(v) && v>=0) {
+                        const next = { ...settings, defaultScan: { ...settings.defaultScan, maxEntries: v } } as UserSettings;
+                        setSettings(next);
+                        await updateUserSettings({ defaultScan: next.defaultScan });
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            )}
             {hoveredNode && (
               <div className="hover-info">
                 <span className={`node-icon ${hoveredNode.type}`}>
@@ -379,6 +579,21 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
               <span className="perf-value">{perfMetrics.lastLayoutMs.toFixed(1)}ms</span>
             </div>
           </div>
+        </div>
+      )}
+      {ctxMenu?.visible && (
+        <div className="metro-context-menu" style={{ position: 'fixed', left: ctxMenu.x, top: ctxMenu.y, background: '#222', color: '#fff', padding: '6px 8px', fontSize: 12, borderRadius: 4, zIndex: 3000, boxShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>
+          <div style={{ marginBottom: 6, fontWeight: 600 }}>{ctxMenu.path.split(/[/\\]/).pop()}</div>
+          <button style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', color: '#fff', border: 'none', padding: '4px 0', cursor: 'pointer' }} onClick={async () => {
+            try {
+              if (favorites.includes(ctxMenu.path)) {
+                const list = await favoritesClient.remove(ctxMenu.path); setFavorites(list);
+              } else {
+                const list = await favoritesClient.add(ctxMenu.path); setFavorites(list);
+              }
+            } catch (err) { console.error('ctx favorite toggle failed', err); }
+            setCtxMenu(null);
+          }}>{favorites.includes(ctxMenu.path) ? '★ Remove Favorite' : '☆ Add Favorite'}</button>
         </div>
       )}
     </div>
