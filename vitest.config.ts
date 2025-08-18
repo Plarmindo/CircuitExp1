@@ -5,14 +5,16 @@ export default defineConfig({
   include: ['tests/**/*.{ts,tsx}'],
   exclude: ['node_modules/**','tests/e2e/**'],
     coverage: {
-      provider: 'v8', // built-in instrumentation
+      provider: 'v8',
       reporter: ['text', 'json-summary', 'lcov'],
       reportsDirectory: 'coverage',
-      include: ['src/visualization/graph-adapter.ts','src/visualization/layout-v2.ts'],
-      lines: 85,
-      branches: 80,
-      functions: 80,
-      statements: 85,
+      include: ['src/**/*.{ts,tsx}', 'scan-manager.cjs'],
+      thresholds: {
+        lines: 80,
+        branches: 70,
+        functions: 75,
+        statements: 80,
+      }
     }
   }
 });

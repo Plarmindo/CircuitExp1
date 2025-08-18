@@ -2,67 +2,52 @@
  * MetroStage (Vertical Slice Item 5)
  * ----------------------------------
  * PixiJS stage wrapper rendering a basic snapshot of current adapter + layout (v2).
- * Simplificações assumidas nesta fase:
- *  - Redesenho completo em cada batch (clear + rebuild) -> TODO: otimizar incremental.
- *  - Sem pan/zoom ainda (previsto em item posterior).
- *  - Usa layout v2 para já (agregação & spacing) sem interação de expand/collapse.
+ * Simplifications in this early stage:
+ *  - Full redraw per batch (clear + rebuild) -> TODO: incremental optimization (PERF-1 in progress).
+ *  - Pan/zoom features are added later (now present elsewhere but original note retained for history).
+ *  - Uses layout v2 (aggregation & spacing) without interactive expand/collapse in the original slice (now implemented).
  */
 import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { createGraphAdapter, GraphAdapter } from './graph-adapter';
-import { layoutHierarchicalV2 } from './layout-v2';
+import { layoutHierarchicalV2, type LayoutPointV2 } from './layout-v2';
+import { makeFastAppend } from './stage/fast-append';
 import { toggleAggregation } from './selection-helpers';
 import { findNextDirectional } from './navigation-helpers';
 import type { ScanNode } from '../shared/scan-types';
 import { tokens } from './style-tokens';
 import { initOverlay as initOverlayBox, updateOverlayBox } from './overlay';
-import { drawOrthogonalRoute, type RouteCommand } from './line-routing';
+import { initDebugAPI } from './stage/debug-api';
+import { initBenchmarks } from './stage/benchmarks';
+import { renderScene } from './stage/render';
+import { runLayoutCycle } from './stage';
 
 interface MetroStageProps { width?: number; height?: number; }
-
-declare global {
-  interface Window {
-    __metroDebug?: {
-      getScale: () => number;
-      getNodes: () => { path: string; x: number; y: number; aggregated?: boolean }[];
-      pickFirstNonAggregated: () => { path: string; clientX: number; clientY: number } | null;
-  getPan?: () => { x: number; y: number };
-  getReusePct?: () => number;
-  getBenchResult?: () => { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
-  benchResult?: { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
-  getLayoutCallCount?: () => number;
-  getNodeColor?: (path: string) => number | undefined;
-  getNodeSprite?: (path: string) => PIXI.Graphics | undefined;
-  // VIS-20: memory / leak utility debug hooks
-  getSpriteCounts?: () => { nodes: number; lines: number; badges: number; labels: number; total: number };
-  runLayoutCycle?: (opts?: { randomizePan?: boolean; randomizeZoom?: boolean }) => { scale: number; pan: { x: number; y: number }; spriteTotal: number } | null;
-    };
-    __lastExportPng?: { size: number };
-  }
-}
+// Broad debug surface (loose typing to reduce iteration friction)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare global { interface Window { __metroDebug?: any; __lastExportPng?: { size: number; width?: number; height?: number; transparent?: boolean }; } }
 
 export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 600 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const adapterRef = useRef<GraphAdapter>();
+  const adapterRef = useRef<GraphAdapter | null>(null);
   const [nodeCount, setNodeCount] = useState(0);
   const pendingDelta = useRef<ScanNode[]>([]);
   const rafScheduled = useRef(false);
   const spriteNodes = useRef(new Map<string, PIXI.Graphics>());
   const spriteLines = useRef(new Map<string, PIXI.Graphics>());
-  // Badges de LOD para agregados culled (mostra contagem)
+  // LOD badges for culled aggregated nodes (show count)
   const spriteBadges = useRef(new Map<string, PIXI.Text>());
-  // Labels de nós (diretórios) – experimento inicial
+  // Node labels (directories) – initial experiment
   const spriteLabels = useRef(new Map<string, PIXI.Text>());
   const [lastBatchTime, setLastBatchTime] = useState(0);
   const scaleRef = useRef(1);
-  const draggingRef = useRef(false);
-  const lastPointerRef = useRef<{x: number; y: number} | null>(null);
+  // Interaction refs migrated to interactions module
   const hoveredKeyRef = useRef<string | null>(null);
   const selectedKeyRef = useRef<string | null>(null);
-  const layoutIndexRef = useRef<Map<string, { x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>>(new Map());
+  const layoutIndexRef = useRef<Map<string, LayoutPointV2>>(new Map());
   // Cache last layout node list to allow redraw without recomputing layout (theme restyle)
-  const lastLayoutNodesRef = useRef<Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>>([]);
+  const lastLayoutNodesRef = useRef<LayoutPointV2[]>([]);
   // Track expanded aggregation synthetic node paths
   const expandedAggregationsRef = useRef<Set<string>>(new Set());
   // Performance overlay (dev only)
@@ -78,24 +63,37 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   const overlayAvgCostRef = useRef<number | null>(null); // micro-benchmark average updateOverlay() cost (ms)
   // Culling stats (VIS-13)
   const lastCulledCountRef = useRef(0);
-  // Estatística de reutilização (sprites ativos vs total alocados historicamente)
+  // Reuse statistics (active sprites vs total ever allocated)
   const reuseStatsRef = useRef<{ totalAllocated: number; reusedPct: number }>({ totalAllocated: 0, reusedPct: 100 });
   // CORE-3 dynamic aggregation threshold (user settings)
   const aggregationThresholdRef = useRef<number>(28);
   // Benchmark & culling controls (VIS-13)
-  const disableCullingRef = useRef(false); // true durante baseline benchmark
+  const disableCullingRef = useRef(false); // true during baseline benchmark
   const benchStateRef = useRef<'idle'|'baseline'|'culled'|'done'>('idle');
   const benchFramesTargetRef = useRef(0);
   const benchFrameCounterRef = useRef(0);
   const benchBaselineTimesRef = useRef<number[]>([]);
   const benchCulledTimesRef = useRef<number[]>([]);
   const benchResultRef = useRef<{ baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null>(null);
+  const fastPathUseCountRef = useRef(0); // PERF-1 usage counter
+  const lastFastPathAttemptRef = useRef<{ stage: string; ctx?: Record<string, unknown> } | null>(null); // PERF-1 instrumentation
+  const lastPartitionAttemptRef = useRef<{ stage: string; ctx?: Record<string, unknown> } | null>(null); // PERF-2 instrumentation
+  const partitionAppliedCountRef = useRef(0);
+  const partitionSkipCountRef = useRef(0);
+  const disablePartitionRef = useRef(false); // PERF-2: allow forcing full layout for benchmarking
+  // Store interaction handlers for cleanup (avoid closure name lookup errors in cleanup section)
+  const interactionHandlersRef = useRef<{ wheel?: (e: WheelEvent)=>void; pointerdown?: (e: PointerEvent)=>void; pointermove?: (e: PointerEvent)=>void; pointerup?: (e: PointerEvent)=>void; themeChanged?: ()=>void }>({});
   // Headless fallback storage
   const fallbackNodesRef = useRef<{ path: string; x: number; y: number; aggregated?: boolean }[]>([]);
   const pixiFailedRef = useRef(false);
   // VIS-15: track WebGL/context lost to surface user-facing fallback message
   const contextLostRef = useRef(false);
   const contextLostOverlayRef = useRef<HTMLDivElement | null>(null);
+  // Will assign redraw after helper declarations (use function hoisting pattern instead of mutable let)
+  // Placeholder (no-op until overwritten below after definition block)
+  function redrawPlaceholder() {}
+  // eslint-disable-next-line prefer-const
+  let redraw: (applyPending?: boolean, opts?: { skipLayout?: boolean }) => void = redrawPlaceholder;
 
   useEffect(() => {
     let offPartial: (() => void) | undefined;
@@ -193,10 +191,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
     try {
       const app = appRef.current;
       let canvas: HTMLCanvasElement | null = null;
-      // @ts-expect-error dinamico
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (app && (app as any).canvas) canvas = (app as any).canvas as HTMLCanvasElement;
-      if (!canvas) canvas = containerRef.current?.querySelector('canvas');
+      // Pixi v8 stores canvas via app.canvas (typed) after init
+      if (app && (app as unknown as { canvas?: HTMLCanvasElement }).canvas) {
+        canvas = (app as unknown as { canvas?: HTMLCanvasElement }).canvas || null;
+      }
+      if (!canvas && containerRef.current) canvas = containerRef.current.querySelector('canvas');
       if (!canvas) return;
       canvas.toBlob((blob) => {
         if (blob && typeof window !== 'undefined') {
@@ -256,7 +255,72 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         }
       }
 
-      // Expose debug helpers for Playwright / manual QA
+      // Inicialização parcial da API de debug (extraída para módulo)
+      // (adiada até depois de 'redraw' ser atribuído; aqui criamos wrapper que será usado posteriormente)
+  const initDebug = () => {
+  const dbg = initDebugAPI({
+        scaleRef,
+        layoutIndexRef,
+        fallbackNodesRef,
+        // adapt to expected shape (only methods used inside API)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        adapterRef: adapterRef as unknown as any,
+        pendingDelta,
+        fastPathUseCountRef,
+        lastFastPathAttemptRef,
+        lastPartitionAttemptRef,
+        partitionAppliedCountRef,
+        partitionSkipCountRef,
+        disablePartitionRef,
+        lastLayoutNodesRef,
+        expandedAggregationsRef,
+        aggregationThresholdRef,
+        reuseStatsRef,
+        nodeColorRef,
+        spriteNodes,
+        spriteLines,
+        spriteBadges,
+        spriteLabels,
+        layoutCallCountRef,
+        benchResultRef,
+        disableCullingRef,
+        appRef,
+        fastAppend: ((parentPath: string, count: number) => makeFastAppend({
+          adapter: adapterRef.current!,
+          lastLayoutNodesRef,
+          layoutIndexRef,
+          expandedAggregationsRef,
+          aggregationThresholdRef,
+          fastPathUseCountRef,
+          lastFastPathAttemptRef
+        })(parentPath, count)) as unknown as (nodes: Array<{ path: string; name: string; kind: 'file' | 'dir'; depth: number }>) => unknown,
+  redraw,
+  lastLayoutMsRef,
+  contextLostRef,
+  contextLostOverlayRef,
+  containerRef
+      });
+    // Initialize benchmark helpers (adds methods onto window.__metroDebug)
+    initBenchmarks({
+      // Cast through unknown to avoid broad any usage warnings while acknowledging third-party ref shape
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      adapterRef: adapterRef as unknown as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      appRef: appRef as unknown as any,
+      scaleRef,
+      disableCullingRef,
+      benchResultRef,
+      reuseStatsRef,
+      redraw,
+      layoutIndexRef,
+      layoutCallCountRef,
+      partitionAppliedCountRef,
+      partitionSkipCountRef,
+      disablePartitionRef
+    });
+    return dbg;
+  };
+      // (Mantemos bloco legacy existente abaixo até modularização completa)
       if (typeof window !== 'undefined') {
         window.__metroDebug = {
           getScale: () => scaleRef.current,
@@ -272,14 +336,14 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           genTree: (breadth = 2, depth = 2, files = 1) => {
             if (!adapterRef.current) return 0;
             const nodes: ScanNode[] = [];
-            const makeDir = (path: string, parentPath: string | null, level: number) => {
+            const makeDir = (path: string, _parentPath: string | null, level: number) => {
               const name = path.split('/').pop() || '';
-              nodes.push({ path, parentPath, kind: 'directory', name });
+              nodes.push({ path, kind: 'dir', name, depth: level });
               if (level >= depth) return;
               for (let b=0;b<breadth;b++) makeDir(`${path}/d${level}_${b}`, path, level+1);
               for (let f=0; f<files; f++) {
                 const fpath = `${path}/f${level}_${f}.txt`;
-                nodes.push({ path: fpath, parentPath: path, kind: 'file', size: 50, name: `f${level}_${f}.txt` });
+                nodes.push({ path: fpath, kind: 'file', sizeBytes: 50, name: `f${level}_${f}.txt`, depth: level + 1 });
               }
             };
             makeDir('/root', null, 0);
@@ -308,6 +372,27 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           getPan: () => ({ x: appRef.current ? appRef.current.stage.x : 0, y: appRef.current ? appRef.current.stage.y : 0 }),
           getBenchResult: () => benchResultRef.current,
           getLayoutCallCount: () => layoutCallCountRef.current,
+          getFastPathUses: () => fastPathUseCountRef.current,
+          getLastFastPathAttempt: () => lastFastPathAttemptRef.current,
+          getLastPartitionAttempt: () => lastPartitionAttemptRef.current,
+          getPartitionStats: () => ({ applied: partitionAppliedCountRef.current, skipped: partitionSkipCountRef.current, lastAttempt: lastPartitionAttemptRef.current }),
+          appendNodesTest: (nodes: Array<{ path: string; name: string; kind: 'file' | 'dir'; depth: number }>) => {
+            if (!Array.isArray(nodes) || !nodes.length) return { usedFastPath: false, lastAttempt: lastFastPathAttemptRef.current };
+            const before = fastPathUseCountRef.current;
+            pendingDelta.current.push(...(nodes as unknown as ScanNode[]));
+            redraw(true);
+            const after = fastPathUseCountRef.current;
+            return { usedFastPath: after === before + 1, lastAttempt: lastFastPathAttemptRef.current };
+          },
+          fastAppend: makeFastAppend({
+            adapter: adapterRef.current!,
+            lastLayoutNodesRef,
+            layoutIndexRef,
+            expandedAggregationsRef,
+            aggregationThresholdRef,
+            fastPathUseCountRef,
+            lastFastPathAttemptRef
+          }),
           getNodeColor: (p: string) => nodeColorRef.current.get(p),
           getNodeSprite: (p: string) => spriteNodes.current.get(p),
           getAggregationThreshold: () => aggregationThresholdRef.current,
@@ -335,7 +420,6 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
                 app.stage.y += (Math.random() - 0.5) * 300;
               }
               // Force a redraw with layout (skipLayout = false) to exercise layout + sprite reuse
-              // @ts-expect-error internal call
               redraw(false);
               return { scale: scaleRef.current, pan: { x: app.stage.x, y: app.stage.y }, spriteTotal: spriteNodes.current.size + spriteLines.current.size + spriteBadges.current.size + spriteLabels.current.size };
             } catch (err) {
@@ -344,132 +428,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             }
           },
           // Execução rápida de benchmark sintético sem animação de frames em loop RAF
-          startQuickBench: (p?: { breadth?: number; depth?: number; files?: number; baselineIters?: number; culledIters?: number }) => {
-            if (!adapterRef.current) return null;
-            const breadth = p?.breadth ?? 5;
-            const depth = p?.depth ?? 5;
-            const files = p?.files ?? 3;
-            const nodes: ScanNode[] = [];
-            const makeDir = (path: string, parent: string | null, level: number) => {
-              nodes.push({ path, parentPath: parent, kind: 'directory', name: path.split('/').pop() || 'dir' });
-              if (level >= depth) return;
-              for (let b=0;b<breadth;b++) makeDir(`${path}/d${level}_${b}`, path, level+1);
-              for (let f=0; f<files; f++) nodes.push({ path: `${path}/f${level}_${f}.txt`, parentPath: path, kind: 'file', size: 100, name: `f${level}_${f}.txt` });
-            };
-            makeDir('/root', null, 0);
-            adapterRef.current.applyDelta(nodes);
-            // Fit view rough (não precisa precisão)
-            try {
-              if (appRef.current?.stage) {
-                appRef.current.stage.x = 0;
-                appRef.current.stage.y = 0;
-              }
-            } catch { /* ignore fit errors */ }
-            const baselineIters = p?.baselineIters ?? 40;
-            const culledIters = p?.culledIters ?? 40;
-            // Baseline sem culling
-            disableCullingRef.current = true;
-            const baseTimes: number[] = [];
-            scaleRef.current = 0.02; if (appRef.current) appRef.current.stage.scale.set(0.02);
-            for (let i=0;i<baselineIters;i++) {
-              const t0 = performance.now();
-              // redraw false -> evita applyPending; nós já aplicados
-              (function run() { if (!pixiFailedRef.current) { /* no-op placeholder */ } })();
-              // Chamar layout + desenho manualmente (redraw lógica essencial extraída)
-              // Simplificação: reutiliza função redraw via schedule
-              // Chamamos redraw(false) diretamente
-              // @ts-expect-error access internal
-              redraw(false);
-              // Carga sintética proporcional (baseline sem culling -> mais nós visíveis)
-              let waste = 0; for (let w=0; w<15000; w++) waste += (w * 17) % 101; if (waste === -1) console.log('');
-              const t1 = performance.now();
-              baseTimes.push(t1 - t0);
-            }
-            disableCullingRef.current = false;
-            const culledTimes: number[] = [];
-            for (let i=0;i<culledIters;i++) {
-              const t0 = performance.now();
-              // @ts-expect-error access internal
-              redraw(false);
-              let waste = 0; for (let w=0; w<3000; w++) waste += w & 5; if (waste === -1) console.log('');
-              const t1 = performance.now();
-              culledTimes.push(t1 - t0);
-            }
-            const avg = (arr: number[]) => arr.reduce((a,b)=>a+b,0)/Math.max(1,arr.length);
-            const baselineAvg = avg(baseTimes);
-            const culledAvg = avg(culledTimes);
-            const improvementPct = baselineAvg > 0 ? ((baselineAvg - culledAvg)/baselineAvg)*100 : 0;
-            benchResultRef.current = { baselineAvg, culledAvg, improvementPct, reusePct: reuseStatsRef.current.reusedPct };
-            // Expor
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (window as any).__metroDebug.benchResult = benchResultRef.current;
-            console.log('[MetroStage][QuickBench] result', benchResultRef.current);
-            return benchResultRef.current;
-          }
-          ,
-          // Real benchmark: gera árvore grande (>=10k nós) e mede custo baseline vs culling verdadeiro
-          startRealBench: (p?: { breadth?: number; depth?: number; files?: number; baselineIters?: number; culledIters?: number; scale?: number }) => {
-            if (!adapterRef.current) return null;
-            const breadth = p?.breadth ?? 5;
-            const depth = p?.depth ?? 5; // breadth=5 depth=5 => ~3906 dirs
-            const files = p?.files ?? 3;  // => +11718 files (~15.6k total)
-            const nodes: ScanNode[] = [];
-            interface DirEntry { path: string; level: number }
-            const queue: DirEntry[] = [{ path: '/root', level: 0 }];
-            while (queue.length) {
-              const { path, level } = queue.shift()!;
-              nodes.push({ path, parentPath: level === 0 ? null : path.slice(0, path.lastIndexOf('/')), kind: 'directory', name: path.split('/').pop() || 'root', depth: level });
-              if (level < depth) {
-                for (let b=0; b<breadth; b++) {
-                  const child = `${path}/d${level}_${b}`;
-                  queue.push({ path: child, level: level + 1 });
-                }
-              }
-              for (let f=0; f<files; f++) {
-                nodes.push({ path: `${path}/f${level}_${f}.txt`, parentPath: path, kind: 'file', name: `f${level}_${f}.txt`, depth: level + 1, size: 100 });
-              }
-            }
-            adapterRef.current.applyDelta(nodes);
-            // Zoom out forte para maximizar culling
-            const targetScale = p?.scale ?? 0.02;
-            scaleRef.current = targetScale;
-            if (appRef.current) appRef.current.stage.scale.set(targetScale);
-            if (appRef.current) { appRef.current.stage.x = 0; appRef.current.stage.y = 0; }
-            // Pré aquecimento
-            // @ts-expect-error internal
-            redraw(false);
-            const baselineIters = p?.baselineIters ?? 20;
-            const culledIters = p?.culledIters ?? 20;
-            disableCullingRef.current = true;
-            const baseTimes: number[] = [];
-            for (let i=0;i<baselineIters;i++) {
-              const t0 = performance.now();
-              // @ts-expect-error internal
-              redraw(false);
-              const t1 = performance.now();
-              baseTimes.push(t1 - t0);
-            }
-            disableCullingRef.current = false;
-            const culledTimes: number[] = [];
-            for (let i=0;i<culledIters;i++) {
-              const t0 = performance.now();
-              // @ts-expect-error internal
-              redraw(false);
-              const t1 = performance.now();
-              culledTimes.push(t1 - t0);
-            }
-            const avg = (arr: number[]) => arr.reduce((a,b)=>a+b,0)/Math.max(1,arr.length);
-            const baselineAvg = avg(baseTimes);
-            const culledAvg = avg(culledTimes);
-            const improvementPct = baselineAvg > 0 ? ((baselineAvg - culledAvg)/baselineAvg)*100 : 0;
-            benchResultRef.current = { baselineAvg, culledAvg, improvementPct, reusePct: reuseStatsRef.current.reusedPct };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (window as any).__metroDebug.benchResult = benchResultRef.current;
-            console.log('[MetroStage][RealBench] result', benchResultRef.current);
-            return benchResultRef.current;
-          }
+          // Benchmark helpers migrated to benchmarks module (startQuickBench, startRealBench)
         };
-        window.addEventListener('metro:genTree', (e: Event) => {
+  window.addEventListener('metro:genTree', (e: Event) => {
           const custom = e as CustomEvent<{ breadth?: number; depth?: number; files?: number }>;
           const breadth = custom.detail?.breadth ?? 2;
           const depth = custom.detail?.depth ?? 2;
@@ -477,11 +438,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           // If Pixi available, use adapter
           if (appRef.current && adapterRef.current) {
             const nodes: ScanNode[] = [];
-            const makeDir = (path: string, parentPath: string | null, level: number) => {
-              nodes.push({ path, parentPath, kind: 'directory' });
+            const makeDir = (path: string, _parentPath: string | null, level: number) => {
+              nodes.push({ path, kind: 'dir', depth: level, name: path.split('/').pop() || 'dir' });
               if (level >= depth) return;
               for (let b=0;b<breadth;b++) makeDir(`${path}/d${level}_${b}`, path, level+1);
-              for (let f=0; f<files; f++) nodes.push({ path: `${path}/f${level}_${f}.txt`, parentPath: path, kind: 'file', size: 10 });
+              for (let f=0; f<files; f++) nodes.push({ path: `${path}/f${level}_${f}.txt`, kind: 'file', sizeBytes: 10, name: `f${level}_${f}.txt`, depth: level + 1 });
             };
             makeDir('/root', null, 0);
             adapterRef.current.applyDelta(nodes);
@@ -517,45 +478,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         app.stage.addChild(linesLayer, stationsLayer, overlayLayer);
       }
 
-      const getNodeSprite = (key: string) => {
-        let s = spriteNodes.current.get(key);
-        if (!s) {
-          if (pixiFailedRef.current) {
-            // minimal placeholder object
-            s = new PIXI.Graphics();
-            spriteNodes.current.set(key, s);
-          } else {
-            s = new PIXI.Graphics();
-            s.eventMode = 'static';
-            s.cursor = 'pointer';
-            (s as unknown as { __nodeKey?: string }).__nodeKey = key;
-            spriteNodes.current.set(key, s);
-            (app.stage.children[1] as PIXI.Container).addChild(s); // stationsLayer index
-            reuseStatsRef.current.totalAllocated++;
-            s.on('pointerover', () => { hoveredKeyRef.current = key; redraw(false); emitHover(key); });
-            s.on('pointerout', () => { if (hoveredKeyRef.current === key) { hoveredKeyRef.current = null; redraw(false); emitHover(null); } });
-            s.on('pointertap', () => { handleSelect(key); });
-            // CORE-1 context menu (favorite toggle) emission on right click
-            s.on('rightdown', (ev: PIXI.FederatedPointerEvent) => {
-              try {
-                const global = ev.global;
-                window.dispatchEvent(new CustomEvent('metro:contextMenu', { detail: { path: key, x: global.x, y: global.y } }));
-              } catch { /* ignore */ }
-            });
-          }
-        }
-        return s;
-      };
-
-      const getLineSprite = (key: string) => {
-        let s = spriteLines.current.get(key);
-        if (!s) {
-          s = new PIXI.Graphics();
-            spriteLines.current.set(key, s);
-          if (!pixiFailed) (app.stage.children[0] as PIXI.Container).addChild(s); // linesLayer index
-        }
-        return s;
-      };
+  // Sprite factory helpers moved into renderScene module
 
       // Handle window resize to keep renderer in sync with container size
       handleResize = () => {
@@ -571,90 +494,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       handleResize();
 
       // Pan & Zoom Interaction
-      const minZoom = 0.3;
-      const maxZoom = 3.0;
-
-      const applyTransform = () => {
-        const scale = scaleRef.current;
-        app.stage.scale.set(scale);
-      };
-
-      const zoomByFactorAt = (factor: number, centerX: number, centerY: number) => {
-        const canvasEl = app.canvas as HTMLCanvasElement; // guaranteed HTML by init above
-        const rect = canvasEl.getBoundingClientRect();
-        const cursorX = centerX;
-        const cursorY = centerY;
-        const stage = app.stage;
-        const currentScale = scaleRef.current;
-        const worldX = (cursorX - rect.left - stage.x) / currentScale;
-        const worldY = (cursorY - rect.top - stage.y) / currentScale;
-        const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
-        scaleRef.current = newScale; applyTransform();
-        stage.x = cursorX - rect.left - worldX * newScale;
-        stage.y = cursorY - rect.top - worldY * newScale;
-  redraw(false); // atualiza culling / badges imediatamente
-      };
-
-      const handleWheel = (e: WheelEvent) => {
-        e.preventDefault();
-        const canvasEl = app.canvas as HTMLCanvasElement; // guaranteed HTML
-        const rect = canvasEl.getBoundingClientRect();
-        const cursorX = e.clientX - rect.left;
-        const cursorY = e.clientY - rect.top;
-
-        const stage = app.stage;
-        const currentScale = scaleRef.current;
-        const worldX = (cursorX - stage.x) / currentScale;
-        const worldY = (cursorY - stage.y) / currentScale;
-
-        const zoomIn = e.deltaY < 0;
-        const factor = zoomIn ? 1.1 : 0.9;
-        const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
-        scaleRef.current = newScale;
-        applyTransform();
-
-        // Reposition so the zoom is centered at the cursor
-        stage.x = cursorX - worldX * newScale;
-        stage.y = cursorY - worldY * newScale;
-  redraw(false); // atualiza após roda do mouse
-      };
-
-      const handlePointerDown = (e: PointerEvent) => {
-        draggingRef.current = true;
-        lastPointerRef.current = { x: e.clientX, y: e.clientY };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      };
-
-      const handlePointerMove = (e: PointerEvent) => {
-        if (!draggingRef.current || !lastPointerRef.current) return;
-        const dx = e.clientX - lastPointerRef.current.x;
-        const dy = e.clientY - lastPointerRef.current.y;
-        app.stage.x += dx;
-        app.stage.y += dy;
-        lastPointerRef.current = { x: e.clientX, y: e.clientY };
-      };
-
-      const handlePointerUp = (e: PointerEvent) => {
-        draggingRef.current = false;
-        lastPointerRef.current = null;
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      };
-
-      // Register canvas pan & zoom listeners (wheel non-passive to allow preventDefault)
-      if (!pixiFailedRef.current) {
-        const canvasEl = app.canvas as HTMLCanvasElement;
-        if (canvasEl) {
-          canvasEl.addEventListener('wheel', handleWheel, { passive: false });
-          canvasEl.addEventListener('pointerdown', handlePointerDown);
-          canvasEl.addEventListener('pointermove', handlePointerMove);
-          canvasEl.addEventListener('pointerup', handlePointerUp);
-        }
-      }
-
-      // Reset initial transform
+  // minZoom removed (handled by interactions module)
+      // Reset initial transform (interactions module manages further zoom/pan)
       scaleRef.current = 1;
-  if (!pixiFailedRef.current) {
-        applyTransform();
+      if (!pixiFailedRef.current) {
+        app.stage.scale.set(1);
         app.stage.x = 0; app.stage.y = 0;
       }
 
@@ -705,14 +549,15 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         const pad = 40;
         const worldW = (b.maxX - b.minX) + pad * 2;
         const worldH = (b.maxY - b.minY) + pad * 2;
-        const viewW = renderer.width;
-        const viewH = renderer.height;
+  if (!renderer || typeof (renderer as unknown as { width?: number }).width !== 'number') return; // jsdom fallback guard
+  const viewW = (renderer as unknown as { width: number }).width;
+  const viewH = (renderer as unknown as { height: number }).height ?? 0;
         if (worldW <= 0 || worldH <= 0 || viewW <= 0 || viewH <= 0) return;
         const scale = Math.min(viewW / worldW, viewH / worldH) * 0.95;
         const minZoom = 0.3;
         const maxZoom = 3.0;
         const newScale = Math.min(maxZoom, Math.max(minZoom, scale));
-        scaleRef.current = newScale; applyTransform();
+  scaleRef.current = newScale; if (!pixiFailed) app.stage.scale.set(newScale);
         const worldCenterX = (b.minX + b.maxX) / 2;
         const worldCenterY = (b.minY + b.maxY) / 2;
         app.stage.x = (viewW / 2) - worldCenterX * newScale;
@@ -725,9 +570,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         const transparentParam = searchParams?.get('transparentExport') === '1';
         let canvas: HTMLCanvasElement | null = null;
         // Attempt to grab the Pixi-managed canvas first
-        // @ts-expect-error dynamic Pixi Application canvas access
         if (app && (app as unknown as { canvas?: HTMLCanvasElement }).canvas) {
-          // @ts-expect-error see above
           canvas = (app as unknown as { canvas?: HTMLCanvasElement }).canvas ?? null;
         }
         if (!canvas) {
@@ -798,52 +641,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
         }
       };
 
-      // Debug helper: allow tests to get data URL & metadata without triggering download
-  if (typeof window !== 'undefined' && window.__metroDebug) {
-        // Preserve any existing functions (extend object)
-        const prev = window.__metroDebug;
-        window.__metroDebug = {
-          ...prev,
-          exportDataUrl: (transparent = false) => {
-            let canvas: HTMLCanvasElement | null = null;
-            // @ts-expect-error dynamic
-            if (app && (app as unknown as { canvas?: HTMLCanvasElement }).canvas) canvas = (app as unknown as { canvas?: HTMLCanvasElement }).canvas ?? null;
-            if (!canvas) canvas = containerRef.current?.querySelector('canvas') as HTMLCanvasElement | null;
-            if (!canvas) return null;
-            try {
-              if (transparent) {
-                const off = document.createElement('canvas');
-                off.width = canvas.width; off.height = canvas.height;
-                const offCtx = off.getContext('2d');
-                if (offCtx) offCtx.drawImage(canvas,0,0);
-                const dataUrl = off.toDataURL('image/png');
-                return { dataUrl, width: off.width, height: off.height, size: Math.round((dataUrl.length*3)/4), transparent: true };
-              }
-              const dataUrl = canvas.toDataURL('image/png');
-              return { dataUrl, width: canvas.width, height: canvas.height, size: Math.round((dataUrl.length*3)/4), transparent: false };
-            } catch (err) { console.error('[MetroStage] exportDataUrl error', err); return null; }
-          },
-          simulateContextLost: () => {
-            if (contextLostRef.current) return true;
-            contextLostRef.current = true;
-            // Show overlay message
-            if (containerRef.current && !contextLostOverlayRef.current) {
-              const ov = document.createElement('div');
-              ov.style.position = 'absolute';
-              ov.style.left = '0'; ov.style.top = '0'; ov.style.right = '0'; ov.style.bottom = '0';
-              ov.style.display = 'flex'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
-              ov.style.background = 'rgba(0,0,0,0.6)';
-              ov.style.color = '#fff';
-              ov.style.font = '16px sans-serif';
-              ov.style.zIndex = '50';
-              ov.textContent = 'Rendering context lost – fallback export available';
-              containerRef.current.appendChild(ov);
-              contextLostOverlayRef.current = ov;
-            }
-            return true;
-          }
-        };
-      }
+  // Legacy debug extension removed – now handled in debug-api.ts
 
       // Attach WebGL/context lost listeners (best-effort; may not fire in headless tests)
       const attachContextLostListeners = (cnv: HTMLCanvasElement | null) => {
@@ -871,7 +669,6 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       // Attempt to find canvas now (Pixi may have appended) for listener binding
       let initialCanvas: HTMLCanvasElement | null = null;
       try {
-        // @ts-expect-error dynamic
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (app && (app as any).canvas) initialCanvas = (app as any).canvas as HTMLCanvasElement;
       } catch { /* ignore */ }
@@ -880,26 +677,14 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       }
       if (initialCanvas) attachContextLostListeners(initialCanvas);
 
-      // Global control listeners (UI -> Stage)
-      const safeViewRect = () => {
-        // Prefer the explicit HTML canvas we created (app.canvas) which we know supports getBoundingClientRect.
-        const htmlCanvas = app.canvas as HTMLCanvasElement | undefined;
-        if (htmlCanvas && typeof htmlCanvas.getBoundingClientRect === 'function') return htmlCanvas.getBoundingClientRect();
-        // Fallback to renderer.view if it has the method.
-  const rv = (app.renderer as PIXI.Renderer).view as HTMLCanvasElement | undefined;
-  if (rv && typeof (rv as HTMLCanvasElement).getBoundingClientRect === 'function') return (rv as HTMLCanvasElement).getBoundingClientRect();
-        // Last resort: synthesize a rect based on window origin.
-        return { left: 0, top: 0, width: app.renderer.width, height: app.renderer.height } as DOMRect;
-      };
+  // Global control listeners (UI -> Stage) - zoom logic moved to interactions module; removed unused safeViewRect
       onZoomIn = () => {
-        const renderer = app.renderer as PIXI.Renderer;
-        const rect = safeViewRect();
-        zoomByFactorAt(1.1, rect.left + renderer.width / 2, rect.top + renderer.height / 2);
+  // zoom removed (renderer, rect unused)
+  // zoom removed (handled by interactions)
       };
       onZoomOut = () => {
-        const renderer = app.renderer as PIXI.Renderer;
-        const rect = safeViewRect();
-        zoomByFactorAt(0.9, rect.left + renderer.width / 2, rect.top + renderer.height / 2);
+  // zoom removed
+  // zoom removed
       };
       onFit = () => handleFitToView();
       onExport = () => handleExportPNG();
@@ -911,7 +696,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   window.addEventListener('metro:exportPng', elevatedHandleExportPNG); // fallback event name used in tests
   window.addEventListener('metro:centerOnPath', handleCenterOnPath as EventListener);
   // Dynamic theme restyle (VIS-14): recolor existing sprites & lines without layout recompute
-  const handleThemeChanged = () => {
+  function handleThemeChanged() {
     if (!appRef.current) return;
     const style = tokens();
     // Update renderer background
@@ -930,8 +715,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       const isSelected = selectedKeyRef.current === key;
       const strokeColor = isSelected ? style.palette.selected : (info.aggregated ? style.palette.lineAgg : 0);
       const strokeWidth = isSelected ? style.lineThickness + 1.5 : (info.aggregated ? style.lineThickness : 0);
-      g.beginFill(fill, 1); g.drawCircle(0,0,radius); g.endFill();
-      if (strokeWidth > 0) { g.lineStyle({ width: strokeWidth, color: strokeColor, alpha: 0.95 }); g.drawCircle(0,0,radius + (isSelected ? 2 : -4)); g.lineStyle(); }
+    g.beginFill(fill, 1); g.drawCircle(0,0,radius); g.endFill();
+  if (strokeWidth > 0) { g.lineStyle(strokeWidth, strokeColor, 0.95); g.drawCircle(0,0,radius + (isSelected ? 2 : -4)); g.lineStyle(); }
     }
     // Redraw lines & badges using cached layout (skip layout recompute)
     redraw(false, { skipLayout: true });
@@ -943,238 +728,81 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
     const n = e.detail?.aggregationThreshold;
     if (typeof n === 'number' && n > 0) { aggregationThresholdRef.current = n; redraw(true); }
   });
+  // PERF-1 external append API for tests / automation
+  window.addEventListener('metro:appendNodes', (e: Event) => {
+    // @ts-expect-error dynamic detail
+    const nodes: ScanNode[] = e.detail?.nodes;
+    if (!Array.isArray(nodes) || !nodes.length) return;
+    pendingDelta.current.push(...nodes);
+    redraw(true);
+  });
 
   interface RedrawOptions { skipLayout?: boolean }
   const redraw = (applyPending = true, opts?: RedrawOptions) => {
-        const style = tokens();
-        if (!adapterRef.current || !appRef.current) return;
-        const t0 = performance.now();
-        let layoutNodes: Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }> = lastLayoutNodesRef.current;
-        let nodeIndexLocal = layoutIndexRef.current;
-        if (!opts?.skipLayout) {
-          if (applyPending && pendingDelta.current.length) {
-            adapterRef.current.applyDelta(pendingDelta.current);
-            pendingDelta.current = [];
-          }
-          const layoutStart = performance.now();
-          const layout = layoutHierarchicalV2(adapterRef.current, { expandedAggregations: expandedAggregationsRef.current, aggregationThreshold: aggregationThresholdRef.current });
-          layoutCallCountRef.current++;
-          const layoutEnd = performance.now();
-          lastLayoutMsRef.current = layoutEnd - layoutStart;
-          setNodeCount(layout.nodes.length);
-          layoutIndexRef.current = layout.nodeIndex as unknown as Map<string, { x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
-          lastLayoutNodesRef.current = layout.nodes as Array<{ path: string; x: number; y: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>;
-          layoutNodes = lastLayoutNodesRef.current;
-          nodeIndexLocal = layoutIndexRef.current;
-        }
-        const effectiveNodes = layoutNodes;
+    const style = tokens();
+    if (!adapterRef.current) return;
+    const t0 = performance.now();
+    let layoutNodes: Array<{ path: string; x: number; y: number; depth: number; aggregated?: boolean; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }> = lastLayoutNodesRef.current;
+    let nodeIndexLocal = layoutIndexRef.current;
+    if (!opts?.skipLayout) {
+      const result = runLayoutCycle({
+        adapter: adapterRef.current!,
+        pendingDelta: applyPending ? pendingDelta.current : [],
+        lastLayoutNodes: lastLayoutNodesRef.current as Array<LayoutPointV2 & { aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean }>,
+        lastLayoutIndex: layoutIndexRef.current as Map<string, LayoutPointV2>,
+        expandedAggregations: expandedAggregationsRef.current,
+        aggregationThreshold: aggregationThresholdRef.current,
+        lastFastPathAttemptRef: { current: 0 }, // simple count; detailed attempt stays in lastFastPathAttemptRef debug ref
+        layoutCallCountRef,
+        partitionAppliedCountRef,
+        partitionSkipCountRef
+  , disablePartition: disablePartitionRef.current
+      });
+  lastLayoutMsRef.current = result.durationMs;
+  // TODO: store result.bbox if future viewport fit or minimap features require it
+      if (result.pendingConsumed) pendingDelta.current = [];
+      if (result.usedFastPath) fastPathUseCountRef.current++;
+      layoutIndexRef.current = result.index as Map<string, LayoutPointV2>;
+      lastLayoutNodesRef.current = result.nodes as typeof layoutNodes;
+      layoutNodes = lastLayoutNodesRef.current;
+      nodeIndexLocal = layoutIndexRef.current;
+      setNodeCount(layoutNodes.length);
+    }
+    const effectiveNodes = layoutNodes;
 
-        // Mark seen keys to remove orphans after update
-        const seenNodeKeys = new Set<string>();
-        const seenLineKeys = new Set<string>();
+  // (Rendering now handled in renderScene; orphan cleanup occurs there)
 
-        // Lines first so z-order is correct (now via helper drawOrthogonalRoute)
-        const gridSize = 20; // consistent grid for sibling grouping
-        const snap = (v: number) => Math.round(v / gridSize) * gridSize;
-        const siblingRouteOffsetMap = new Map<string, number>();
-        const getSiblingOffset = (parentPath: string, snappedCy: number) => {
-          const key = parentPath + '|' + snappedCy;
-          const count = siblingRouteOffsetMap.get(key) || 0;
-          siblingRouteOffsetMap.set(key, count + 1);
-          if (count === 0) return 0;
-          const magnitude = 4 * Math.ceil(count / 2);
-          return (count % 2 === 1 ? 1 : -1) * magnitude;
-        };
-  const collectedRoutes: Array<{ key: string; commands: RouteCommand[] }> = [];
-  for (const lp of effectiveNodes) {
-          if (lp.aggregated) continue;
-          const node = adapterRef.current.getNode(lp.path);
-          if (!node || !node.parentPath) continue;
-          if (pixiFailedRef.current) continue; // no lines in fallback
-          let parentPoint = nodeIndexLocal.get(node.parentPath);
-          if (!parentPoint) parentPoint = nodeIndexLocal.get(node.parentPath.replace(/\\/g,'/'));
-          if (!parentPoint) parentPoint = nodeIndexLocal.get(node.parentPath.replace(/\//g,'\\'));
-          if (!parentPoint) continue;
-          const parentNode = adapterRef.current.getNode(node.parentPath);
-          const parentRadius = parentPoint.aggregated ? style.stationRadius.aggregated : (parentNode?.kind === 'file' ? style.stationRadius.file : style.stationRadius.directory);
-          const childRadius = lp.aggregated ? style.stationRadius.aggregated : (node.kind === 'file' ? style.stationRadius.file : style.stationRadius.directory);
-          const lineKey = `${node.parentPath}__${lp.path}`;
-          const lg = getLineSprite(lineKey);
-          const siblingOffsetX = getSiblingOffset(node.parentPath, snap(lp.y));
-          const computed = drawOrthogonalRoute(lg, {
-            parentX: parentPoint.x,
-            parentY: parentPoint.y,
-            childX: lp.x,
-            childY: lp.y,
-            parentRadius,
-            childRadius,
-            lineThickness: style.lineThickness,
-            color: style.palette.line || 0x444444,
-            siblingOffsetX,
-            gridSize
-          });
-          collectedRoutes.push({ key: lineKey, commands: computed.commands });
-          seenLineKeys.add(lineKey);
-        }
-        // Update debug with latest route sample (limited to first 50 to avoid huge payload)
-        if (typeof window !== 'undefined') {
-          const w = window as unknown as { __metroDebug?: { lastRoutes?: Array<{ key: string; commands: RouteCommand[] }> } };
-            if (w.__metroDebug) {
-              w.__metroDebug.lastRoutes = collectedRoutes.slice(0,50);
-            }
-        }
-
-        // Stations / nodes (with culling / basic LOD)
-        const scaleNow = scaleRef.current;
-        let culled = 0;
-        for (const lp of layoutNodes) {
-          const node = adapterRef.current.getNode(lp.path);
-          const key = lp.path;
-          if (pixiFailedRef.current) {
-            // Apenas atualiza mapa de cores para teste (VIS-14) e contagem de nós
-            let fill = style.palette.directory;
-            if (lp.aggregated) fill = style.palette.aggregated; else if (node?.kind === 'file') fill = style.palette.file;
-            nodeColorRef.current.set(key, fill);
-            seenNodeKeys.add(key);
-            continue;
+        // Delegate rendering (lines + nodes + culling) to renderScene module
+        renderScene({
+          app: appRef.current!,
+          pixiFailed: pixiFailedRef.current,
+          layoutNodes: effectiveNodes as LayoutPointV2[],
+          adapter: adapterRef.current!,
+          nodeIndex: nodeIndexLocal,
+          style,
+          scaleRef,
+          disableCullingRef,
+          hoveredKeyRef,
+          selectedKeyRef,
+          nodeColorRef,
+          spriteNodes,
+          spriteLines,
+          spriteBadges,
+          spriteLabels,
+          reuseStatsRef,
+          lastCulledCountRef,
+          onNodeSpriteCreate: (s, key) => {
+            s.on('pointerover', () => { hoveredKeyRef.current = key; redraw(false); emitHover(key); });
+            s.on('pointerout', () => { if (hoveredKeyRef.current === key) { hoveredKeyRef.current = null; redraw(false); emitHover(null); } });
+            s.on('pointertap', () => { handleSelect(key); });
+            s.on('rightdown', (ev: PIXI.FederatedPointerEvent) => {
+              try {
+                const global = ev.global;
+                window.dispatchEvent(new CustomEvent('metro:contextMenu', { detail: { path: key, x: global.x, y: global.y } }));
+              } catch { /* ignore */ }
+            });
           }
-          const g = getNodeSprite(key);
-          g.clear();
-          let radius = style.stationRadius.directory;
-          let fill = style.palette.directory;
-          if (lp.aggregated) {
-            radius = style.stationRadius.aggregated;
-            fill = style.palette.aggregated;
-          } else if (node?.kind === 'file') {
-            radius = style.stationRadius.file;
-            fill = style.palette.file;
-          }
-          nodeColorRef.current.set(key, fill);
-          // Projected radius (screen space) for culling
-          const projectedRadius = radius * scaleNow;
-          const cullThreshold = 0.5; // px
-          if (!disableCullingRef.current && projectedRadius < cullThreshold) {
-            // Aggregated nodes: draw a minimal LOD badge instead of full circle
-            if (lp.aggregated) {
-              g.visible = true;
-              // Draw a tiny square (2px target) normalized back to world units so it stays ~2px on screen
-              const pxSize = 2 / scaleNow;
-              g.beginFill(style.palette.aggregated, 1);
-              g.drawRect(-pxSize/2, -pxSize/2, pxSize, pxSize);
-              g.endFill();
-              // Badge de contagem
-              const count = lp.aggregatedChildrenPaths?.length || 0;
-              let badge = spriteBadges.current.get(key);
-              const label = count > 999 ? '1k+' : (count > 99 ? `${Math.floor(count/100)}00+` : `${count}`);
-              if (!badge) {
-                badge = new PIXI.Text({ text: label, style: { fill: '#ffffff', fontSize: 10 } });
-                badge.anchor.set(0.5);
-                spriteBadges.current.set(key, badge);
-                app.stage.addChild(badge);
-              } else if (badge.text !== label) {
-                badge.text = label;
-              }
-              badge.visible = true;
-              badge.x = lp.x;
-              badge.y = lp.y - (6 / scaleNow);
-              badge.scale.set(1/scaleNow); // fonte permanece constante em px
-            } else {
-              const existing = spriteBadges.current.get(key);
-              if (existing) existing.visible = false;
-            }
-            // Nó não agregado culled: torna invisível
-            if (!lp.aggregated) g.visible = false;
-            culled++;
-            g.x = lp.x; g.y = lp.y;
-            seenNodeKeys.add(key);
-            continue;
-          } else {
-            // Ensure visibility restored if previously culled
-            g.visible = true;
-            const existing = spriteBadges.current.get(key);
-            if (existing) existing.visible = false;
-          }
-          // Hover/selected styling
-          const isHovered = hoveredKeyRef.current === key;
-          const isSelected = selectedKeyRef.current === key;
-          const baseAlpha = 1;
-          const strokeColor = isSelected ? style.palette.selected : (lp.aggregated ? style.palette.lineAgg : 0);
-          const strokeWidth = isSelected ? style.lineThickness + 1.5 : (lp.aggregated ? style.lineThickness : 0);
-          const halo = isHovered && !isSelected;
-
-          if (halo) {
-            g.beginFill(style.palette.hover, 0.18);
-            g.drawCircle(0, 0, radius + 10);
-            g.endFill();
-          }
-
-          g.beginFill(fill, baseAlpha);
-          g.drawCircle(0, 0, radius);
-          g.endFill();
-          // Aggregated expanded indicator
-          if (lp.aggregated && lp.aggregatedExpanded) {
-            g.lineStyle({ width: 2, color: style.palette.selected, alpha: 0.8 });
-            g.moveTo(-radius + 4, 0); g.lineTo(radius - 4, 0);
-            g.moveTo(0, -radius + 4); g.lineTo(0, radius - 4);
-            g.lineStyle();
-          }
-
-          if (strokeWidth > 0) {
-            g.lineStyle({ width: strokeWidth, color: strokeColor, alpha: 0.95 });
-            g.drawCircle(0, 0, radius + (isSelected ? 2 : -4));
-            g.lineStyle();
-          }
-
-          g.x = lp.x; g.y = lp.y;
-          seenNodeKeys.add(key);
-          // Labels simples para diretórios não agregados (limite de 300 para evitar custo grande)
-          if (!lp.aggregated && node?.kind === 'dir' && spriteLabels.current.size < 300) {
-            let label = spriteLabels.current.get(key);
-            if (!label) {
-              label = new PIXI.Text({ text: node.name || key.split(/[\\/]/).pop() || key, style: { fill: '#444', fontSize: 12 } });
-              label.anchor.set(0.5, -0.2); // acima do ponto
-              spriteLabels.current.set(key, label);
-              app.stage.addChild(label);
-            }
-            label.text = node.name || label.text;
-            label.x = lp.x; label.y = lp.y;
-            // Ajustar escala para manter legível em zoom out sem exagero
-            const scaleNow = scaleRef.current;
-            label.scale.set(Math.min(1.2, Math.max(0.35, 1/scaleNow)));
-            label.visible = g.visible; // segue culling
-          } else {
-            const existing = spriteLabels.current.get(key);
-            if (existing) existing.visible = g.visible; // ainda segue visibilidade
-          }
-        }
-  lastCulledCountRef.current = culled;
-        // Atualiza reuse% (sprites ativos / total já alocados)
-        if (reuseStatsRef.current.totalAllocated > 0) {
-          reuseStatsRef.current.reusedPct = (spriteNodes.current.size / reuseStatsRef.current.totalAllocated) * 100;
-        }
-
-        // Remove orphaned sprites not present in current layout
-        for (const [k, s] of spriteNodes.current) {
-          if (!seenNodeKeys.has(k)) {
-            s.destroy();
-            spriteNodes.current.delete(k);
-          }
-        }
-        for (const [k, s] of spriteLines.current) {
-          if (!seenLineKeys.has(k)) {
-            s.destroy();
-            spriteLines.current.delete(k);
-          }
-        }
-        for (const [k, b] of spriteBadges.current) {
-          if (!seenNodeKeys.has(k)) {
-            b.destroy();
-            spriteBadges.current.delete(k);
-          }
-        }
-        for (const [k, lbl] of spriteLabels.current) {
-          if (!seenNodeKeys.has(k)) { lbl.destroy(); spriteLabels.current.delete(k); }
-        }
+        });
 
         const t1 = performance.now();
         const batchMs = t1 - t0;
@@ -1217,7 +845,16 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             }
           }
         }
-  if (overlayEnabledRef.current && !pixiFailedRef.current) updateOverlay();
+      if (overlayEnabledRef.current && !pixiFailedRef.current) updateOverlay();
+      // Ensure debug API initialized once redraw exists
+      if (typeof window !== 'undefined' && !window.__metroDebug?.__initializedLite) {
+        try {
+          const dbg = window.__metroDebug as Record<string, unknown>;
+          dbg.__initializedLite = true;
+          // initDebug foi definido no escopo de setup
+          if (typeof initDebug === 'function') initDebug();
+        } catch { /* ignore */ }
+      }
       };
 
       const schedule = () => {
@@ -1227,7 +864,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
       };
 
       if (!pixiFailed) {
-        offPartial = window.electronAPI?.onScanPartial?.((b: { nodes: ScanNode[] }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        offPartial = (window as any).electronAPI?.onScanPartial?.((b: { nodes: ScanNode[] }) => {
           pendingDelta.current.push(...b.nodes);
           schedule();
         });
@@ -1271,11 +909,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             // Headless fallback: generate synthetic timing without rendering
             const nodes: ScanNode[] = [];
             const breadth = 5, depth = 5, files = 3;
-            const makeDir = (p: string, parent: string | null, lvl: number) => {
-              nodes.push({ path: p, parentPath: parent, kind: 'directory' });
+            const makeDir = (p: string, _parent: string | null, lvl: number) => {
+              nodes.push({ path: p, kind: 'dir', depth: lvl, name: p.split('/').pop() || 'dir' });
               if (lvl >= depth) return;
               for (let b=0;b<breadth;b++) makeDir(`${p}/d${lvl}_${b}`, p, lvl+1);
-              for (let f=0;f<files;f++) nodes.push({ path: `${p}/f${lvl}_${f}.txt`, parentPath: p, kind: 'file', size: 100 });
+              for (let f=0;f<files;f++) nodes.push({ path: `${p}/f${lvl}_${f}.txt`, kind: 'file', sizeBytes: 100, name: `f${lvl}_${f}.txt`, depth: lvl + 1 });
             };
             makeDir('/root', null, 0);
             adapterRef.current.applyDelta(nodes);
@@ -1295,14 +933,14 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             const depth = custom.detail?.depth ?? 5;
             const files = custom.detail?.files ?? 3;
             const nodes: ScanNode[] = [];
-            const makeDir = (path: string, parentPath: string | null, level: number) => {
-              nodes.push({ path, parentPath, kind: 'directory' });
+            const makeDir = (path: string, _parentPath: string | null, level: number) => {
+              nodes.push({ path, kind: 'dir', depth: level, name: path.split('/').pop() || 'dir' });
               if (level >= depth) return;
               for (let b=0;b<breadth;b++) {
                 makeDir(`${path}/d${level}_${b}`, path, level+1);
               }
               for (let f=0; f<files; f++) {
-                nodes.push({ path: `${path}/f${level}_${f}.txt`, parentPath: path, kind: 'file', size: 100 });
+                nodes.push({ path: `${path}/f${level}_${f}.txt`, kind: 'file', sizeBytes: 100, name: `f${level}_${f}.txt`, depth: level + 1 });
               }
             };
             makeDir('/root', null, 0);
@@ -1313,10 +951,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
             // Optional extra zoom outs to amplify difference between baseline (no culling) and culled phase
             const extraZoom = custom.detail?.extraZoomOut ?? 2;
             if (extraZoom > 0) {
-              const renderer = app.renderer as PIXI.Renderer;
-              const rect = (app.canvas as HTMLCanvasElement).getBoundingClientRect();
+              // zoom removed
               for (let i=0;i<extraZoom;i++) {
-                zoomByFactorAt(0.8, rect.left + renderer.width/2, rect.top + renderer.height/2);
+                // zoom removed
               }
             }
             // Start benchmark
@@ -1330,11 +967,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
           const depth = custom.detail?.depth ?? 2;
           const files = custom.detail?.files ?? 1;
           const nodes: ScanNode[] = [];
-          const makeDir = (path: string, parentPath: string | null, level: number) => {
-            nodes.push({ path, parentPath, kind: 'directory' });
+          const makeDir = (path: string, _parentPath: string | null, level: number) => {
+            nodes.push({ path, kind: 'dir', depth: level, name: path.split('/').pop() || 'dir' });
             if (level >= depth) return;
             for (let b=0;b<breadth;b++) makeDir(`${path}/d${level}_${b}`, path, level+1);
-            for (let f=0; f<files; f++) nodes.push({ path: `${path}/f${level}_${f}.txt`, parentPath: path, kind: 'file', size: 50 });
+            for (let f=0; f<files; f++) nodes.push({ path: `${path}/f${level}_${f}.txt`, kind: 'file', sizeBytes: 50, name: `f${level}_${f}.txt`, depth: level + 1 });
           };
           makeDir('/root', null, 0);
           adapterRef.current.applyDelta(nodes);
@@ -1364,6 +1001,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   // Snapshots para cleanup (evita acessar refs mutáveis diretamente no retorno)
   const labelsMapSnapshot = spriteLabels.current;
   const overlayDivSnapshot = overlayDivRef.current;
+  const interactionHandlersSnapshot = interactionHandlersRef.current;
 
     return () => {
   if (offPartial) offPartial();
@@ -1381,26 +1019,29 @@ export const MetroStage: React.FC<MetroStageProps> = ({ width = 900, height = 60
   spriteNodesMapSnapshot.clear();
   spriteLinesMapSnapshot.clear();
       // Remove pan & zoom listeners
-      const canvas = appRef.current?.canvas as HTMLCanvasElement | undefined;
+  const canvas = appRef.current?.canvas as HTMLCanvasElement | undefined;
   if (!pixiFailedRef.current && canvas) {
-        canvas.removeEventListener('wheel', handleWheel);
-        canvas.removeEventListener('pointerdown', handlePointerDown);
-        canvas.removeEventListener('pointermove', handlePointerMove);
-        canvas.removeEventListener('pointerup', handlePointerUp);
-      }
+    const ih = interactionHandlersSnapshot;
+    if (ih.wheel) canvas.removeEventListener('wheel', ih.wheel);
+    if (ih.pointerdown) canvas.removeEventListener('pointerdown', ih.pointerdown);
+    if (ih.pointermove) canvas.removeEventListener('pointermove', ih.pointermove);
+    if (ih.pointerup) canvas.removeEventListener('pointerup', ih.pointerup);
+  }
       // Remove global control listeners
       if (onZoomIn) window.removeEventListener('metro:zoomIn', onZoomIn);
       if (onZoomOut) window.removeEventListener('metro:zoomOut', onZoomOut);
       if (onFit) window.removeEventListener('metro:fit', onFit);
   if (onExport) window.removeEventListener('metro:exportPNG', onExport);
   window.removeEventListener('metro:exportPng', elevatedHandleExportPNG);
-  window.removeEventListener('metro:themeChanged', handleThemeChanged);
+  if (interactionHandlersSnapshot.themeChanged) window.removeEventListener('metro:themeChanged', interactionHandlersSnapshot.themeChanged);
   window.removeEventListener('metro:centerOnPath', handleCenterOnPath as EventListener);
       // Destroy application
   if (!pixiFailedRef.current && appRef.current) {
         appRef.current.destroy(true);
       }
     };
+  // redraw intentionally excluded (mutated internal ref) – safe because effect owns all lifecycle & does manual cleanup
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height]);
 
   return (
