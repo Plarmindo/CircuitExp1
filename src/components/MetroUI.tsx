@@ -60,6 +60,9 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
   
   const fpsCounterRef = useRef<number[]>([]);
 
+  // Live region ref for announcements (A11Y)
+  const liveRegionRef = useRef<HTMLDivElement | null>(null);
+
   // CORE-3: load persisted user settings (theme, defaults) and react to updates from main process
   useEffect(() => {
     let cancelled = false;
@@ -287,10 +290,18 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
     return <>{text.slice(0,i)}<mark>{text.slice(i,i+q.length)}</mark>{text.slice(i+q.length)}</>;
   }, [searchQuery]);
 
+  // Announce selection changes
+  useEffect(() => {
+    if (selectedNode && liveRegionRef.current) {
+      liveRegionRef.current.textContent = `Selected ${selectedNode.type} ${selectedNode.name}`;
+    }
+  }, [selectedNode]);
+
   const theme = currentTheme;
 
   return (
     <div className={`metro-ui ${theme}`}>
+      <a href="#mainContent" className="sr-only" tabIndex={0}>Skip to visualization</a>
       {/* Header */}
       <header className="metro-header">
         <div className="header-left">
@@ -479,7 +490,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
         </aside>
 
         {/* Main Content */}
-        <main className="metro-main">
+        <main className="metro-main" id="mainContent" role="main" aria-label="Visualization Stage">
           {/* Toolbar */}
           <div className="metro-toolbar">
             <div className="toolbar-section">
@@ -598,6 +609,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
           }}>{favorites.includes(ctxMenu.path) ? '★ Remove Favorite' : '☆ Add Favorite'}</button>
         </div>
       )}
+      <div ref={liveRegionRef} aria-live="polite" aria-atomic="true" className="sr-only" />
     </div>
   );
 };
