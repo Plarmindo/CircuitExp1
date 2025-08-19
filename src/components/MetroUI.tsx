@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MetroStage } from '../visualization/metro-stage';
 import { setTheme } from '../visualization/style-tokens';
-import { getUserSettings, onUserSettingsLoaded, onUserSettingsUpdated, updateUserSettings, UserSettings } from '../settings/user-settings-client';
+import { getUserSettings, onUserSettingsLoaded, onUserSettingsUpdated, updateUserSettings } from '../settings/user-settings-client';
+import type { UserSettings } from '../settings/user-settings-client';
 import './MetroUI.css';
 import { favoritesClient } from '../favorites/favorites-client';
 import { listRecent, clearRecent } from '../recent-scans-client';
@@ -141,34 +142,19 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
 
   // Listen to metro events
   useEffect(() => {
-    const handleHover = (e: CustomEvent<{ path: string; type: 'node' | 'aggregated' }> | Event) => {
-      // @ts-expect-error runtime event detail
-      if (e.detail) {
-        // @ts-expect-error detail dynamic
-        setHoveredNode({
-          // @ts-expect-error detail dynamic
-          path: e.detail.path,
-          // @ts-expect-error detail dynamic
-          type: e.detail.type,
-          // @ts-expect-error detail dynamic
-          name: e.detail.path.split('/').pop() || e.detail.path,
-        });
+    const handleHover = (e: Event) => {
+      const d = (e as CustomEvent).detail as { path?: string; type?: 'node' | 'aggregated' } | undefined;
+      if (d?.path && d.type) {
+        setHoveredNode({ path: d.path, type: d.type, name: d.path.split('/').pop() || d.path });
       } else {
         setHoveredNode(null);
       }
     };
 
-    const handleSelect = (e: CustomEvent<{ path: string; type: 'node' | 'aggregated' }> | Event) => {
-      // @ts-expect-error detail dynamic
-      if (e.detail) {
-        setSelectedNode({
-          // @ts-expect-error detail dynamic
-          path: e.detail.path,
-          // @ts-expect-error detail dynamic
-          type: e.detail.type,
-          // @ts-expect-error detail dynamic
-          name: e.detail.path.split('/').pop() || e.detail.path,
-        });
+    const handleSelect = (e: Event) => {
+      const d = (e as CustomEvent).detail as { path?: string; type?: 'node' | 'aggregated' } | undefined;
+      if (d?.path && d.type) {
+        setSelectedNode({ path: d.path, type: d.type, name: d.path.split('/').pop() || d.path });
       } else {
         setSelectedNode(null);
       }
@@ -194,6 +180,13 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
       window.removeEventListener('click', dismiss);
     };
   }, [ctxMenu]);
+
+  // Escape closes context menu
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCtxMenu(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Performance monitoring
   useEffect(() => {
@@ -285,6 +278,15 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
     } catch (e) { console.error('favorite toggle failed', e); }
   };
 
+  const renderHighlighted = useCallback((text: string) => {
+    if (!searchQuery) return text;
+    const lower = text.toLowerCase();
+    const q = searchQuery.toLowerCase();
+    const i = lower.indexOf(q);
+    if (i === -1) return text;
+    return <>{text.slice(0,i)}<mark>{text.slice(i,i+q.length)}</mark>{text.slice(i+q.length)}</>;
+  }, [searchQuery]);
+
   const theme = currentTheme;
 
   return (
@@ -367,8 +369,8 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
                         {node.kind === 'dir' ? '📁' : '📄'}
                       </span>
                       <div className="node-info">
-                        <div className="node-name">{node.name}</div>
-                        <div className="node-path">{node.path}</div>
+                        <div className="node-name">{renderHighlighted(node.name)}</div>
+                        <div className="node-path">{renderHighlighted(node.path)}</div>
                       </div>
                     </div>
                   ))}
