@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MetroStage } from '../visualization/metro-stage';
+import { MiniMap } from './MiniMap';
 import { setTheme } from '../visualization/style-tokens';
 import { getUserSettings, onUserSettingsLoaded, onUserSettingsUpdated, updateUserSettings } from '../settings/user-settings-client';
 import type { UserSettings } from '../settings/user-settings-client';
@@ -566,7 +567,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
 
           {/* Stage Container */}
           <div className="stage-container">
-            {(() => { console.log('[MetroUI] Rendering MetroStage (unconditional)'); return <MetroStage width={1200} height={700} />; })()}
+            <MetroStage width={1200} height={700} />
           </div>
 
           {/* Minimap */}
@@ -575,8 +576,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
               <div className="minimap-header">Minimap</div>
               <div className="minimap-content">
                 <div className="minimap-viewport">
-                  {/* TODO: Implement minimap */}
-                  <div className="minimap-placeholder">🗺️</div>
+                  <MiniMap />
                 </div>
               </div>
             </div>

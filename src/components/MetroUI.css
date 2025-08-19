@@ -200,7 +200,8 @@ mark {
 
 .hover-info { color: var(--muted); font-size: 14px; }
 
-.stage-container { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+.stage-container { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; background: var(--bg); overflow: hidden; }
+.stage-container canvas { outline: 1px solid var(--border); border-radius: 4px; }
 
 .minimap {
   position: absolute;
