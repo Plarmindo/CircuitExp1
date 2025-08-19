@@ -306,19 +306,19 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
       <header className="metro-header">
         <div className="header-left">
           <h1>🚇 Metro Map Visualizer</h1>
-          <div className="scan-status">
-            {progress ? (
+          <div className="scan-status" aria-live="polite" aria-atomic="true">
+            {done ? (
+              <div className={`status-indicator ${done.cancelled ? 'cancelled' : 'completed'}`}>
+                <span>{done.cancelled ? '⚠️ Cancelled' : '✅ Complete'}</span>
+              </div>
+            ) : progress ? (
               <div className="status-indicator scanning">
-                <div className="spinner"></div>
+                <div className="spinner" aria-hidden="true"></div>
                 <span>
-                  Scanning... {progress.approxCompletion != null
+                  Scanning… {progress.approxCompletion != null
                     ? Math.round(progress.approxCompletion * 100) + '%'
                     : `${progress.dirsProcessed + progress.filesProcessed} items`}
                 </span>
-              </div>
-            ) : done ? (
-              <div className={`status-indicator ${done.cancelled ? 'cancelled' : 'completed'}`}>
-                <span>{done.cancelled ? '⚠️ Cancelled' : '✅ Complete'}</span>
               </div>
             ) : (
               <div className="status-indicator idle">
