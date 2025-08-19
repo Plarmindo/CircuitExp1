@@ -150,10 +150,16 @@ async function createWindow() {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
     if (canceled || filePaths.length === 0) return { success: false, cancelled: true };
     try {
+      // Cancel all existing scans to ensure only one active scan at a time
+      try {
+        const existing = scanManager.listScans();
+        for (const sid of existing) { try { scanManager.cancelScan(sid); } catch (_) {} }
+      } catch (e) { console.warn('[select-and-scan-folder] failed to cancel existing scans', e.message); }
       const { scanId } = scanManager.startScan(filePaths[0], { includeMetadata: false });
   // CORE-2 track recent path
   recentScansCache = recentScansStore.touch(filePaths[0]);
       if (process.env.DEBUG_SCAN) console.log('[selection] async scan started', scanId, filePaths[0]);
+      try { win.webContents.send('scan:started', { scanId, rootPath: filePaths[0] }); } catch (_) {}
       return { success: true, scanId };
     } catch (e) {
       return { success: false, error: e.message };
@@ -252,9 +258,15 @@ async function createWindow() {
   ipcMain.handle('scan:start', (event, rootPath, options = {}) => {
     try {
       if (typeof rootPath !== 'string' || !rootPath.trim()) throw new Error('rootPath must be a non-empty string');
+      // Cancel any existing scans before starting a new one
+      try {
+        const existing = scanManager.listScans();
+        for (const sid of existing) { try { scanManager.cancelScan(sid); } catch (_) {} }
+      } catch (e) { console.warn('[scan:start] failed to cancel existing scans', e.message); }
       const result = scanManager.startScan(rootPath, options);
       // CORE-2 track programmatic start as well
       recentScansCache = recentScansStore.touch(rootPath);
+      try { event.sender.send('scan:started', { scanId: result.scanId, rootPath }); } catch (_) {}
       return { success: true, ...result };
     } catch (e) {
       return { success: false, error: e.message };

@@ -22,4 +22,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onScanProgress: (cb) => { ipcRenderer.on('scan:progress', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:progress'); },
   onScanPartial: (cb) => { ipcRenderer.on('scan:partial', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:partial'); },
   onScanDone: (cb) => { ipcRenderer.on('scan:done', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:done'); }
+  ,onScanStarted: (cb) => { ipcRenderer.on('scan:started', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:started'); }
 });

@@ -1,35 +1,16 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import { MetroStage } from './visualization/metro-stage';
-import { MetroStageSample } from './visualization/metro-stage-sample';
 import { MetroUI } from './components/MetroUI';
 
-declare global {
-  interface Window { electronAPI: ElectronBridge; }
-}
 
-type ElectronBridge = {
-  startScan: (root: string, options?: Record<string, unknown>) => Promise<{ success: boolean; scanId?: string; error?: string }>;
-  selectAndScanFolder?: () => Promise<{ success: boolean; scanId?: string; cancelled?: boolean; error?: string }>;
-  cancelScan: (scanId: string) => Promise<{ success: boolean; error?: string }>;
-  getScanState: (scanId: string) => Promise<{ success: boolean; state?: { scanId: string; rootPath: string; options: Record<string, unknown>; startedAt: number; dirsProcessed: number; filesProcessed: number; errors: number; cancelled: boolean; done: boolean; truncated: boolean; queueLength: number }; error?: string }>;
-  onScanProgress: (cb: (p: ScanProgressPayload) => void) => () => void;
-  onScanPartial: (cb: (b: ScanPartialPayload) => void) => () => void;
-  onScanDone: (cb: (d: ScanDonePayload) => void) => () => void;
-};
+// ElectronBridge type removed (using global window.electronAPI shape from vite-env.d.ts)
 
 interface BaseNode { path: string; name: string; depth: number; kind: 'file' | 'dir'; error?: string; size?: number; mtimeMs?: number; }
 interface ScanProgressPayload { scanId: string; dirsProcessed: number; filesProcessed: number; queueLengthRemaining: number; elapsedMs: number; approxCompletion: number | null; }
 interface ScanPartialPayload { scanId: string; nodes: BaseNode[]; truncated?: boolean; }
 interface ScanDonePayload { scanId: string; status: string; cancelled: boolean; }
 
-const colors: { [key: string]: string } = {
-  folder: '#29b6f6',
-  file: '#ffd54f',
-  future: '#888',
-  bookmark: '#ffd54f',
-  fav: '#e53935',
-};
+// removed unused colors constant
 
 function App() {
   const [scanId, setScanId] = useState<string | null>(null);
@@ -40,19 +21,39 @@ function App() {
 
   useEffect(() => {
     if (!window.electronAPI) return;
-    const offProgress = window.electronAPI.onScanProgress((p) => setProgress(p));
-    const offPartial = window.electronAPI.onScanPartial((b) => {
-      setReceivedNodes(prev => prev + b.nodes.length);
-      // Previously limited to first 50 nodes for early prototype; now append all to enable full visualization & lines.
-      setNodes(prev => prev.concat(b.nodes));
-    });
-    const offDone = window.electronAPI.onScanDone((d) => setDone(d));
+    const api = window.electronAPI as unknown as {
+      onScanStarted?: (cb: (s: { scanId: string; rootPath: string }) => void) => () => void;
+      onScanProgress?: (cb: (p: ScanProgressPayload) => void) => () => void;
+      onScanPartial?: (cb: (b: ScanPartialPayload) => void) => () => void;
+      onScanDone?: (cb: (d: ScanDonePayload) => void) => () => void;
+    } | undefined;
+    const offStarted = api?.onScanStarted ? api.onScanStarted(({ scanId: newId }) => {
+      // Reset state for new scan
+      setScanId(newId);
+      setProgress(null);
+      setReceivedNodes(0);
+      setDone(null);
+      setNodes([]);
+    }) : () => {};
+  const offProgress = api?.onScanProgress ? api.onScanProgress((p) => {
+      // Ignore progress events from previous scans after a new one started
+      setProgress(prev => (p.scanId === scanId || !scanId ? p : prev));
+      if (!scanId) setScanId(p.scanId);
+  }) : () => {};
+  const offPartial = api?.onScanPartial ? api.onScanPartial((b) => {
+      setNodes(prev => (b.scanId === scanId || !scanId ? prev.concat(b.nodes) : prev));
+      if (b.scanId === scanId || !scanId) setReceivedNodes(prev => prev + b.nodes.length);
+  }) : () => {};
+  const offDone = api?.onScanDone ? api.onScanDone((d) => {
+      if (d.scanId === scanId) setDone(d);
+  }) : () => {};
     return () => {
       offProgress();
       offPartial();
       offDone();
+      offStarted();
     };
-  }, []);
+  }, [scanId]);
 
   useEffect(() => { if (progress && !scanId) setScanId(progress.scanId); }, [progress, scanId]);
 
@@ -60,7 +61,7 @@ function App() {
   return (
     <MetroUI
       scanId={scanId}
-      progress={progress}
+  progress={progress ? { ...progress, approxCompletion: progress.approxCompletion === null ? undefined : progress.approxCompletion } : null}
       nodes={nodes}
       receivedNodes={receivedNodes}
       done={done}
