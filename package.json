@@ -14,7 +14,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-  "coverage:ci": "vitest run --coverage --exclude=tests/e2e/** && node scripts/check-coverage.js",
+  "coverage:ci": "vitest run --coverage --exclude=tests/e2e/** && node scripts/check-coverage.cjs",
   "perf:tree": "tsx scripts/stress-tree.ts",
   "perf:leak": "node --expose-gc ./node_modules/tsx/dist/cli.mjs scripts/perf-leak.ts"
   },

@@ -406,5 +406,11 @@ module.exports = {
   on: emitter.on.bind(emitter),
   off: (emitter.off ? emitter.off.bind(emitter) : emitter.removeListener.bind(emitter)),
   once: emitter.once.bind(emitter),
-  emitter
+  emitter,
+  // Internal test hooks (non-public API). Exposed solely to raise coverage for error classification & node factory branches.
+  _test: {
+    _classifyError,
+    _makeNode,
+    _normalizeOptions: normalizeOptions
+  }
 };

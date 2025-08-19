@@ -61,7 +61,7 @@ import { GraphAdapter } from './graph-adapter';
 import type { GraphNode } from './graph-adapter';
 import { assignStationId, siblingComparator, hashPathToId } from './id-sorting';
 
-export interface LayoutPointV2 { path: string; x: number; y: number; depth: number; aggregated?: boolean; aggregatedCount?: number; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean; }
+export interface LayoutPointV2 { path: string; x: number; y: number; depth: number; aggregated?: boolean; aggregatedCount?: number; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean; /** internal: global cursor column */ __cursor?: number; /** internal: effective spacing of its sibling set */ __effSpacing?: number; /** parent path (explicit so incremental path doesn't need adapter lookup) */ parentPath?: string; }
 export interface LayoutBBox { minX: number; minY: number; maxX: number; maxY: number; width: number; height: number; }
 export interface LayoutResultV2 { nodes: LayoutPointV2[]; bbox: LayoutBBox; nodeIndex: Map<string, LayoutPointV2>; }
 
@@ -82,6 +82,7 @@ const DEFAULTS: Required<LayoutOptionsV2> = {
   spacingGrowthRate: 0.5,
   maxSpacingFactor: 3,
   aggregationThreshold: 28,
+  expandedAggregations: new Set<string>(),
 };
 
 export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV2 = {}): LayoutResultV2 {
@@ -116,6 +117,9 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
         aggregatedCount: count,
         aggregatedChildrenPaths: nodes.map(n => n.path),
         aggregatedExpanded: expanded,
+        __cursor: cursor,
+        __effSpacing: effSpacing,
+        parentPath: parentPath || undefined,
       };
       placed.push(lp); nodeIndex.set(lp.path, lp);
       cursor++;
@@ -124,7 +128,7 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
         // Children consume subsequent cursor slots with same horizontal spacing context
         for (const n of nodes) {
           assignStationId(n);
-          const childLp: LayoutPointV2 = { path: n.path, x: cursor * effSpacing, y: n.depth * o.verticalSpacing, depth: n.depth };
+          const childLp: LayoutPointV2 = { path: n.path, x: cursor * effSpacing, y: n.depth * o.verticalSpacing, depth: n.depth, __cursor: cursor, __effSpacing: effSpacing, parentPath: n.parentPath };
             placed.push(childLp); nodeIndex.set(n.path, childLp); cursor++;
           if (n.children.length) {
             const childNodes = n.children.map(p => adapter.getNode(p)!).filter(Boolean);
@@ -136,7 +140,7 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
     }
     for (const n of nodes) {
       assignStationId(n);
-      const lp: LayoutPointV2 = { path: n.path, x: cursor * effSpacing, y: n.depth * o.verticalSpacing, depth: n.depth };
+  const lp: LayoutPointV2 = { path: n.path, x: cursor * effSpacing, y: n.depth * o.verticalSpacing, depth: n.depth, __cursor: cursor, __effSpacing: effSpacing, parentPath: n.parentPath };
       placed.push(lp); nodeIndex.set(n.path, lp); cursor++;
       // Recurse children set
       if (n.children.length) {
