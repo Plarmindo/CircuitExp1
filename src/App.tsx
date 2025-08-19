@@ -18,6 +18,7 @@ function App() {
   const [receivedNodes, setReceivedNodes] = useState<number>(0);
   const [done, setDone] = useState<ScanDonePayload | null>(null);
   const [nodes, setNodes] = useState<BaseNode[]>([]);
+  const [rootPath, setRootPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (!window.electronAPI) return;
@@ -27,9 +28,10 @@ function App() {
       onScanPartial?: (cb: (b: ScanPartialPayload) => void) => () => void;
       onScanDone?: (cb: (d: ScanDonePayload) => void) => () => void;
     } | undefined;
-    const offStarted = api?.onScanStarted ? api.onScanStarted(({ scanId: newId }) => {
+    const offStarted = api?.onScanStarted ? api.onScanStarted(({ scanId: newId, rootPath }) => {
       // Reset state for new scan
       setScanId(newId);
+      setRootPath(rootPath);
       setProgress(null);
       setReceivedNodes(0);
       setDone(null);
@@ -61,10 +63,11 @@ function App() {
   return (
     <MetroUI
       scanId={scanId}
-  progress={progress ? { ...progress, approxCompletion: progress.approxCompletion === null ? undefined : progress.approxCompletion } : null}
+      progress={progress ? { ...progress, approxCompletion: progress.approxCompletion === null ? undefined : progress.approxCompletion } : null}
       nodes={nodes}
       receivedNodes={receivedNodes}
       done={done}
+      rootPath={rootPath}
     />
   );
 }

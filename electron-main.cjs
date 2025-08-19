@@ -141,6 +141,7 @@ async function createWindow() {
     try {
       const { scanId } = scanManager.startScan(mockFolder, { includeMetadata: false });
       if (process.env.DEBUG_SCAN) console.log('[startup] async scan started', scanId, mockFolder);
+  try { win.webContents.send('scan:started', { scanId, rootPath: mockFolder }); } catch (_) {}
     } catch (e) {
       console.error('[startup] failed to start async scan:', e.message);
     }

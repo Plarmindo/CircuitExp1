@@ -16,6 +16,7 @@ interface MetroUIProps {
   nodes: NodeEntry[];
   receivedNodes: number;
   done: ScanDone | null;
+  rootPath?: string | null;
 }
 
 interface PerformanceMetrics {
@@ -34,7 +35,7 @@ interface SelectedNodeInfo {
   children?: number;
 }
 
-export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, receivedNodes, done }) => {
+export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, receivedNodes, done, rootPath }) => {
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
   const [showPerformance, setShowPerformance] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -323,6 +324,11 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
             ) : (
               <div className="status-indicator idle">
                 <span>⏸️ Ready</span>
+              </div>
+            )}
+            {rootPath && (
+              <div className="current-root" title={rootPath} style={{marginTop:4,fontSize:11,maxWidth:360,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                📂 {rootPath}
               </div>
             )}
           </div>
