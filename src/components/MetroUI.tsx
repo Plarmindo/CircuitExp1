@@ -462,9 +462,19 @@ export const MetroUI: React.FC<MetroUIProps> = ({ scanId, progress, nodes, recei
                 <ul className="favorites-list">
                   {favorites.map(f => (
                     <li key={f} className="fav-item">
-                      <button className="fav-jump" onClick={() => {
-                        window.dispatchEvent(new CustomEvent('metro:select', { detail: { path: f, type: 'node' } }));
-                        window.dispatchEvent(new CustomEvent('metro:centerOnPath', { detail: { path: f } }));
+                      <button className="fav-jump" onClick={async () => {
+                        try {
+                          const lowerFav = f.toLowerCase();
+                          const lowerRoot = (rootPath || '').toLowerCase();
+                          const sameTree = rootPath && (lowerFav === lowerRoot || lowerFav.startsWith(lowerRoot + '/') || lowerFav.startsWith(lowerRoot + '\\'));
+                          if (sameTree) {
+                            window.dispatchEvent(new CustomEvent('metro:select', { detail: { path: f, type: 'node' } }));
+                            window.dispatchEvent(new CustomEvent('metro:centerOnPath', { detail: { path: f } }));
+                          } else {
+                            const w = window as unknown as { electronAPI?: { startScan?: (root: string) => Promise<unknown> } };
+                            if (w.electronAPI?.startScan) await w.electronAPI.startScan(f);
+                          }
+                        } catch (e) { console.error('favorite jump failed', e); }
                       }} title={f}>{f.split(/[/\\]/).pop()}</button>
                       <button className="fav-remove" onClick={async () => { const list = await favoritesClient.remove(f); setFavorites(list); }} title="Remove">✕</button>
                     </li>
