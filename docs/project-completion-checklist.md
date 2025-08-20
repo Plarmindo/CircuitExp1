@@ -336,6 +336,19 @@ Legend:
   - Add `electron-builder` (or alternative) config for Windows + macOS + Linux (at least one artifact each: exe/dmg/AppImage).
   - Script `npm run dist` produces signed/unsigned artifacts to `dist/`.
   - App version derived from package.json.
+  Evidence:
+  - Config & scripts added: `package.json` (scripts.dist, build block with win/nsis+portable, mac dmg, linux AppImage) lines referencing `"dist": "npm run build:ui && electron-builder"`.
+  - Dependency: `electron-builder` added to devDependencies.
+  - Successful build of unpacked app: directory `dist/win-unpacked/CircuitExp1.exe` present (terminal run `npm run dist` produced win-unpacked output).
+  - Blocking issue: installer artifacts (NSIS/portable) FAILED due to Windows symlink privilege error when extracting `winCodeSign` cache (`Cannot create symbolic link : A required privilege is not held by the client`).
+  - Icon added: `build/icon.svg` source + referenced raster placeholder `build/icon.png` (needs proper PNG generation) referenced in package.json build.win/linux/mac.icon.
+  - Multi-size icon generation script: `scripts/gen-icons.cjs` + `npm run build:icons` (uses sharp) now builds PNG sizes & single-resolution ICO (256px minimal). Package.json updated to run before dist.
+  - Icon generation run output (local): build directory now contains icon-512..16.png, icon.png, icon.ico (single 256), icon.svg (source) – verified via script run (see session log).
+  - Build attempt (Windows) `npm run dist` failed at winCodeSign extraction with symlink privilege error (log captured in session) preventing NSIS/portable artifacts; `dist/win-unpacked` produced successfully.
+  - Mitigation next steps: ativar Windows Developer Mode (Settings > System > For Developers) OU executar PowerShell/Admin com privilégio de symlink; limpar cache `C:\Users\<user>\AppData\Local\electron-builder\Cache\winCodeSign` e rerodar; se ainda falhar, limitar build a win targets somente (`--win --x64`) e/ou setar `USE_HARD_LINKS=false`.
+  - Pending evidence to close item: successful generation of `dist/CircuitExp1 Setup *.exe` (NSIS) e `dist/CircuitExp1-*portable.exe`; confirmação futura em Linux (`*.AppImage`) e macOS (`*.dmg`).
+  - Pending to complete acceptance: improve ICO to multi-res (optional), run elevated Developer Mode build producing NSIS `.exe` & portable `.exe`; verify `dist/*.AppImage` `dist/*.dmg` on respective OS or in CI matrix.
+  - Suggest setting `CSC_IDENTITY_AUTO_DISCOVERY=false` & `USE_HARD_LINKS=false` for local unsigned builds if further symlink issues arise.
 
 - [ ] PKG-2 App Auto-Update Stub (Optional)
   Acceptance:
@@ -343,25 +356,51 @@ Legend:
 
 ## E. Security & Hardening
 
-- [ ] SEC-1 Strengthen CSP (Production)
+- [x] SEC-1 Strengthen CSP (Production)
   Acceptance:
   - Remove `'unsafe-inline'`; adopt hashed or nonce-based styles or move inline CSS to external file.
   - Block remote HTTP origins (allow only self & data: images).
+  Evidence:
+  - Production branch in `electron-main.cjs` now sets CSP without `'unsafe-inline'` and with explicit directives (`default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'`).
+  - Dev mode still allows `'unsafe-inline'` for Vite HMR (documented SEC-1 dev relaxation comment) lines near CSP injection.
+  - Automated test added: `tests/security/csp-header.sec-1.test.ts` verifies absence of `'unsafe-inline'` and presence of required directives in production CSP assembly.
+  - Added build artifact audit: `tests/security/csp-dist-inline.sec-1.test.ts` asserts no `<style>` tags or inline style attributes in `dist/index.html`.
+  - E2E runtime check: `tests/e2e/csp-header-electron.sec-1.spec.ts` ensures no `<style>` element injected at runtime (Electron launch) – passes.
+  - Direct header capture instrumentation: `electron-main.cjs` sets `process._lastProdCSP`; exposed via `preload.cjs` helper `getLastProdCSP`.
+  - E2E header capture test: `tests/e2e/csp-header-capture-electron.sec-1.spec.ts` validates hardened directives string.
+  - Remaining optional future work: introduce nonce/hash if inline styles/scripts become necessary later (currently none inline so not required).
 
-- [ ] SEC-2 IPC Input Validation Layer
+- [x] SEC-2 IPC Input Validation Layer
   Acceptance:
   - Central validator ensures all IPC payloads pass schema (e.g. zod or manual) before processing.
   - Invalid input logs warning and returns structured error.
   - Unit tests for malformed inputs (empty path, path traversal attempts).
+  Evidence:
+  - Added `ipc-validation.cjs` with simple schema DSL (string/nonEmpty, object, record, enum, tuple) and `validateSchema`.
+  - Integrated validation in handlers: `favorites:add/remove`, `scan:start`, `settings:update` (electron-main.cjs) returning `{ success:false, error:'validation', details:[...] }` on failure.
+  - Added validation to `open-path`, `rename-path`, `delete-path` with warning logs on failure.
+  - Unit tests: `tests/security/ipc-validation.sec-2.test.ts` (4 passing) now include path traversal detection (`noTraversal`).
+  - Added `noTraversal` guard in validator and applied to path-based handlers (open/rename/delete).
+  - E2E validation: `tests/e2e/ipc-validation-electron.sec-2.spec.ts` (SEC-2 invalid open-path traversal) returns `{ success:false, error:'validation' }`.
+  - Path traversal guard (`noTraversal`) enforced in open/rename/delete.
+  - Remaining optional: introduce enum schemas if new limited-choice arguments appear; central logging aggregation.
 
-- [ ] SEC-3 Sandbox & Context Isolation Audit
+- [x] SEC-3 Sandbox & Context Isolation Audit
   Acceptance:
   - Enable `sandbox: true` if compatible; confirm no use of deprecated remote APIs.
   - Document any remaining Node exposure.
+  Evidence:
+  - `electron-main.cjs` BrowserWindow sets `sandbox: true`, `contextIsolation: true`, `enableRemoteModule: false`, `nodeIntegration: false`.
+  - Static test: `tests/security/sandbox-audit.sec-3.test.ts` (passes) verifying flags.
+  - Runtime E2E: `tests/e2e/sandbox-runtime-electron.sec-3.spec.ts` confirms absence of `process`/`require` globals and only curated `electronAPI` keys exposed.
+  - Preload exports limited to whitelisted functions (see `preload.cjs`), no remote module usage present.
 
 - [ ] SEC-4 Dependency Audit & License Report
   Acceptance:
   - Add `npm run audit:licenses` producing SPDX summary; document any high severity issues & resolutions.
+  Evidence (partial):
+  - Script added: `scripts/audit-licenses.cjs` + npm script `audit:licenses` using `license-checker` to emit `licenses-summary.json`.
+  - Pending: execute script, commit generated summary (optional), run `npm audit --json` capture, enumerate high severity (currently 6 moderate vulnerabilities reported) and resolutions/justifications; add final evidence lines then mark complete.
 
 ## F. Documentation & Verification
 
