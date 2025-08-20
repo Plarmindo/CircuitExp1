@@ -1,5 +1,8 @@
 {
-  "name": "test",
+  "name": "circuitexp1",
+  "description": "London Metro Map style disk folder visualizer (Electron + React + PixiJS)",
+  "author": "Paulo",
+  "license": "MIT",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,13 +13,17 @@
     "dev:all": "cross-env VITE_DEV_PORT=5175 concurrently -k -n VITE,ELECTRON -c cyan,magenta \"vite --port 5175 --strictPort\" \"wait-on http://localhost:5175 && electron electron-main.cjs\"",
     "build:ui": "vite build",
     "build": "npm run build:ui",
+    "build:icons": "node scripts/gen-icons.cjs",
+    "dist": "npm run build:icons && npm run build:ui && electron-builder",
+    "dist:win": "npm run build:icons && npm run build:ui && electron-builder --win --x64",
+    "audit:licenses": "npx license-checker --summary --json > licenses-summary.json",
     "test": "vitest run --exclude=tests/e2e/**",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-  "coverage:ci": "vitest run --coverage --exclude=tests/e2e/** && node scripts/check-coverage.cjs",
-  "perf:tree": "tsx scripts/stress-tree.ts",
-  "perf:leak": "node --expose-gc ./node_modules/tsx/dist/cli.mjs scripts/perf-leak.ts"
+    "coverage:ci": "vitest run --coverage --exclude=tests/e2e/** && node scripts/check-coverage.cjs",
+    "perf:tree": "tsx scripts/stress-tree.ts",
+    "perf:leak": "node --expose-gc ./node_modules/tsx/dist/cli.mjs scripts/perf-leak.ts"
   },
   "dependencies": {
     "d3": "^7.9.0",
@@ -32,20 +39,63 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^9.0.0",
     "cross-env": "^7.0.3",
     "electron": "^37.2.4",
+    "electron-builder": "^24.13.3",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
+    "license-checker": "^25.0.1",
+    "sharp": "^0.33.4",
     "tsx": "^4.20.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4",
-    "vitest": "^2.0.5",
+    "vitest": "^3.2.4",
     "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.circuitexp1.app",
+    "productName": "CircuitExp1",
+    "directories": {
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main.cjs",
+      "preload.cjs",
+      "scan-manager.cjs",
+      "favorites-store.cjs",
+      "recent-scans-store.cjs",
+      "user-settings-store.cjs",
+      "mock-root/**/*"
+    ],
+    "asar": true,
+    "extraMetadata": {
+      "main": "electron-main.cjs"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png"
+    }
   }
 }
