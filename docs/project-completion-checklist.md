@@ -409,15 +409,21 @@ Legend:
   - Update feature list to reflect implemented vs planned (clearly marking planned items).
   - Add architecture overview: scan pipeline diagram, adapter + layout flow, rendering pipeline.
 
-- [ ] DOC-2 CONTRIBUTING Guide
+- [x] DOC-2 CONTRIBUTING Guide
   Acceptance:
   - Coding standards (TypeScript strictness), commit message style, how to run tests & perf scripts.
+  Evidence:
+  - File: `CONTRIBUTING.md` (project contribution rules, test & perf scripts section).
 
-- [ ] DOC-3 CHANGELOG Initialization
+- [x] DOC-3 CHANGELOG Initialization
   Acceptance:
   - Keepers: Added/Changed/Fixed sections for first release (0.1.0). Follow Keep a Changelog format.
+  Evidence:
+  - File: `CHANGELOG.md` (Keep a Changelog format; initial entries for 0.1.0 added).
 
-- [ ] DOC-4 Manual Verification Master Document
+- [x] DOC-4 Manual Verification Master Document
+  Evidence:
+  - File: `docs/manual-verification.md` (consolidated manual verification steps for scan, visualization and perf checks).
   Acceptance:
   - Collate scan checklist verification + visualization manual verification + performance benchmark results (tree size, FPS ranges) in one doc `docs/manual-verification.md`.
 
