@@ -1,0 +1,16 @@
+{
+  "id": "hello-world",
+  "name": "Hello World Plugin",
+  "version": "1.0.0",
+  "description": "A simple plugin that demonstrates the ZIP import system",
+  "author": "Smart File Manager Team",
+  "category": "utility",
+  "main": "hello-world/__init__.py",
+  "permissions": {
+    "fileSystem": ["read"],
+    "ui": ["notification"]
+  },
+  "dependencies": {},
+  "minVersion": "1.0.0",
+  "maxVersion": "2.0.0"
+}

@@ -15,23 +15,44 @@
  * Output: single JSON to stdout
  */
 import { createGraphAdapter } from '../src/visualization/graph-adapter';
-import { layoutHierarchicalV2, type LayoutPointV2, type LayoutResultV2 } from '../src/visualization/layout-v2';
+import {
+  layoutHierarchicalV2,
+  type LayoutPointV2,
+  type LayoutResultV2,
+} from '../src/visualization/layout-v2';
 import type { ScanNode } from '../src/shared/scan-types';
 
-interface Args { depth: number; breadth: number; filesPerDir: number; aggregationThreshold?: number; }
+interface Args {
+  depth: number;
+  breadth: number;
+  filesPerDir: number;
+  aggregationThreshold?: number;
+}
 
 function parseArgs(): Args {
   const a = process.argv.slice(2);
-  const arg = (k: string) => { const i = a.indexOf(k); return i >= 0 ? a[i+1] : undefined; };
-  const num = (v: string | undefined, d: number) => v ? Number(v) : d;
+  const arg = (k: string) => {
+    const i = a.indexOf(k);
+    return i >= 0 ? a[i + 1] : undefined;
+  };
+  const num = (v: string | undefined, d: number) => (v ? Number(v) : d);
   const depth = num(arg('--depth'), 4);
   const breadth = num(arg('--breadth'), 6);
   const filesPerDir = num(arg('--filesPerDir'), 4);
-  const aggregationThreshold = arg('--aggregationThreshold') ? Number(arg('--aggregationThreshold')) : undefined;
+  const aggregationThreshold = arg('--aggregationThreshold')
+    ? Number(arg('--aggregationThreshold'))
+    : undefined;
   return { depth, breadth, filesPerDir, aggregationThreshold };
 }
 
-interface SyntheticNode { path: string; name: string; kind: 'dir'|'file'; depth: number; sizeBytes?: number; mtimeMs?: number; }
+interface SyntheticNode {
+  path: string;
+  name: string;
+  kind: 'dir' | 'file';
+  depth: number;
+  sizeBytes?: number;
+  mtimeMs?: number;
+}
 
 function generateTree(args: Args) {
   const t0 = performance.now();
@@ -40,12 +61,22 @@ function generateTree(args: Args) {
   function visit(currentPath: string, currentDepth: number) {
     if (currentDepth > depth) return;
     if (currentDepth === 0) {
-      nodes.push({ path: currentPath, name: currentPath.split('/') .pop() || currentPath, kind: 'dir', depth: 0 });
+      nodes.push({
+        path: currentPath,
+        name: currentPath.split('/').pop() || currentPath,
+        kind: 'dir',
+        depth: 0,
+      });
     }
     if (currentDepth === depth) return;
     for (let i = 0; i < breadth; i++) {
       const dirPath = `${currentPath}/d${currentDepth}-${i}`;
-      nodes.push({ path: dirPath, name: `d${currentDepth}-${i}`, kind: 'dir', depth: currentDepth + 1 });
+      nodes.push({
+        path: dirPath,
+        name: `d${currentDepth}-${i}`,
+        kind: 'dir',
+        depth: currentDepth + 1,
+      });
       visit(dirPath, currentDepth + 1);
       for (let f = 0; f < filesPerDir; f++) {
         const filePath = `${dirPath}/f${f}.txt`;
@@ -64,9 +95,13 @@ async function main() {
   const adapter = createGraphAdapter();
   const rssBefore = process.memoryUsage().rss;
   let rssPeak = rssBefore;
-  const trackPeak = () => { const r = process.memoryUsage().rss; if (r > rssPeak) rssPeak = r; return r; };
+  const trackPeak = () => {
+    const r = process.memoryUsage().rss;
+    if (r > rssPeak) rssPeak = r;
+    return r;
+  };
   const tApply0 = performance.now();
-  const scanNodes: ScanNode[] = nodes.map(n => ({
+  const scanNodes: ScanNode[] = nodes.map((n) => ({
     name: n.name,
     path: n.path,
     kind: n.kind,
@@ -79,7 +114,10 @@ async function main() {
   const tApply1 = performance.now();
   const applyMs = tApply1 - tApply0;
   const tLayout0 = performance.now();
-  const layout = layoutHierarchicalV2(adapter, args.aggregationThreshold ? { aggregationThreshold: args.aggregationThreshold } : {});
+  const layout = layoutHierarchicalV2(
+    adapter,
+    args.aggregationThreshold ? { aggregationThreshold: args.aggregationThreshold } : {}
+  );
   const rssAfterLayout = trackPeak();
   const tLayout1 = performance.now();
   const layoutMs = tLayout1 - tLayout0;
@@ -87,10 +125,15 @@ async function main() {
   let lineCount = 0;
   let aggregatedPoints = 0;
   for (const lp of layout.nodes as LayoutPointV2[]) {
-    if (lp.aggregated) { aggregatedPoints++; continue; } // aggregated synthetic has no direct line
+    if (lp.aggregated) {
+      aggregatedPoints++;
+      continue;
+    } // aggregated synthetic has no direct line
     const node = adapter.getNode(lp.path);
     if (!node || !node.parentPath) continue;
-    const parentPoint = (layout as LayoutResultV2).nodeIndex.get(node.parentPath) as LayoutPointV2 | undefined;
+    const parentPoint = (layout as LayoutResultV2).nodeIndex.get(node.parentPath) as
+      | LayoutPointV2
+      | undefined;
     if (!parentPoint || parentPoint.aggregated) continue; // skip lines from aggregated placeholder
     lineCount++;
   }
@@ -101,10 +144,26 @@ async function main() {
     params: args,
     counts: { nodes: adapter.size(), layoutPoints: layout.nodes.length, aggregatedPoints },
     timingsMs: { generation: genMs, apply: applyMs, layout: layoutMs },
-    memory: { rssBefore, rssAfterApply, rssAfterLayout, rssAfter, peakRss: rssPeak, rssDelta: rssAfter - rssBefore },
-    render: { stationCount, lineCount, totalSprites: stationCount + lineCount, spriteCountNote: 'Counts are theoretical (stage parity) — no headless Pixi instantiation performed.' },
+    memory: {
+      rssBefore,
+      rssAfterApply,
+      rssAfterLayout,
+      rssAfter,
+      peakRss: rssPeak,
+      rssDelta: rssAfter - rssBefore,
+    },
+    render: {
+      stationCount,
+      lineCount,
+      totalSprites: stationCount + lineCount,
+      spriteCountNote:
+        'Counts are theoretical (stage parity) — no headless Pixi instantiation performed.',
+    },
   };
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

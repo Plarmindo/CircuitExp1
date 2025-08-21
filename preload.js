@@ -4,5 +4,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  selectAndScanFolder: () => ipcRenderer.invoke('select-and-scan-folder')
+  selectAndScanFolder: () => ipcRenderer.invoke('select-and-scan-folder'),
 });

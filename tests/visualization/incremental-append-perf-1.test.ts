@@ -24,20 +24,29 @@ describe('PERF-1 incremental append fast path', () => {
     const result = tryIncrementalAppend({
       adapter,
       addedPaths: added,
-  parentPath: '/root',
+      parentPath: '/root',
       previousNodes: full.nodes,
       previousIndex: index,
-      options: { horizontalSpacing: 140, verticalSpacing: 90, spacingThreshold: 6, spacingGrowthRate: 0.5, maxSpacingFactor: 3, aggregationThreshold: 28 }
+      options: {
+        horizontalSpacing: 140,
+        verticalSpacing: 90,
+        spacingThreshold: 6,
+        spacingGrowthRate: 0.5,
+        maxSpacingFactor: 3,
+        aggregationThreshold: 28,
+      },
     });
     expect(result).not.toBeNull();
     const r = result!;
-    const app = r.appended.map(p => p.path);
-  expect(app).toEqual(['/root/C', '/root/D']);
+    const app = r.appended.map((p) => p.path);
+    expect(app).toEqual(['/root/C', '/root/D']);
     const full2 = layoutHierarchicalV2(adapter);
-    expect(full2.nodes.map(n => n.path)).toEqual(r.nodes.map(n => n.path));
+    expect(full2.nodes.map((n) => n.path)).toEqual(r.nodes.map((n) => n.path));
     for (const p of added) {
-      const inc = r.index.get(p)!; const fullNode = full2.nodeIndex.get(p)!;
-      expect(inc.x).toBe(fullNode.x); expect(inc.y).toBe(fullNode.y);
+      const inc = r.index.get(p)!;
+      const fullNode = full2.nodeIndex.get(p)!;
+      expect(inc.x).toBe(fullNode.x);
+      expect(inc.y).toBe(fullNode.y);
     }
   });
 });

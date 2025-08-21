@@ -5,14 +5,20 @@ import { layoutHierarchicalV2 } from './layout-v2';
 import type { ScanNode } from '../shared/scan-types';
 import { tokens } from './style-tokens';
 
-interface MetroStageSampleProps { width?: number; height?: number; }
+interface MetroStageSampleProps {
+  width?: number;
+  height?: number;
+}
 
 /**
  * MetroStageSample – standalone stage that renders a small mock tree so the
  * interface is not empty when the Electron bridge is unavailable (e.g. pure
  * browser preview or unit-tests).
  */
-export const MetroStageSample: React.FC<MetroStageSampleProps> = ({ width = 900, height = 600 }) => {
+export const MetroStageSample: React.FC<MetroStageSampleProps> = ({
+  width = 900,
+  height = 600,
+}) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const [nodeCount, setNodeCount] = useState(0);
@@ -25,10 +31,34 @@ export const MetroStageSample: React.FC<MetroStageSampleProps> = ({ width = 900,
       { path: 'root', name: 'root', depth: 0, kind: 'dir' },
       { path: 'root/dirA', parentPath: 'root', name: 'dirA', depth: 1, kind: 'dir' },
       { path: 'root/dirB', parentPath: 'root', name: 'dirB', depth: 1, kind: 'dir' },
-      { path: 'root/dirA/file1.txt', parentPath: 'root/dirA', name: 'file1.txt', depth: 2, kind: 'file' },
-      { path: 'root/dirA/file2.txt', parentPath: 'root/dirA', name: 'file2.txt', depth: 2, kind: 'file' },
-      { path: 'root/dirB/file3.txt', parentPath: 'root/dirB', name: 'file3.txt', depth: 2, kind: 'file' },
-      { path: 'root/dirB/file4.txt', parentPath: 'root/dirB', name: 'file4.txt', depth: 2, kind: 'file' }
+      {
+        path: 'root/dirA/file1.txt',
+        parentPath: 'root/dirA',
+        name: 'file1.txt',
+        depth: 2,
+        kind: 'file',
+      },
+      {
+        path: 'root/dirA/file2.txt',
+        parentPath: 'root/dirA',
+        name: 'file2.txt',
+        depth: 2,
+        kind: 'file',
+      },
+      {
+        path: 'root/dirB/file3.txt',
+        parentPath: 'root/dirB',
+        name: 'file3.txt',
+        depth: 2,
+        kind: 'file',
+      },
+      {
+        path: 'root/dirB/file4.txt',
+        parentPath: 'root/dirB',
+        name: 'file4.txt',
+        depth: 2,
+        kind: 'file',
+      },
     ];
     adapter.applyDelta(mockNodes);
 
@@ -105,7 +135,9 @@ export const MetroStageSample: React.FC<MetroStageSampleProps> = ({ width = 900,
 
   return (
     <div style={{ border: '1px solid #ccc', marginTop: 24 }}>
-      <div style={{ padding: '4px 8px', background: '#f0f0f0', fontSize: 12 }}>Sample Stage (Nodes: {nodeCount})</div>
+      <div style={{ padding: '4px 8px', background: '#f0f0f0', fontSize: 12 }}>
+        Sample Stage (Nodes: {nodeCount})
+      </div>
       <div ref={containerRef} style={{ width, height }} />
     </div>
   );

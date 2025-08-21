@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Hardened Runtime is enabled via package.json (hardenedRuntime=true) -->
+  <!-- Allow outgoing network connections -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- Prevent removable media and camera access -->
+  <key>com.apple.security.device.audio-input</key>
+  <false/>
+  <key>com.apple.security.device.camera</key>
+  <false/>
+  <!-- Disallow unsigned executable memory (JIT) -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <false/>
+  <!-- Restrict Apple Events -->
+  <key>com.apple.security.automation.apple-events</key>
+  <false/>
+  <!-- Disable file system read/write outside sandbox directories -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <false/>
+</dict>
+</plist>

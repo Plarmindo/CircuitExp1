@@ -35,13 +35,23 @@ describe('user-settings-store (CORE-3)', () => {
     const store = createUserSettingsStore(filePath);
     const s = store.get();
     expect(s.version).toBe(CURRENT_VERSION);
-    const backups = fs.readdirSync(path.dirname(filePath)).filter(f => f.includes('user-settings.json.corrupt-'));
+    const backups = fs
+      .readdirSync(path.dirname(filePath))
+      .filter((f) => f.includes('user-settings.json.corrupt-'));
     expect(backups.length).toBeGreaterThan(0);
   });
 
   it('migration placeholder resets version but preserves theme when possible', () => {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, JSON.stringify({ version: CURRENT_VERSION - 1, theme: 'dark', defaultScan: { maxEntries: 5, aggregationThreshold: 15 } }), 'utf8');
+    fs.writeFileSync(
+      filePath,
+      JSON.stringify({
+        version: CURRENT_VERSION - 1,
+        theme: 'dark',
+        defaultScan: { maxEntries: 5, aggregationThreshold: 15 },
+      }),
+      'utf8'
+    );
     const store = createUserSettingsStore(filePath);
     const s = store.get();
     expect(s.version).toBe(CURRENT_VERSION);

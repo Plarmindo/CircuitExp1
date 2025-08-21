@@ -36,7 +36,8 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
     const worldX = (centerX - rect.left - stage.x) / currentScale;
     const worldY = (centerY - rect.top - stage.y) / currentScale;
     const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
-    scaleRef.current = newScale; applyTransform();
+    scaleRef.current = newScale;
+    applyTransform();
     stage.x = centerX - rect.left - worldX * newScale;
     stage.y = centerY - rect.top - worldY * newScale;
     redraw(false);
@@ -45,12 +46,12 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
   const zoomIn = () => {
     const canvas = app.canvas as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
-    zoomByFactorAt(1.2, rect.left + rect.width/2, rect.top + rect.height/2);
+    zoomByFactorAt(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
   const zoomOut = () => {
     const canvas = app.canvas as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
-    zoomByFactorAt(1/1.2, rect.left + rect.width/2, rect.top + rect.height/2);
+    zoomByFactorAt(1 / 1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
 
   const handleWheel = (e: WheelEvent) => {
@@ -68,12 +69,15 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
     if (!draggingRef.current || !lastPointerRef.current) return;
     const dx = e.clientX - lastPointerRef.current.x;
     const dy = e.clientY - lastPointerRef.current.y;
-    app.stage.x += dx; app.stage.y += dy;
+    app.stage.x += dx;
+    app.stage.y += dy;
     lastPointerRef.current = { x: e.clientX, y: e.clientY };
     redraw(false);
   };
   const handlePointerUp = (e: PointerEvent) => {
-    draggingRef.current = false; lastPointerRef.current = null; (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    draggingRef.current = false;
+    lastPointerRef.current = null;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
   const canvasEl = app.canvas as HTMLCanvasElement;
@@ -92,9 +96,10 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
     const sx = (rect.width - margin) / w;
     const sy = (rect.height - margin) / h;
     const newScale = Math.min(Math.max(0.2, Math.min(sx, sy)), 2.5);
-    scaleRef.current = newScale; applyTransform();
-    app.stage.x = rect.width/2 - (bounds.minX + w/2) * newScale;
-    app.stage.y = rect.height/2 - (bounds.minY + h/2) * newScale;
+    scaleRef.current = newScale;
+    applyTransform();
+    app.stage.x = rect.width / 2 - (bounds.minX + w / 2) * newScale;
+    app.stage.y = rect.height / 2 - (bounds.minY + h / 2) * newScale;
     redraw(false);
   };
 

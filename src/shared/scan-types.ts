@@ -90,7 +90,8 @@ export interface ScanDonePayload {
 export interface ScanStartResult {
   readonly scanId: string;
   /** Echo of normalized options actually used (with defaults applied). */
-  readonly options: Required<Pick<ScanOptions, 'batchSize' | 'timeSliceMs' | 'followSymlinks'>> & Omit<ScanOptions, 'batchSize' | 'timeSliceMs' | 'followSymlinks'>;
+  readonly options: Required<Pick<ScanOptions, 'batchSize' | 'timeSliceMs' | 'followSymlinks'>> &
+    Omit<ScanOptions, 'batchSize' | 'timeSliceMs' | 'followSymlinks'>;
   /** Timestamp epoch ms when scanning began. */
   readonly startedAt: number;
 }
@@ -104,7 +105,10 @@ export interface InternalQueueItem {
 
 /** Lightweight guard utilities (optional use). */
 export const isScanNode = (v: unknown): v is ScanNode =>
-  !!v && typeof v === 'object' && 'path' in (v as Record<string, unknown>) && 'kind' in (v as Record<string, unknown>);
+  !!v &&
+  typeof v === 'object' &&
+  'path' in (v as Record<string, unknown>) &&
+  'kind' in (v as Record<string, unknown>);
 
 /** Default values to apply when options omit them. */
 export const DEFAULT_SCAN_OPTION_NORMALIZED = {

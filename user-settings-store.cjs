@@ -3,13 +3,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 const DEFAULT_SETTINGS = {
   version: CURRENT_VERSION,
   theme: 'light', // 'light' | 'dark'
   defaultScan: {
     maxEntries: 0, // 0 => unlimited
     aggregationThreshold: 28,
+  },
+  pii: {
+    enabled: true,
+    redactionEnabled: false,
+    confidenceThreshold: 0.8,
+    customPatterns: []
   }
 };
 

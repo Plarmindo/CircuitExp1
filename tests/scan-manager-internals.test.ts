@@ -9,9 +9,9 @@ const sm = require('../scan-manager.cjs');
 
 describe('scan-manager internals (_test hooks)', () => {
   it('classifies known error codes directly', () => {
-    const codes = ['EACCES','ENOENT','ENOTDIR','EEXIST','EINVAL','ENOSPC','EMFILE'];
+    const codes = ['EACCES', 'ENOENT', 'ENOTDIR', 'EEXIST', 'EINVAL', 'ENOSPC', 'EMFILE'];
     for (const c of codes) {
-      const { errorCode } = sm._test._classifyError({ code: c, message: c+' message' });
+      const { errorCode } = sm._test._classifyError({ code: c, message: c + ' message' });
       expect(errorCode).toBe(c);
     }
   });
@@ -27,10 +27,10 @@ describe('scan-manager internals (_test hooks)', () => {
       'file exists already',
       'invalid argument passed somewhere',
       'no space left on device error',
-      'too many open files warning'
+      'too many open files warning',
     ];
-    const expected = ['EACCES','ENOENT','ENOTDIR','EEXIST','EINVAL','ENOSPC','EMFILE'];
-    messages.forEach((m,i) => {
+    const expected = ['EACCES', 'ENOENT', 'ENOTDIR', 'EEXIST', 'EINVAL', 'ENOSPC', 'EMFILE'];
+    messages.forEach((m, i) => {
       const { errorCode } = sm._test._classifyError({ message: m });
       expect(errorCode).toBe(expected[i]);
     });
@@ -44,7 +44,12 @@ describe('scan-manager internals (_test hooks)', () => {
     expect(node.mtimeMs || node.birthtimeMs).toBeTruthy();
   });
   it('normalizeOptions applies defaults and sanitizes invalid values', () => {
-    const norm = sm._test._normalizeOptions({ batchSize: -5, timeSliceMs: 0, followSymlinks: 1, includeMetadata: 0 });
+    const norm = sm._test._normalizeOptions({
+      batchSize: -5,
+      timeSliceMs: 0,
+      followSymlinks: 1,
+      includeMetadata: 0,
+    });
     expect(norm.batchSize).toBe(250); // default
     expect(norm.timeSliceMs).toBe(12); // default
     expect(norm.followSymlinks).toBe(true); // coerced truthy
@@ -61,8 +66,16 @@ describe('scan-manager internals (_test hooks)', () => {
     const target = path.join(tmp, 'real');
     fs.mkdirSync(target);
     const link = path.join(tmp, 'lnk');
-    let created = true; try { fs.symlinkSync(target, link, 'dir'); } catch { created = false; }
-    if (!created) { expect(true).toBe(true); return; }
+    let created = true;
+    try {
+      fs.symlinkSync(target, link, 'dir');
+    } catch {
+      created = false;
+    }
+    if (!created) {
+      expect(true).toBe(true);
+      return;
+    }
     const node = sm._test._makeNode(link, 0, 'dir', true);
     expect(node.symlink).toBeTruthy();
   });

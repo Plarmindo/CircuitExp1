@@ -1,0 +1,90 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Plugin Kit",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/plugin-kit/src/debug/debug-cli.ts",
+      "outFiles": ["${workspaceFolder}/plugin-kit/dist/**/*.js"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "args": ["help"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/plugin-kit/dist/**/*.js",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Debug Anthropic Plugin",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/src/index.ts",
+      "outFiles": ["${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/dist/**/*.js"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3000"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/dist/**/*.js",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Debug Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/tests/run-tests.ts",
+      "outFiles": ["${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/dist/**/*.js"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin",
+      "args": ["unit"],
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "skipFiles": ["<node_internals>/**"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/dist/**/*.js",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Jest Tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/node_modules/.bin/jest",
+      "args": ["--runInBand", "--detectOpenHandles"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "disableOptimisticBPs": true,
+      "cwd": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    },
+    {
+      "name": "Jest Current File",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin/node_modules/.bin/jest",
+      "args": ["${relativeFile}", "--runInBand", "--detectOpenHandles"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "disableOptimisticBPs": true,
+      "cwd": "${workspaceFolder}/plugin-kit/samples/anthropic-claude-plugin",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    }
+  ]
+}

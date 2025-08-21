@@ -2,11 +2,16 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-interface FavoritesStore { list(): string[]; add(p: string): string[]; remove(p: string): string[]; }
+interface FavoritesStore {
+  list(): string[];
+  add(p: string): string[];
+  remove(p: string): string[];
+}
 let createFavoritesStore: (p: string | (() => string)) => FavoritesStore;
 
 beforeAll(async () => {
-  createFavoritesStore = (await import('../../favorites-store.cjs')).createFavoritesStore as typeof createFavoritesStore;
+  createFavoritesStore = (await import('../../favorites-store.cjs'))
+    .createFavoritesStore as typeof createFavoritesStore;
 });
 
 const tmpDir = path.join(process.cwd(), 'test-results', 'fav-store');
@@ -29,7 +34,7 @@ describe('CORE-1 favorites-store', () => {
     expect(store.list()).toEqual([]);
     store.add('/a');
     store.add('/b');
-    expect(store.list().sort()).toEqual(['/a','/b']);
+    expect(store.list().sort()).toEqual(['/a', '/b']);
     store.remove('/a');
     expect(store.list()).toEqual(['/b']);
     // Reload new instance
@@ -46,7 +51,7 @@ describe('CORE-1 favorites-store', () => {
     const list = store2.list();
     expect(list).toEqual([]);
     // Expect a backup file exists
-    const backups = fs.readdirSync(tmpDir).filter(f => f.includes('corrupt'));
+    const backups = fs.readdirSync(tmpDir).filter((f) => f.includes('corrupt'));
     expect(backups.length).toBeGreaterThan(0);
     // New add works after corruption
     store2.add('/d');

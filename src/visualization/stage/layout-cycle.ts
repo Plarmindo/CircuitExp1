@@ -46,8 +46,8 @@ export function runLayoutCycle(params: RunLayoutCycleParams): RunLayoutCycleResu
     lastFastPathAttemptRef,
     layoutCallCountRef,
     partitionAppliedCountRef,
-  partitionSkipCountRef,
-  disablePartition
+    partitionSkipCountRef,
+    disablePartition,
   } = params;
 
   const t0 = performance.now();
@@ -72,7 +72,7 @@ export function runLayoutCycle(params: RunLayoutCycleParams): RunLayoutCycleResu
     if (parentPaths.size === 1) {
       const parentPath = [...parentPaths][0];
       // Gather added paths for incremental append
-      const added = pendingDelta.map(d => d.path);
+      const added = pendingDelta.map((d) => d.path);
       const fast = tryIncrementalAppend({
         adapter,
         addedPaths: added,
@@ -87,7 +87,9 @@ export function runLayoutCycle(params: RunLayoutCycleParams): RunLayoutCycleResu
           maxSpacingFactor: 3,
           aggregationThreshold,
         },
-  debug: () => { /* capture attempt if needed later */ },
+        debug: () => {
+          /* capture attempt if needed later */
+        },
       });
       lastFastPathAttemptRef.current++;
       if (fast) {
@@ -106,7 +108,7 @@ export function runLayoutCycle(params: RunLayoutCycleParams): RunLayoutCycleResu
         adapter,
         previousNodes: nodes,
         previousIndex: index,
-        dirtyPaths: pendingDelta.map(d => d.path),
+        dirtyPaths: pendingDelta.map((d) => d.path),
         options: { aggregationThreshold },
       });
       if (part?.attempt.applied) {
@@ -137,15 +139,42 @@ export function runLayoutCycle(params: RunLayoutCycleParams): RunLayoutCycleResu
 
   // If we didn't set bbox yet (fast/partition path), compute incremental bbox by scanning all nodes (O(n))
   if (!bbox) {
-  let minX = Infinity, maxX = -Infinity, maxY = -Infinity; const minY = 0;
-    for (const p of nodes) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y; }
-    if (!nodes.length) { minX = 0; maxX = 0; maxY = 0; }
+    let minX = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    const minY = 0;
+    for (const p of nodes) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    if (!nodes.length) {
+      minX = 0;
+      maxX = 0;
+      maxY = 0;
+    }
     // approximate width/height using last known spacing (fallback 140/90 if none)
     const spacingX = nodes[0]?.__effSpacing || 140;
     const spacingY = 90;
-    bbox = { minX, minY, maxX, maxY, width: (maxX - minX) + spacingX, height: (maxY - minY) + spacingY };
+    bbox = {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX + spacingX,
+      height: maxY - minY + spacingY,
+    };
   }
 
   const durationMs = performance.now() - t0;
-  return { nodes, index, durationMs, usedFastPath, pendingConsumed, partitionApplied, partitionSkippedReason, bbox };
+  return {
+    nodes,
+    index,
+    durationMs,
+    usedFastPath,
+    pendingConsumed,
+    partitionApplied,
+    partitionSkippedReason,
+    bbox,
+  };
 }

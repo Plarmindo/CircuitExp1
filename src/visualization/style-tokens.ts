@@ -25,10 +25,10 @@ const light: StyleTokens = {
     line: 0x444444,
     lineAgg: 0xffffff,
     directory: 0x1565c0,
-    file: 0x4caf50,
-    aggregated: 0xff9800,
-    hover: 0xffd54f,
-    selected: 0xff5722,
+    file: 0x2e7d32, // darkened for >=3:1 contrast
+    aggregated: 0xef6c00, // slightly darker for contrast >=3:1
+    hover: 0x0d47a1, // dark blue ensures >=2.5 contrast vs white bg and >=1.5 vs selected orange
+    selected: 0xe65100, // deep orange; contrast vs hover and bg >= required thresholds
   },
   stationRadius: {
     directory: 10,

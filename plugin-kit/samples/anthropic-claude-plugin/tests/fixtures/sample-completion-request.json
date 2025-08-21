@@ -1,0 +1,12 @@
+{
+  "prompt": "Create a TypeScript function to calculate the factorial of a number",
+  "language": "typescript",
+  "maxTokens": 150,
+  "temperature": 0.7,
+  "context": {
+    "filePath": "src/utils/math.ts",
+    "cursorPosition": { "line": 10, "column": 0 },
+    "imports": ["lodash"],
+    "existingCode": "export const add = (a: number, b: number): number => a + b;"
+  }
+}

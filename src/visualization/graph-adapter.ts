@@ -46,18 +46,34 @@ export class GraphAdapter {
   private nodes = new Map<string, GraphNode>();
 
   /** Get a node (readonly). */
-  getNode(path: string): GraphNode | undefined { return this.nodes.get(path); }
+  getNode(path: string): GraphNode | undefined {
+    return this.nodes.get(path);
+  }
   /** All nodes snapshot (avoid in hot paths). */
-  getAllNodes(): GraphNode[] { return Array.from(this.nodes.values()); }
+  getAllNodes(): GraphNode[] {
+    return Array.from(this.nodes.values());
+  }
   /** Count. */
-  size(): number { return this.nodes.size; }
+  size(): number {
+    return this.nodes.size;
+  }
+
+  /** Debug: return number of root nodes (nodes without parentPath). */
+  debugRootCount(): number {
+    let c = 0;
+    for (const n of this.nodes.values()) if (!n.parentPath) c++;
+    return c;
+  }
 
   /** Derive parent absolute path; returns undefined for root or invalid. */
   private static parentPathOf(p: string): string | undefined {
     if (!p) return undefined;
     const norm = p.replace(/\\+/g, '/');
     const idx = norm.lastIndexOf('/');
-    if (idx <= 0) return undefined; // treat drive root like C:/ (no parent tracked)
+    // If path is like 'C:/something' we DON'T want parent 'C:'; treat drive-root children as roots.
+    // idx === 2 for 'C:/...'. If so, return undefined to mark as root.
+    if (idx === 2 && /[A-Za-z]:/.test(norm.slice(0, 2))) return undefined;
+    if (idx <= 0) return undefined; // other cases (no slash or leading slash only)
     return norm.slice(0, idx);
   }
 
@@ -81,9 +97,15 @@ export class GraphAdapter {
   }
 
   /** Ensure a full chain of placeholder parents exists for given path. Returns parent path (if any). */
-  private ensureParents(path: string, depth: number, addedCollector?: GraphNode[]): string | undefined {
+  private ensureParents(
+    path: string,
+    depth: number,
+    addedCollector?: GraphNode[]
+  ): string | undefined {
     const parentPath = GraphAdapter.parentPathOf(path);
     if (!parentPath) return undefined;
+    // Guard: if parentPath looks like drive letter ('C:'), do not create placeholder — treat as root boundary.
+    if (/^[A-Za-z]:$/.test(parentPath)) return undefined;
     if (!this.nodes.has(parentPath)) {
       const grand = this.ensureParents(parentPath, depth - 1, addedCollector);
       const ph = this.createPlaceholder(parentPath, depth - 1, grand);
@@ -127,14 +149,33 @@ export class GraphAdapter {
           placeholderHydrated.push(existing);
           changed = true;
         }
-        if (n.sizeBytes !== undefined && n.sizeBytes !== existing.sizeBytes) { existing.sizeBytes = n.sizeBytes; changed = true; }
-        if (n.mtimeMs !== undefined && n.mtimeMs !== existing.mtimeMs) { existing.mtimeMs = n.mtimeMs; changed = true; }
-        if (n.error && n.error !== existing.error) { existing.error = n.error; changed = true; }
+        if (n.sizeBytes !== undefined && n.sizeBytes !== existing.sizeBytes) {
+          existing.sizeBytes = n.sizeBytes;
+          changed = true;
+        }
+        if (n.mtimeMs !== undefined && n.mtimeMs !== existing.mtimeMs) {
+          existing.mtimeMs = n.mtimeMs;
+          changed = true;
+        }
+        if (n.error && n.error !== existing.error) {
+          existing.error = n.error;
+          changed = true;
+        }
         if (changed) updated.push(existing);
       }
     }
     return { added, updated, placeholderHydrated };
   }
+
+  /** INTERNAL DEV: surface minimal snapshot used when diagnosing empty layout. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  __debugSnapshot(): any {
+    const roots: string[] = [];
+    for (const n of this.nodes.values()) if (!n.parentPath) roots.push(n.path);
+    return { size: this.nodes.size, roots: roots.slice(0, 5), rootCount: roots.length };
+  }
 }
 
-export function createGraphAdapter(): GraphAdapter { return new GraphAdapter(); }
+export function createGraphAdapter(): GraphAdapter {
+  return new GraphAdapter();
+}

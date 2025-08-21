@@ -10,16 +10,28 @@ import { test, expect } from './fixtures';
 
 test.describe('VIS-23 line routing visual heuristic', () => {
   test('has at least one quadratic corner (Q) command', async ({ page }) => {
-    await page.evaluate(() => { // @ts-expect-error accessing injected debug helper
-      if (window.__metroDebug?.genTree) window.__metroDebug.genTree(5,3,3); else window.dispatchEvent(new CustomEvent('metro:genTree', { detail: { breadth: 5, depth: 3, files: 3 } }));
+    await page.evaluate(() => {
+      // @ts-expect-error accessing injected debug helper
+      if (window.__metroDebug?.genTree) window.__metroDebug.genTree(5, 3, 3);
+      else
+        window.dispatchEvent(
+          new CustomEvent('metro:genTree', { detail: { breadth: 5, depth: 3, files: 3 } })
+        );
     });
     await page.waitForTimeout(600);
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('metro:themeChanged')));
-    const { hasQ, routeCount } = await page.evaluate(() => { // @ts-expect-error accessing injected debug helper
+    const { hasQ, routeCount } = await page.evaluate(() => {
+      // @ts-expect-error accessing injected debug helper
       const routes = window.__metroDebug?.lastRoutes || [];
-      return { hasQ: routes.some(r => r.commands.some(c => c.type === 'Q')), routeCount: routes.length };
+      return {
+        hasQ: routes.some((r) => r.commands.some((c) => c.type === 'Q')),
+        routeCount: routes.length,
+      };
     });
-    test.skip(!hasQ && routeCount > 0, 'No Q curve found in heuristic sample; covered by debug routing test');
+    test.skip(
+      !hasQ && routeCount > 0,
+      'No Q curve found in heuristic sample; covered by debug routing test'
+    );
     expect(hasQ).toBe(true);
   });
 });

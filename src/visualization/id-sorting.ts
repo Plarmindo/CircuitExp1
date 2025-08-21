@@ -55,5 +55,5 @@ export function siblingComparator(a: GraphNode, b: GraphNode): number {
 export function sortChildrenInPlace(nodes: GraphNode[]): string[] {
   const resolved = nodes;
   resolved.sort(siblingComparator);
-  return resolved.map(n => n.path);
+  return resolved.map((n) => n.path);
 }

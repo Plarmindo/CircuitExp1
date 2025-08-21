@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { createGraphAdapter } from '../../src/visualization/graph-adapter';
 import type { ScanNode } from '../../src/shared/scan-types';
 
-function mkNode(path: string, kind: 'dir' | 'file', depth: number, extra: Partial<ScanNode> = {}): ScanNode {
+function mkNode(
+  path: string,
+  kind: 'dir' | 'file',
+  depth: number,
+  extra: Partial<ScanNode> = {}
+): ScanNode {
   const name = path.split(/[/\\]/).pop() || path;
   return { name, path, kind, depth, ...extra } as ScanNode;
 }
@@ -23,14 +28,14 @@ describe('graph-adapter', () => {
 
   it('creates placeholder for missing parent when child arrives first then hydrates', () => {
     const ga = createGraphAdapter();
-    const first = [ mkNode('/root/a/file.txt', 'file', 2) ];
+    const first = [mkNode('/root/a/file.txt', 'file', 2)];
     const r1 = ga.applyDelta(first);
     expect(r1.added.length).toBe(3); // placeholders for /root and /root/a plus file node
     const placeholderA = ga.getNode('/root/a');
     expect(placeholderA?.isPlaceholder).toBe(true);
-    const second = [ mkNode('/root', 'dir', 0), mkNode('/root/a', 'dir', 1) ];
+    const second = [mkNode('/root', 'dir', 0), mkNode('/root/a', 'dir', 1)];
     const r2 = ga.applyDelta(second);
-    expect(r2.placeholderHydrated.find(n => n.path === '/root/a')).toBeTruthy();
+    expect(r2.placeholderHydrated.find((n) => n.path === '/root/a')).toBeTruthy();
     expect(ga.getNode('/root/a')?.isPlaceholder).toBe(false);
   });
 
@@ -47,7 +52,7 @@ describe('graph-adapter', () => {
   it('late parent hydration retains existing children chain (VIS-17)', () => {
     const ga = createGraphAdapter();
     // Feed deepest file first -> creates placeholder chain: /root, /root/a, /root/a/b
-    const first = [ mkNode('/root/a/b/file.txt', 'file', 3) ];
+    const first = [mkNode('/root/a/b/file.txt', 'file', 3)];
     const r1 = ga.applyDelta(first);
     // Expect 4 nodes added (3 placeholders + file)
     expect(r1.added.length).toBe(4);
@@ -69,8 +74,8 @@ describe('graph-adapter', () => {
     ];
     const r2 = ga.applyDelta(second);
     // All three should be in placeholderHydrated set; order not guaranteed
-    const hydratedPaths = r2.placeholderHydrated.map(n => n.path);
-    expect(hydratedPaths).toEqual(expect.arrayContaining(['/root','/root/a','/root/a/b']));
+    const hydratedPaths = r2.placeholderHydrated.map((n) => n.path);
+    expect(hydratedPaths).toEqual(expect.arrayContaining(['/root', '/root/a', '/root/a/b']));
     expect(ga.getNode('/root')?.isPlaceholder).toBe(false);
     expect(ga.getNode('/root/a')?.isPlaceholder).toBe(false);
     expect(ga.getNode('/root/a/b')?.isPlaceholder).toBe(false);

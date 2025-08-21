@@ -9,7 +9,9 @@ export interface FavoritesAPI {
 interface ElectronAPIExpose {
   favoritesList?: () => Promise<{ success: boolean; favorites: string[] }>;
   favoritesAdd?: (p: string) => Promise<{ success: boolean; favorites: string[]; error?: string }>;
-  favoritesRemove?: (p: string) => Promise<{ success: boolean; favorites: string[]; error?: string }>;
+  favoritesRemove?: (
+    p: string
+  ) => Promise<{ success: boolean; favorites: string[]; error?: string }>;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const api: ElectronAPIExpose = (window as any).electronAPI || {};
@@ -20,17 +22,26 @@ export const favoritesClient: FavoritesAPI = {
   async list() {
     if (!api?.favoritesList) return [];
     const res = await api.favoritesList();
-    if (res?.success) { cache = res.favorites; return [...cache]; }
+    if (res?.success) {
+      cache = res.favorites;
+      return [...cache];
+    }
     return [];
   },
   async add(p: string) {
     const res = await api.favoritesAdd(p);
-    if (res?.success) { cache = res.favorites; return [...cache]; }
+    if (res?.success) {
+      cache = res.favorites;
+      return [...cache];
+    }
     throw new Error(res?.error || 'add failed');
   },
   async remove(p: string) {
     const res = await api.favoritesRemove(p);
-    if (res?.success) { cache = res.favorites; return [...cache]; }
+    if (res?.success) {
+      cache = res.favorites;
+      return [...cache];
+    }
     throw new Error(res?.error || 'remove failed');
-  }
+  },
 };

@@ -8,7 +8,7 @@ async function waitFor(condition: () => Promise<boolean>, timeout = 15000, inter
   const start = Date.now();
   while (Date.now() - start < timeout) {
     if (await condition()) return;
-    await new Promise(r => setTimeout(r, interval));
+    await new Promise((r) => setTimeout(r, interval));
   }
   throw new Error('timeout waiting for condition');
 }
@@ -29,7 +29,8 @@ test('CORE-2 recent scans MRU + pruning + clear (Electron)', async () => {
   fs.mkdirSync(tmpBase, { recursive: true });
   const dirA = path.join(tmpBase, 'dirA');
   const dirB = path.join(tmpBase, 'dirB');
-  fs.mkdirSync(dirA); fs.mkdirSync(dirB);
+  fs.mkdirSync(dirA);
+  fs.mkdirSync(dirB);
 
   // Start scans via IPC (uses startScan handler => touch recent)
   await call(`window.electronAPI.startScan(${JSON.stringify(dirA)})`);
@@ -38,7 +39,7 @@ test('CORE-2 recent scans MRU + pruning + clear (Electron)', async () => {
   // Wait until dirB is first (MRU)
   await waitFor(async () => {
     const list = await call<{ recent: string[] }>('window.electronAPI.recentList()');
-  return list.recent[0] === dirB;
+    return list.recent[0] === dirB;
   });
 
   let recent = await call<{ recent: string[] }>('window.electronAPI.recentList()');
@@ -49,7 +50,7 @@ test('CORE-2 recent scans MRU + pruning + clear (Electron)', async () => {
   await call(`window.electronAPI.startScan(${JSON.stringify(dirA)})`);
   await waitFor(async () => {
     const list = await call<{ recent: string[] }>('window.electronAPI.recentList()');
-  return list.recent[0] === dirA;
+    return list.recent[0] === dirA;
   });
   recent = await call<{ recent: string[] }>('window.electronAPI.recentList()');
   expect(recent.recent[0]).toBe(dirA);
@@ -59,7 +60,7 @@ test('CORE-2 recent scans MRU + pruning + clear (Electron)', async () => {
   await call(`window.electronAPI.startScan(${JSON.stringify(dirA)})`);
   await waitFor(async () => {
     const list = await call<{ recent: string[] }>('window.electronAPI.recentList()');
-  return !list.recent.includes(dirB);
+    return !list.recent.includes(dirB);
   });
   recent = await call<{ recent: string[] }>('window.electronAPI.recentList()');
   expect(recent.recent.includes(dirB)).toBe(false);

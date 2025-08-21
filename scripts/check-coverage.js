@@ -13,9 +13,11 @@ const CRITICAL_MIN = 85; // lines
 const criticalFiles = [
   'src/visualization/graph-adapter.ts',
   'src/visualization/layout-v2.ts',
-  'scan-manager.cjs'
+  'scan-manager.cjs',
 ];
-function pct(obj){ return obj && typeof obj.pct==='number' ? obj.pct : 0; }
+function pct(obj) {
+  return obj && typeof obj.pct === 'number' ? obj.pct : 0;
+}
 const globalLines = pct(summary.total.lines);
 if (globalLines < GLOBAL_MIN) {
   console.error(`[QA-1] Global line coverage ${globalLines}% < ${GLOBAL_MIN}%`);
@@ -24,9 +26,16 @@ if (globalLines < GLOBAL_MIN) {
 let failed = false;
 for (const f of criticalFiles) {
   const entry = summary[f];
-  if (!entry) { console.error(`[QA-1] Missing coverage entry for ${f}`); failed = true; continue; }
+  if (!entry) {
+    console.error(`[QA-1] Missing coverage entry for ${f}`);
+    failed = true;
+    continue;
+  }
   const l = pct(entry.lines);
-  if (l < CRITICAL_MIN) { console.error(`[QA-1] Critical file ${f} lines ${l}% < ${CRITICAL_MIN}%`); failed = true; }
+  if (l < CRITICAL_MIN) {
+    console.error(`[QA-1] Critical file ${f} lines ${l}% < ${CRITICAL_MIN}%`);
+    failed = true;
+  }
 }
 if (failed) process.exit(3);
-console.log('[QA-1] Coverage gates passed (global lines', globalLines+'%)');
+console.log('[QA-1] Coverage gates passed (global lines', globalLines + '%)');

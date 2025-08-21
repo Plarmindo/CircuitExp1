@@ -61,9 +61,32 @@ import { GraphAdapter } from './graph-adapter';
 import type { GraphNode } from './graph-adapter';
 import { assignStationId, siblingComparator, hashPathToId } from './id-sorting';
 
-export interface LayoutPointV2 { path: string; x: number; y: number; depth: number; aggregated?: boolean; aggregatedCount?: number; aggregatedChildrenPaths?: string[]; aggregatedExpanded?: boolean; /** internal: global cursor column */ __cursor?: number; /** internal: effective spacing of its sibling set */ __effSpacing?: number; /** parent path (explicit so incremental path doesn't need adapter lookup) */ parentPath?: string; }
-export interface LayoutBBox { minX: number; minY: number; maxX: number; maxY: number; width: number; height: number; }
-export interface LayoutResultV2 { nodes: LayoutPointV2[]; bbox: LayoutBBox; nodeIndex: Map<string, LayoutPointV2>; }
+export interface LayoutPointV2 {
+  path: string;
+  x: number;
+  y: number;
+  depth: number;
+  aggregated?: boolean;
+  aggregatedCount?: number;
+  aggregatedChildrenPaths?: string[];
+  aggregatedExpanded?: boolean;
+  /** internal: global cursor column */ __cursor?: number;
+  /** internal: effective spacing of its sibling set */ __effSpacing?: number;
+  /** parent path (explicit so incremental path doesn't need adapter lookup) */ parentPath?: string;
+}
+export interface LayoutBBox {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+}
+export interface LayoutResultV2 {
+  nodes: LayoutPointV2[];
+  bbox: LayoutBBox;
+  nodeIndex: Map<string, LayoutPointV2>;
+}
 
 export interface LayoutOptionsV2 {
   horizontalSpacing?: number;
@@ -81,14 +104,17 @@ const DEFAULTS: Required<LayoutOptionsV2> = {
   spacingThreshold: 6,
   spacingGrowthRate: 0.5,
   maxSpacingFactor: 3,
-  aggregationThreshold: 28,
+  aggregationThreshold: 200, // increased default to ensure small trees are fully expanded by default (avoid early aggregation hiding nodes)
   expandedAggregations: new Set<string>(),
 };
 
-export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV2 = {}): LayoutResultV2 {
+export function layoutHierarchicalV2(
+  adapter: GraphAdapter,
+  opts: LayoutOptionsV2 = {}
+): LayoutResultV2 {
   const o = { ...DEFAULTS, ...opts };
   const all = adapter.getAllNodes();
-  const roots = all.filter(n => !n.parentPath).sort(siblingComparator);
+  const roots = all.filter((n) => !n.parentPath).sort(siblingComparator);
   const placed: LayoutPointV2[] = [];
   const nodeIndex = new Map<string, LayoutPointV2>();
   let cursor = 0;
@@ -105,7 +131,8 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
     if (count > o.aggregationThreshold) {
       const first = nodes[0];
       const parentPath = first.parentPath; // all share same parent in this set
-      const syntheticPath = (parentPath || '') + '/*__agg__' + hashPathToId(String(count) + nodes[0].path);
+      const syntheticPath =
+        (parentPath || '') + '/*__agg__' + hashPathToId(String(count) + nodes[0].path);
       const y = (depthAdjusted ? first.depth : first.depth) * o.verticalSpacing; // depth consistent
       const expanded = !!o.expandedAggregations && o.expandedAggregations.has(syntheticPath);
       const lp: LayoutPointV2 = {
@@ -115,23 +142,34 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
         depth: first.depth,
         aggregated: true,
         aggregatedCount: count,
-        aggregatedChildrenPaths: nodes.map(n => n.path),
+        aggregatedChildrenPaths: nodes.map((n) => n.path),
         aggregatedExpanded: expanded,
         __cursor: cursor,
         __effSpacing: effSpacing,
         parentPath: parentPath || undefined,
       };
-      placed.push(lp); nodeIndex.set(lp.path, lp);
+      placed.push(lp);
+      nodeIndex.set(lp.path, lp);
       cursor++;
       if (expanded) {
         // When expanded we still place children (toggle visibility strategy)
         // Children consume subsequent cursor slots with same horizontal spacing context
         for (const n of nodes) {
           assignStationId(n);
-          const childLp: LayoutPointV2 = { path: n.path, x: cursor * effSpacing, y: n.depth * o.verticalSpacing, depth: n.depth, __cursor: cursor, __effSpacing: effSpacing, parentPath: n.parentPath };
-            placed.push(childLp); nodeIndex.set(n.path, childLp); cursor++;
+          const childLp: LayoutPointV2 = {
+            path: n.path,
+            x: cursor * effSpacing,
+            y: n.depth * o.verticalSpacing,
+            depth: n.depth,
+            __cursor: cursor,
+            __effSpacing: effSpacing,
+            parentPath: n.parentPath,
+          };
+          placed.push(childLp);
+          nodeIndex.set(n.path, childLp);
+          cursor++;
           if (n.children.length) {
-            const childNodes = n.children.map(p => adapter.getNode(p)!).filter(Boolean);
+            const childNodes = n.children.map((p) => adapter.getNode(p)!).filter(Boolean);
             placeNodeSet(childNodes);
           }
         }
@@ -140,11 +178,21 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
     }
     for (const n of nodes) {
       assignStationId(n);
-  const lp: LayoutPointV2 = { path: n.path, x: cursor * effSpacing, y: n.depth * o.verticalSpacing, depth: n.depth, __cursor: cursor, __effSpacing: effSpacing, parentPath: n.parentPath };
-      placed.push(lp); nodeIndex.set(n.path, lp); cursor++;
+      const lp: LayoutPointV2 = {
+        path: n.path,
+        x: cursor * effSpacing,
+        y: n.depth * o.verticalSpacing,
+        depth: n.depth,
+        __cursor: cursor,
+        __effSpacing: effSpacing,
+        parentPath: n.parentPath,
+      };
+      placed.push(lp);
+      nodeIndex.set(n.path, lp);
+      cursor++;
       // Recurse children set
       if (n.children.length) {
-        const childNodes = n.children.map(p => adapter.getNode(p)!).filter(Boolean);
+        const childNodes = n.children.map((p) => adapter.getNode(p)!).filter(Boolean);
         placeNodeSet(childNodes);
       }
     }
@@ -152,9 +200,27 @@ export function layoutHierarchicalV2(adapter: GraphAdapter, opts: LayoutOptionsV
 
   placeNodeSet(roots);
 
-  let minX = Infinity, maxX = -Infinity; const minY = 0; let maxY = -Infinity;
-  for (const p of placed) { if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y; }
-  if (!placed.length) { minX = 0; maxX = 0; maxY = 0; }
-  const bbox: LayoutBBox = { minX, minY, maxX, maxY, width: (maxX - minX) + o.horizontalSpacing, height: (maxY - minY) + o.verticalSpacing };
+  let minX = Infinity,
+    maxX = -Infinity;
+  const minY = 0;
+  let maxY = -Infinity;
+  for (const p of placed) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  if (!placed.length) {
+    minX = 0;
+    maxX = 0;
+    maxY = 0;
+  }
+  const bbox: LayoutBBox = {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX + o.horizontalSpacing,
+    height: maxY - minY + o.verticalSpacing,
+  };
   return { nodes: placed, bbox, nodeIndex };
 }

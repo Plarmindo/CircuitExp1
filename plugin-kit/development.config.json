@@ -1,0 +1,60 @@
+{
+  "environment": "development",
+  "server": {
+    "port": 3000,
+    "host": "localhost",
+    "cors": {
+      "enabled": true,
+      "origin": ["http://localhost:3000", "http://localhost:5173"]
+    }
+  },
+  "logging": {
+    "level": "debug",
+    "console": true,
+    "file": {
+      "enabled": true,
+      "directory": "./logs",
+      "filename": "development.log",
+      "maxSize": "10MB",
+      "maxFiles": 5
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "autoReload": true,
+    "hotReload": true,
+    "validation": {
+      "strict": false,
+      "skipOnDev": true
+    }
+  },
+  "testing": {
+    "enabled": true,
+    "mockApi": true,
+    "testData": {
+      "directory": "./test-data",
+      "autoGenerate": true
+    }
+  },
+  "metrics": {
+    "enabled": true,
+    "collectUsage": true,
+    "collectPerformance": true,
+    "exportInterval": 60000
+  },
+  "security": {
+    "apiKeyValidation": false,
+    "rateLimiting": {
+      "enabled": false,
+      "maxRequests": 1000,
+      "windowMs": 60000
+    }
+  },
+  "development": {
+    "watchFiles": true,
+    "restartOnChange": true,
+    "sourceMaps": true,
+    "debugMode": true,
+    "profiling": false
+  }
+}

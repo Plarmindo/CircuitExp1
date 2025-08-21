@@ -5,23 +5,38 @@ export interface UserSettings {
     maxEntries: number;
     aggregationThreshold: number;
   };
+  pii: {
+    enabled: boolean;
+    redactionEnabled: boolean;
+    confidenceThreshold: number;
+    customPatterns: string[];
+  };
 }
 
 interface ElectronAPISettings {
   settingsGet?: () => Promise<{ success: boolean; settings?: UserSettings; error?: string }>;
-  settingsUpdate?: (patch: Partial<UserSettings>) => Promise<{ success: boolean; settings?: UserSettings; error?: string }>;
+  settingsUpdate?: (
+    patch: Partial<UserSettings>
+  ) => Promise<{ success: boolean; settings?: UserSettings; error?: string }>;
   onSettingsLoaded?: (cb: (s: UserSettings) => void) => () => void;
   onSettingsUpdated?: (cb: (s: UserSettings) => void) => () => void;
 }
 const w = window as unknown as { electronAPI?: ElectronAPISettings };
 
-export async function getUserSettings(): Promise<{ success: boolean; settings?: UserSettings; error?: string }> {
+export async function getUserSettings(): Promise<{
+  success: boolean;
+  settings?: UserSettings;
+  error?: string;
+}> {
   if (!w.electronAPI?.settingsGet) return { success: false, error: 'settingsGet not exposed' };
   return w.electronAPI.settingsGet();
 }
 
-export async function updateUserSettings(patch: Partial<UserSettings>): Promise<{ success: boolean; settings?: UserSettings; error?: string }> {
-  if (!w.electronAPI?.settingsUpdate) return { success: false, error: 'settingsUpdate not exposed' };
+export async function updateUserSettings(
+  patch: Partial<UserSettings>
+): Promise<{ success: boolean; settings?: UserSettings; error?: string }> {
+  if (!w.electronAPI?.settingsUpdate)
+    return { success: false, error: 'settingsUpdate not exposed' };
   return w.electronAPI.settingsUpdate(patch);
 }
 

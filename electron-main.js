@@ -8,7 +8,7 @@ function scanFolder(dirPath) {
   const result = {
     name: path.basename(dirPath),
     path: dirPath,
-    children: []
+    children: [],
   };
   try {
     const items = fs.readdirSync(dirPath);
@@ -21,7 +21,7 @@ function scanFolder(dirPath) {
         result.children.push({
           name: item,
           path: itemPath,
-          type: 'file'
+          type: 'file',
         });
       }
     }
@@ -37,15 +37,30 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true,
-      contextIsolation: false
-    }
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      enableRemoteModule: false,
+    },
   });
+
+  // Set proper Content Security Policy headers
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';"
+        ]
+      }
+    });
+  });
+
   win.loadURL('http://localhost:5173');
 
   ipcMain.handle('select-and-scan-folder', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      properties: ['openDirectory']
+      properties: ['openDirectory'],
     });
     if (canceled || filePaths.length === 0) return null;
     return scanFolder(filePaths[0]);

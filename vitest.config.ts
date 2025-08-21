@@ -2,8 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-  include: ['tests/**/*.{ts,tsx}'],
-  exclude: ['node_modules/**','tests/e2e/**'],
+    include: ['tests/**/*.{ts,tsx}'],
+    exclude: ['node_modules/**', 'tests/e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'lcov'],
@@ -17,14 +17,14 @@ export default defineConfig({
         'src/visualization/incremental-layout.ts',
         'src/visualization/line-routing.ts',
         'src/visualization/navigation-helpers.ts',
-        'src/visualization/selection-helpers.ts'
+        'src/visualization/selection-helpers.ts',
       ],
       thresholds: {
         lines: 80,
         branches: 70,
         functions: 75,
         statements: 80,
-      }
-    }
-  }
+      },
+    },
+  },
 });

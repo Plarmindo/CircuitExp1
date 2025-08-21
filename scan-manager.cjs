@@ -106,9 +106,10 @@ function startScan(rootPath, options) {
   const norm = normalizeOptions(options);
   const scanId = makeId();
   /** @type {ScanState} */
+  const normRoot = path.resolve(rootPath).replace(/\\/g, '/');
   const state = {
     scanId,
-    rootPath: path.resolve(rootPath),
+    rootPath: normRoot,
     options: norm,
     startedAt: Date.now(),
     dirsProcessed: 0, // root will be counted when processed from queue
@@ -118,7 +119,7 @@ function startScan(rootPath, options) {
     done: false,
     truncated: false,
     nodeByPath: new Map(),
-    queue: [{ path: path.resolve(rootPath), depth: 0, parentPath: null }],
+  queue: [{ path: normRoot, depth: 0, parentPath: null }],
     emittedPaths: new Set(),
     pendingBatchNodes: []
   };
@@ -230,9 +231,12 @@ async function _processSlice(st) {
       dirEntries = await fsp.readdir(dirPath);
     } catch (e) {
       st.errors++;
-      const { error, errorCode } = _classifyError(e);
+      const { error, errorCode, userMessage, recoverable, suggestedAction } = _classifyError(e);
       const errNode = _makeNode(dirPath, depth, 'dir', includeMetadata, error);
       if (errorCode) errNode.errorCode = errorCode;
+      if (userMessage) errNode.userMessage = userMessage;
+      if (recoverable !== undefined) errNode.recoverable = recoverable;
+      if (suggestedAction) errNode.suggestedAction = suggestedAction;
       st.nodeByPath.set(dirPath, errNode);
       _addPartialNode(st, errNode);
       st.dirsProcessed++;
@@ -249,13 +253,16 @@ async function _processSlice(st) {
     for (const name of dirEntries) {
       if (st.cancelled) break;
       if (maxEntries && (st.dirsProcessed + st.filesProcessed) >= maxEntries) { st.truncated = true; break; }
-      const childPath = path.join(dirPath, name);
+  const childPath = path.join(dirPath, name).replace(/\\/g, '/');
       let lst;
       try { lst = await fsp.lstat(childPath); } catch (e) {
         st.errors++;
-        const { error, errorCode } = _classifyError(e);
+        const { error, errorCode, userMessage, recoverable, suggestedAction } = _classifyError(e);
         const errChild = _makeNode(childPath, depth + 1, 'file', includeMetadata, error);
         if (errorCode) errChild.errorCode = errorCode;
+        if (userMessage) errChild.userMessage = userMessage;
+        if (recoverable !== undefined) errChild.recoverable = recoverable;
+        if (suggestedAction) errChild.suggestedAction = suggestedAction;
         st.nodeByPath.set(childPath, errChild);
         _addPartialNode(st, errChild);
         continue;
@@ -351,7 +358,8 @@ function _addPartialNode(st, node) {
 
 // Utility: create node representation
 function _makeNode(fullPath, depth, kind, includeMetadata, errorMsg) {
-  const node = { path: fullPath, name: path.basename(fullPath) || fullPath, depth, kind };
+  const normFull = fullPath.replace(/\\/g, '/');
+  const node = { path: normFull, name: path.basename(normFull) || normFull, depth, kind };
   if (includeMetadata) {
     try {
       const stat = fs.statSync(fullPath);
@@ -371,30 +379,82 @@ function _makeNode(fullPath, depth, kind, includeMetadata, errorMsg) {
   return node;
 }
 
-// Error classification for special handling (toplevel only)
+// Enhanced error classification for special handling with user-friendly messages
 function _classifyError(err) {
   let code = 'UNKNOWN';
+  let userMessage = err.message;
+  let recoverable = false;
+  let suggestedAction = null;
+
   if (err.code) {
     code = err.code;
   } else if (err.message) {
     const msg = err.message.toLowerCase();
-    if (msg.includes('EACCES') || msg.includes('permission denied')) {
+    if (msg.includes('eacces') || msg.includes('permission denied')) {
       code = 'EACCES';
-    } else if (msg.includes('ENOENT') || msg.includes('no such file or directory')) {
+    } else if (msg.includes('enoent') || msg.includes('no such file or directory')) {
       code = 'ENOENT';
-    } else if (msg.includes('ENOTDIR') || msg.includes('not a directory')) {
+    } else if (msg.includes('enotdir') || msg.includes('not a directory')) {
       code = 'ENOTDIR';
-    } else if (msg.includes('EEXIST') || msg.includes('file exists')) {
+    } else if (msg.includes('eexist') || msg.includes('file exists')) {
       code = 'EEXIST';
-    } else if (msg.includes('EINVAL') || msg.includes('invalid argument')) {
+    } else if (msg.includes('einval') || msg.includes('invalid argument')) {
       code = 'EINVAL';
-    } else if (msg.includes('ENOSPC') || msg.includes('no space left on device')) {
+    } else if (msg.includes('enospc') || msg.includes('no space left on device')) {
       code = 'ENOSPC';
-    } else if (msg.includes('EMFILE') || msg.includes('too many open files')) {
+    } else if (msg.includes('emfile') || msg.includes('too many open files')) {
       code = 'EMFILE';
     }
   }
-  return { error: err.message, errorCode: code };
+
+  // Map error codes to user-friendly messages and recovery suggestions
+  switch (code) {
+    case 'EACCES':
+      userMessage = 'Access denied. Please check folder permissions or run as administrator.';
+      recoverable = true;
+      suggestedAction = 'retry';
+      break;
+    case 'ENOENT':
+      userMessage = 'The specified directory no longer exists. Please select a different directory.';
+      recoverable = true;
+      suggestedAction = 'select_new';
+      break;
+    case 'ENOTDIR':
+      userMessage = 'The specified path is not a directory. Please select a valid folder.';
+      recoverable = true;
+      suggestedAction = 'select_new';
+      break;
+    case 'ENOSPC':
+      userMessage = 'Your disk is running low on space. Please free up some space and try again.';
+      recoverable = true;
+      suggestedAction = 'retry';
+      break;
+    case 'EMFILE':
+      userMessage = 'Too many files are open. Please close some applications and try again.';
+      recoverable = true;
+      suggestedAction = 'retry';
+      break;
+    case 'EEXIST':
+      userMessage = 'A file or folder with this name already exists.';
+      recoverable = false;
+      break;
+    case 'EINVAL':
+      userMessage = 'Invalid input provided. Please check your selection and try again.';
+      recoverable = true;
+      suggestedAction = 'select_new';
+      break;
+    default:
+      userMessage = `An unexpected error occurred: ${err.message}`;
+      recoverable = false;
+  }
+
+  return {
+    error: err.message,
+    errorCode: code,
+    userMessage,
+    recoverable,
+    suggestedAction
+  };
 }
 
 // Export public API

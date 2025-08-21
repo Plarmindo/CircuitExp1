@@ -1,0 +1,141 @@
+{
+  "registry": {
+    "name": "CircuitExp1 Plugin Registry",
+    "version": "1.0.0",
+    "description": "Official plugin registry for CircuitExp1 metro visualization tool",
+    "baseUrl": "https://plugins.circuitexp1.dev",
+    "categories": [
+      {
+        "id": "themes",
+        "name": "Themes & Styling",
+        "description": "Visual themes and styling plugins",
+        "subcategories": ["dark-themes", "light-themes", "custom-colors", "animations"]
+      },
+      {
+        "id": "export",
+        "name": "Export & Sharing",
+        "description": "Export formats and sharing capabilities",
+        "subcategories": ["image-formats", "data-formats", "cloud-services", "printing"]
+      },
+      {
+        "id": "interaction",
+        "name": "Interaction & Navigation",
+        "description": "Enhanced user interaction features",
+        "subcategories": ["gestures", "shortcuts", "search", "filtering"]
+      },
+      {
+        "id": "analysis",
+        "name": "Analysis & Insights",
+        "description": "Data analysis and visualization insights",
+        "subcategories": ["statistics", "trends", "anomalies", "reports"]
+      },
+      {
+        "id": "integration",
+        "name": "Integrations",
+        "description": "Third-party service integrations",
+        "subcategories": ["cloud-storage", "version-control", "collaboration", "apis"]
+      }
+    ],
+    "plugins": [
+      {
+        "id": "theme-dark-metro",
+        "name": "Dark Metro Theme",
+        "version": "1.0.0",
+        "description": "A dark theme inspired by London Underground",
+        "category": "themes",
+        "subcategory": "dark-themes",
+        "author": "CircuitExp1 Team",
+        "license": "MIT",
+        "homepage": "https://github.com/circuitexp1/theme-dark-metro",
+        "repository": "https://github.com/circuitexp1/theme-dark-metro.git",
+        "tags": ["dark", "metro", "underground", "minimal"],
+        "compatibility": {
+          "minVersion": "0.1.0",
+          "maxVersion": "1.0.0"
+        },
+        "dependencies": [],
+        "files": {
+          "main": "index.ts",
+          "styles": "styles.css",
+          "assets": "assets/"
+        },
+        "size": 15360,
+        "lastUpdated": "2024-01-15T10:00:00Z"
+      },
+      {
+        "id": "export-svg",
+        "name": "SVG Export",
+        "version": "1.2.0",
+        "description": "Export visualizations as high-quality SVG files",
+        "category": "export",
+        "subcategory": "image-formats",
+        "author": "CircuitExp1 Community",
+        "license": "Apache-2.0",
+        "homepage": "https://github.com/circuitexp1/export-svg",
+        "repository": "https://github.com/circuitexp1/export-svg.git",
+        "tags": ["svg", "export", "vector", "printable"],
+        "compatibility": {
+          "minVersion": "0.1.0",
+          "maxVersion": "1.0.0"
+        },
+        "dependencies": [],
+        "files": {
+          "main": "src/index.ts",
+          "assets": "assets/templates/"
+        },
+        "size": 25600,
+        "lastUpdated": "2024-01-14T15:30:00Z"
+      },
+      {
+        "id": "interaction-search",
+        "name": "Advanced Search",
+        "version": "2.0.1",
+        "description": "Enhanced search capabilities with filters and suggestions",
+        "category": "interaction",
+        "subcategory": "search",
+        "author": "CircuitExp1 Team",
+        "license": "MIT",
+        "homepage": "https://github.com/circuitexp1/interaction-search",
+        "repository": "https://github.com/circuitexp1/interaction-search.git",
+        "tags": ["search", "filter", "suggestions", "fuzzy"],
+        "compatibility": {
+          "minVersion": "0.2.0",
+          "maxVersion": "1.0.0"
+        },
+        "dependencies": ["fuse.js"],
+        "files": {
+          "main": "src/search.ts",
+          "ui": "src/components/",
+          "tests": "tests/"
+        },
+        "size": 48128,
+        "lastUpdated": "2024-01-13T09:15:00Z"
+      }
+    ],
+    "api": {
+      "endpoints": {
+        "search": "/api/v1/plugins/search",
+        "details": "/api/v1/plugins/{id}",
+        "versions": "/api/v1/plugins/{id}/versions",
+        "download": "/api/v1/plugins/{id}/download/{version}",
+        "categories": "/api/v1/categories",
+        "compatibility": "/api/v1/compatibility"
+      },
+      "authentication": {
+        "required": false,
+        "methods": ["anonymous", "api-key"],
+        "rateLimit": {
+          "requests": 100,
+          "window": "1h"
+        }
+      }
+    },
+    "metadata": {
+      "lastUpdated": "2024-01-15T12:00:00Z",
+      "totalPlugins": 3,
+      "totalCategories": 5,
+      "format": "registry-v1",
+      "schema": "https://schemas.circuitexp1.dev/registry/v1.json"
+    }
+  }
+}

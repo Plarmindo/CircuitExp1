@@ -68,12 +68,13 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
 
   // Helper: deepest common ancestor (simple path prefix intersection).
   const norm = (p: string) => p.replace(/\\+/g, '/');
-  const partsArr = dirtyPaths.map(p => norm(p).split('/').filter(Boolean));
+  const partsArr = dirtyPaths.map((p) => norm(p).split('/').filter(Boolean));
   const ancestorParts: string[] = [];
   for (let i = 0; ; i++) {
     const seg = partsArr[0][i];
     if (seg === undefined) break;
-    if (partsArr.every(a => a[i] === seg)) ancestorParts.push(seg); else break;
+    if (partsArr.every((a) => a[i] === seg)) ancestorParts.push(seg);
+    else break;
   }
   if (!ancestorParts.length) {
     debug?.('partition:skip:multi-root', { dirty: dirtyPaths.length });
@@ -93,7 +94,7 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
 
   // Ensure all dirty paths are under this subtree (excluding possibly the root itself)
   const prefix = ancestorPath + '/';
-  const allWithin = dirtyPaths.every(p => p === ancestorPath || p.startsWith(prefix));
+  const allWithin = dirtyPaths.every((p) => p === ancestorPath || p.startsWith(prefix));
   if (!allWithin) {
     debug?.('partition:skip:outside-subtree', { ancestorPath });
     return null;
@@ -102,14 +103,20 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
   const ancestorPrefix = ancestorPath + '/';
 
   // Collect dirty node objects
-  const allDirtyNodes = dirtyPaths.map(p => adapter.getNode(p)).filter(Boolean) as GraphNode[];
-  const pureMeta = allDirtyNodes.length === dirtyPaths.length && allDirtyNodes.every(n => n.children.length === 0);
+  const allDirtyNodes = dirtyPaths.map((p) => adapter.getNode(p)).filter(Boolean) as GraphNode[];
+  const pureMeta =
+    allDirtyNodes.length === dirtyPaths.length &&
+    allDirtyNodes.every((n) => n.children.length === 0);
 
   // If pure metadata (leaf) updates only, we can bypass tail requirement provided subtree structural width is unchanged.
   if (pureMeta) {
     // Compare descendant counts prev vs current
-    const prevDescCount = previousNodes.filter(n => n.path.startsWith(ancestorPrefix) && n.path !== ancestorPath).length;
-    const currentDescCount = adapter.getAllNodes().filter(n => n.path.startsWith(ancestorPrefix) && n.path !== ancestorPath).length;
+    const prevDescCount = previousNodes.filter(
+      (n) => n.path.startsWith(ancestorPrefix) && n.path !== ancestorPath
+    ).length;
+    const currentDescCount = adapter
+      .getAllNodes()
+      .filter((n) => n.path.startsWith(ancestorPrefix) && n.path !== ancestorPath).length;
     if (prevDescCount === currentDescCount) {
       debug?.('partition:applied:meta-only', { ancestorPath, dirty: dirtyPaths.length });
       const attempt: PartitionAttemptContext & { applied: boolean } = {
@@ -122,7 +129,11 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
       const newIndex = new Map(previousIndex); // shallow clone for potential external mutation safety
       return { nodes: previousNodes, index: newIndex, attempt };
     } else {
-      debug?.('partition:meta-only-width-changed-bail', { ancestorPath, prevDescCount, currentDescCount });
+      debug?.('partition:meta-only-width-changed-bail', {
+        ancestorPath,
+        prevDescCount,
+        currentDescCount,
+      });
       // fall through to normal tail-subtree guarded path
     }
   }
@@ -131,8 +142,11 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
   const parentPath = rootNode.parentPath;
   if (parentPath) {
     const parent = adapter.getNode(parentPath);
-    if (!parent) { debug?.('partition:skip:no-parent'); return null; }
-    const siblings: GraphNode[] = parent.children.map(c => adapter.getNode(c)!).filter(Boolean);
+    if (!parent) {
+      debug?.('partition:skip:no-parent');
+      return null;
+    }
+    const siblings: GraphNode[] = parent.children.map((c) => adapter.getNode(c)!).filter(Boolean);
     siblings.sort(siblingComparator);
     const last = siblings[siblings.length - 1];
     if (!last || last.path !== rootNode.path) {
@@ -141,7 +155,10 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
     }
   } else {
     // Top-level: ensure it is last among top-level roots
-    const roots = adapter.getAllNodes().filter(n => !n.parentPath).sort(siblingComparator);
+    const roots = adapter
+      .getAllNodes()
+      .filter((n) => !n.parentPath)
+      .sort(siblingComparator);
     const lastRoot = roots[roots.length - 1];
     if (!lastRoot || lastRoot.path !== rootNode.path) {
       debug?.('partition:skip:not-tail-root', { ancestorPath });
@@ -151,7 +168,9 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
 
   // Bail if any aggregated set would be required inside subtree (we don't handle synthetic regeneration here yet).
   const aggregationThreshold = options.aggregationThreshold;
-  const subtreeNodes = adapter.getAllNodes().filter(n => n.path === ancestorPath || n.path.startsWith(prefix));
+  const subtreeNodes = adapter
+    .getAllNodes()
+    .filter((n) => n.path === ancestorPath || n.path.startsWith(prefix));
   // quick sibling count scan
   for (const n of subtreeNodes) {
     if (n.children.length > aggregationThreshold) {
@@ -177,7 +196,7 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
 
   const placeChildren = (parent: GraphNode) => {
     if (!parent.children.length) return;
-    const childNodes: GraphNode[] = parent.children.map(c => adapter.getNode(c)!).filter(Boolean);
+    const childNodes: GraphNode[] = parent.children.map((c) => adapter.getNode(c)!).filter(Boolean);
     childNodes.sort(siblingComparator);
     const count = childNodes.length;
     let effSpacing = horizontalSpacing;
@@ -205,7 +224,8 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
   // Merge into previous arrays (remove old descendants first)
   const newNodesArray: LayoutPointV2[] = [];
   for (const n of previousNodes) {
-    if (n.path === ancestorPath) newNodesArray.push(n); // keep root
+    if (n.path === ancestorPath)
+      newNodesArray.push(n); // keep root
     else if (!n.path.startsWith(ancestorPrefix)) newNodesArray.push(n); // keep unaffected
     // else skip (old descendant removed)
   }
@@ -214,14 +234,16 @@ export function tryPartitionedLayout(params: PartitionParams): PartitionResult |
 
   // Rebuild index map (clone previous then overwrite descendant entries)
   const newIndex = new Map(previousIndex);
-  for (const n of previousNodes) { if (n.path.startsWith(ancestorPrefix) && n.path !== ancestorPath) newIndex.delete(n.path); }
+  for (const n of previousNodes) {
+    if (n.path.startsWith(ancestorPrefix) && n.path !== ancestorPath) newIndex.delete(n.path);
+  }
   for (const np of newDescPoints) newIndex.set(np.path, np);
 
   const attempt: PartitionAttemptContext & { applied: boolean } = {
     applied: true,
     dirtyRoots: [ancestorPath],
     tailSubtree: true,
-    subtreeOriginalCount: previousNodes.filter(n => n.path.startsWith(ancestorPrefix)).length - 1,
+    subtreeOriginalCount: previousNodes.filter((n) => n.path.startsWith(ancestorPrefix)).length - 1,
     subtreeNodeCount: newDescPoints.length,
   };
   debug?.('partition:applied', { ancestorPath, added: newDescPoints.length });

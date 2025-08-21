@@ -1,0 +1,29 @@
+{
+  "ok": false,
+  "steps": [
+    {
+      "name": "node_modules present",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "spawn vite",
+      "ok": false,
+      "detail": "spawn EINVAL"
+    },
+    {
+      "name": "vite dev server reachable",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "/@vite/client served",
+      "ok": true
+    },
+    {
+      "name": "electron launch (dev)",
+      "ok": true,
+      "detail": null
+    }
+  ]
+}

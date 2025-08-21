@@ -23,4 +23,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onScanPartial: (cb) => { ipcRenderer.on('scan:partial', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:partial'); },
   onScanDone: (cb) => { ipcRenderer.on('scan:done', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:done'); }
   ,onScanStarted: (cb) => { ipcRenderer.on('scan:started', (_e, payload) => cb(payload)); return () => ipcRenderer.removeAllListeners('scan:started'); }
+  ,getLastProdCSP: () => { try { return process._lastProdCSP || null; } catch { return null; } } // SEC-1 test helper
+  ,logsRecent: (limit) => ipcRenderer.invoke('logs:recent', limit)
+  ,rendererLog: (level, msg, detail, component) => ipcRenderer.send('renderer:log', { level, msg, detail, component })
+  // Window state management for dynamic map resizing
+  ,windowGetBounds: () => ipcRenderer.invoke('window:getBounds')
+  ,windowMaximize: () => ipcRenderer.invoke('window:maximize')
+  ,windowUnmaximize: () => ipcRenderer.invoke('window:unmaximize')
+  ,windowIsMaximized: () => ipcRenderer.invoke('window:isMaximized')
 });

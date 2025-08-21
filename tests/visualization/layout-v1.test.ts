@@ -25,11 +25,11 @@ describe('layout-v1', () => {
       mk('/root/b', 'dir', 1),
       mk('/root/a', 'dir', 1),
       mk('/root/a/file1', 'file', 2),
-      mk('/root/b/file2', 'file', 2)
+      mk('/root/b/file2', 'file', 2),
     ]);
     const res = layoutHierarchical(ga, { horizontalSpacing: 10, verticalSpacing: 5 });
     // Expect order: /root, /root/a, /root/a/file1, /root/b, /root/b/file2
-    const order = res.nodes.map(n => n.path);
-    expect(order).toEqual(['/root','/root/a','/root/a/file1','/root/b','/root/b/file2']);
+    const order = res.nodes.map((n) => n.path);
+    expect(order).toEqual(['/root', '/root/a', '/root/a/file1', '/root/b', '/root/b/file2']);
   });
 });

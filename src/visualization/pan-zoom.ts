@@ -1,7 +1,7 @@
-import * as PIXI from 'pixi.js';
+import { Application, Renderer } from 'pixi.js';
 
 export interface PanZoomContext {
-  appRef: React.MutableRefObject<PIXI.Application | null>;
+  appRef: React.MutableRefObject<Application | null>;
   scaleRef: React.MutableRefObject<number>;
   layoutIndexRef: React.MutableRefObject<Map<string, { x: number; y: number }>>;
   redraw: (applyPending?: boolean) => void;
@@ -92,7 +92,10 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
   const computeBounds = () => {
     const idx = layoutIndexRef.current;
     if (!idx || idx.size === 0) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const [, v] of idx) {
       if (v.x < minX) minX = v.x;
       if (v.y < minY) minY = v.y;
@@ -105,20 +108,21 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
   const fitToView = () => {
     const b = computeBounds();
     if (!b) return;
-    const renderer = app.renderer as PIXI.Renderer;
+    const renderer = app.renderer as Renderer;
     const pad = 40;
-    const worldW = (b.maxX - b.minX) + pad * 2;
-    const worldH = (b.maxY - b.minY) + pad * 2;
+    const worldW = b.maxX - b.minX + pad * 2;
+    const worldH = b.maxY - b.minY + pad * 2;
     const viewW = renderer.width;
     const viewH = renderer.height;
     if (worldW <= 0 || worldH <= 0 || viewW <= 0 || viewH <= 0) return;
     const scale = Math.min(viewW / worldW, viewH / worldH) * 0.95;
     const newScale = Math.min(maxZoom, Math.max(minZoom, scale));
-    scaleRef.current = newScale; applyTransform();
+    scaleRef.current = newScale;
+    applyTransform();
     const worldCenterX = (b.minX + b.maxX) / 2;
     const worldCenterY = (b.minY + b.maxY) / 2;
-    app.stage.x = (viewW / 2) - worldCenterX * newScale;
-    app.stage.y = (viewH / 2) - worldCenterY * newScale;
+    app.stage.x = viewW / 2 - worldCenterX * newScale;
+    app.stage.y = viewH / 2 - worldCenterY * newScale;
   };
 
   // Attach listeners
@@ -149,7 +153,8 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
   // Initial transform
   scaleRef.current = 1;
   applyTransform();
-  app.stage.x = 0; app.stage.y = 0;
+  app.stage.x = 0;
+  app.stage.y = 0;
 
   return { zoomIn, zoomOut, fitToView, destroy };
 }

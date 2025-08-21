@@ -148,6 +148,14 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@babel\\plugin-transform-react-jsx-source",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@babel\\plugin-transform-react-jsx-source\\LICENSE"
   },
+  "@babel/runtime@7.28.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/babel/babel",
+    "publisher": "The Babel Team",
+    "url": "https://babel.dev/team",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@babel\\runtime",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@babel\\runtime\\LICENSE"
+  },
   "@babel/template@7.27.2": {
     "licenses": "MIT",
     "repository": "https://github.com/babel/babel",
@@ -172,9 +180,9 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@babel\\types",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@babel\\types\\LICENSE"
   },
-  "@bcoe/v8-coverage@0.2.3": {
+  "@bcoe/v8-coverage@1.0.2": {
     "licenses": "MIT",
-    "repository": "https://github.com/demurgos/v8-coverage",
+    "repository": "https://github.com/bcoe/v8-coverage",
     "publisher": "Charles Samborski",
     "email": "demurgos@demurgos.net",
     "url": "https://demurgos.net",
@@ -252,12 +260,6 @@
     "publisher": "Samuel Attard",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@electron\\universal",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@electron\\universal\\LICENSE"
-  },
-  "@esbuild/win32-x64@0.21.5": {
-    "licenses": "MIT",
-    "repository": "https://github.com/evanw/esbuild",
-    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite-node\\node_modules\\@esbuild\\win32-x64",
-    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite-node\\node_modules\\@esbuild\\win32-x64\\README.md"
   },
   "@esbuild/win32-x64@0.25.8": {
     "licenses": "MIT",
@@ -412,7 +414,7 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@jridgewell\\resolve-uri",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@jridgewell\\resolve-uri\\LICENSE"
   },
-  "@jridgewell/sourcemap-codec@1.5.4": {
+  "@jridgewell/sourcemap-codec@1.5.5": {
     "licenses": "MIT",
     "repository": "https://github.com/jridgewell/sourcemaps",
     "publisher": "Justin Ridgewell",
@@ -530,6 +532,24 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@szmarczak\\http-timer",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@szmarczak\\http-timer\\LICENSE"
   },
+  "@testing-library/dom@10.4.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/testing-library/dom-testing-library",
+    "publisher": "Kent C. Dodds",
+    "email": "me@kentcdodds.com",
+    "url": "https://kentcdodds.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@testing-library\\dom",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@testing-library\\dom\\LICENSE"
+  },
+  "@testing-library/react@16.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/testing-library/react-testing-library",
+    "publisher": "Kent C. Dodds",
+    "email": "me@kentcdodds.com",
+    "url": "https://kentcdodds.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@testing-library\\react",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@testing-library\\react\\LICENSE"
+  },
   "@tootallnate/once@2.0.0": {
     "licenses": "MIT",
     "repository": "https://github.com/TooTallNate/once",
@@ -538,6 +558,12 @@
     "url": "http://n8.io/",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@tootallnate\\once",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@tootallnate\\once\\LICENSE"
+  },
+  "@types/aria-query@5.0.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\aria-query",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\aria-query\\LICENSE"
   },
   "@types/babel__core@7.20.5": {
     "licenses": "MIT",
@@ -568,6 +594,12 @@
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\cacheable-request",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\cacheable-request\\LICENSE"
+  },
+  "@types/chai@5.2.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\chai",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\chai\\LICENSE"
   },
   "@types/css-font-loading-module@0.0.12": {
     "licenses": "MIT",
@@ -767,6 +799,12 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\debug",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\debug\\LICENSE"
   },
+  "@types/deep-eql@4.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\deep-eql",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@types\\deep-eql\\LICENSE"
+  },
   "@types/earcut@3.0.0": {
     "licenses": "MIT",
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
@@ -912,7 +950,7 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitejs\\plugin-react",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitejs\\plugin-react\\LICENSE"
   },
-  "@vitest/coverage-v8@2.1.9": {
+  "@vitest/coverage-v8@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "publisher": "Anthony Fu",
@@ -920,43 +958,43 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\coverage-v8",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\coverage-v8\\LICENSE"
   },
-  "@vitest/expect@2.1.9": {
+  "@vitest/expect@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\expect",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\expect\\LICENSE"
   },
-  "@vitest/mocker@2.1.9": {
+  "@vitest/mocker@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
-    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vitest\\node_modules\\@vitest\\mocker",
-    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vitest\\node_modules\\@vitest\\mocker\\LICENSE"
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\mocker",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\mocker\\LICENSE"
   },
-  "@vitest/pretty-format@2.1.9": {
+  "@vitest/pretty-format@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\pretty-format",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\pretty-format\\LICENSE"
   },
-  "@vitest/runner@2.1.9": {
+  "@vitest/runner@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\runner",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\runner\\LICENSE"
   },
-  "@vitest/snapshot@2.1.9": {
+  "@vitest/snapshot@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\snapshot",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\snapshot\\LICENSE"
   },
-  "@vitest/spy@2.1.9": {
+  "@vitest/spy@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\spy",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\spy\\LICENSE"
   },
-  "@vitest/utils@2.1.9": {
+  "@vitest/utils@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\@vitest\\utils",
@@ -1062,6 +1100,15 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\ansi-styles",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\ansi-styles\\license"
   },
+  "ansi-styles@5.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/chalk/ansi-styles",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "https://sindresorhus.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\pretty-format\\node_modules\\ansi-styles",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\pretty-format\\node_modules\\ansi-styles\\license"
+  },
   "ansi-styles@6.2.1": {
     "licenses": "MIT",
     "repository": "https://github.com/chalk/ansi-styles",
@@ -1113,6 +1160,14 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\argparse",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\argparse\\LICENSE"
   },
+  "aria-query@5.3.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/A11yance/aria-query",
+    "publisher": "Jesse Beach",
+    "email": "splendidnoise@gmail.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\aria-query",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\aria-query\\LICENSE"
+  },
   "array-find-index@1.0.2": {
     "licenses": "MIT",
     "repository": "https://github.com/sindresorhus/array-find-index",
@@ -1136,6 +1191,14 @@
     "url": "http://qualiancy.com",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\assertion-error",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\assertion-error\\LICENSE"
+  },
+  "ast-v8-to-istanbul@0.3.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/AriPerkkio/ast-v8-to-istanbul",
+    "publisher": "Ari Perkkiö",
+    "email": "ari.perkkio@gmail.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\ast-v8-to-istanbul",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\ast-v8-to-istanbul\\README.md"
   },
   "async-exit-hook@2.0.1": {
     "licenses": "MIT",
@@ -1350,7 +1413,7 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\caniuse-lite",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\caniuse-lite\\LICENSE"
   },
-  "chai@5.3.1": {
+  "chai@5.3.2": {
     "licenses": "MIT",
     "repository": "https://github.com/chaijs/chai",
     "publisher": "Jake Luer",
@@ -1956,6 +2019,15 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\delayed-stream",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\delayed-stream\\License"
   },
+  "dequal@2.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lukeed/dequal",
+    "publisher": "Luke Edwards",
+    "email": "luke.edwards05@gmail.com",
+    "url": "https://lukeed.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\dequal",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\dequal\\license"
+  },
   "detect-libc@2.0.4": {
     "licenses": "Apache-2.0",
     "repository": "https://github.com/lovell/detect-libc",
@@ -1993,6 +2065,12 @@
     "publisher": "Vladimir Krivosheev",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\dmg-builder",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\dmg-builder\\readme.md"
+  },
+  "dom-accessibility-api@0.5.16": {
+    "licenses": "MIT",
+    "repository": "https://github.com/eps1lon/dom-accessibility-api",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\dom-accessibility-api",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\dom-accessibility-api\\LICENSE.md"
   },
   "dotenv-expand@5.1.0": {
     "licenses": "BSD-2-Clause",
@@ -2167,12 +2245,6 @@
     "publisher": "Ben Youngblood",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\es6-error",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\es6-error\\LICENSE.md"
-  },
-  "esbuild@0.21.5": {
-    "licenses": "MIT",
-    "repository": "https://github.com/evanw/esbuild",
-    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vitest\\node_modules\\esbuild",
-    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vitest\\node_modules\\esbuild\\LICENSE.md"
   },
   "esbuild@0.25.8": {
     "licenses": "MIT",
@@ -2366,8 +2438,8 @@
     "repository": "https://github.com/thecodrr/fdir",
     "publisher": "thecodrr",
     "email": "thecodrr@protonmail.com",
-    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyglobby\\node_modules\\fdir",
-    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyglobby\\node_modules\\fdir\\LICENSE"
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite\\node_modules\\fdir",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite\\node_modules\\fdir\\LICENSE"
   },
   "file-entry-cache@8.0.0": {
     "licenses": "MIT",
@@ -3041,6 +3113,13 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\js-tokens",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\js-tokens\\LICENSE"
   },
+  "js-tokens@9.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lydell/js-tokens",
+    "publisher": "Simon Lydell",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\ast-v8-to-istanbul\\node_modules\\js-tokens",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\ast-v8-to-istanbul\\node_modules\\js-tokens\\LICENSE"
+  },
   "js-yaml@4.1.0": {
     "licenses": "MIT",
     "repository": "https://github.com/nodeca/js-yaml",
@@ -3240,7 +3319,7 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\lodash",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\lodash\\LICENSE"
   },
-  "loupe@3.2.0": {
+  "loupe@3.2.1": {
     "licenses": "MIT",
     "repository": "https://github.com/chaijs/loupe",
     "publisher": "Veselin Todorov",
@@ -3281,7 +3360,15 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\hosted-git-info\\node_modules\\lru-cache",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\hosted-git-info\\node_modules\\lru-cache\\LICENSE"
   },
-  "magic-string@0.30.17": {
+  "lz-string@1.5.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pieroxy/lz-string",
+    "publisher": "pieroxy",
+    "email": "pieroxy@pieroxy.net",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\lz-string",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\lz-string\\LICENSE"
+  },
+  "magic-string@0.30.18": {
     "licenses": "MIT",
     "repository": "https://github.com/rich-harris/magic-string",
     "publisher": "Rich Harris",
@@ -3700,7 +3787,7 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\path-scurry",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\path-scurry\\LICENSE.md"
   },
-  "pathe@1.1.2": {
+  "pathe@2.0.3": {
     "licenses": "MIT",
     "repository": "https://github.com/unjs/pathe",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\pathe",
@@ -3742,8 +3829,8 @@
     "repository": "https://github.com/micromatch/picomatch",
     "publisher": "Jon Schlinkert",
     "url": "https://github.com/jonschlinkert",
-    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyglobby\\node_modules\\picomatch",
-    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyglobby\\node_modules\\picomatch\\LICENSE"
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite\\node_modules\\picomatch",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite\\node_modules\\picomatch\\LICENSE"
   },
   "pixi.js@8.12.0": {
     "licenses": "MIT",
@@ -3791,6 +3878,14 @@
     "email": "z@georgezahariev.com",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\prelude-ls",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\prelude-ls\\LICENSE"
+  },
+  "pretty-format@27.5.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/facebook/jest",
+    "publisher": "James Kyle",
+    "email": "me@thejameskyle.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\pretty-format",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\pretty-format\\LICENSE"
   },
   "process-nextick-args@2.0.1": {
     "licenses": "MIT",
@@ -3863,6 +3958,12 @@
     "repository": "https://github.com/facebook/react",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\react-dom",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\react-dom\\LICENSE"
+  },
+  "react-is@17.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/facebook/react",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\react-is",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\react-is\\LICENSE"
   },
   "react-refresh@0.17.0": {
     "licenses": "MIT",
@@ -4387,6 +4488,14 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\strip-json-comments",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\strip-json-comments\\license"
   },
+  "strip-literal@3.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/antfu/strip-literal",
+    "publisher": "Anthony Fu",
+    "email": "anthonyfu117@hotmail.com",
+    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\strip-literal",
+    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\strip-literal\\LICENSE"
+  },
   "sumchecker@3.0.1": {
     "licenses": "Apache-2.0",
     "repository": "https://github.com/malept/sumchecker",
@@ -4494,13 +4603,13 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinypool",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinypool\\LICENSE"
   },
-  "tinyrainbow@1.2.0": {
+  "tinyrainbow@2.0.0": {
     "licenses": "MIT",
     "repository": "https://github.com/tinylibs/tinyrainbow",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyrainbow",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyrainbow\\LICENCE"
   },
-  "tinyspy@3.0.2": {
+  "tinyspy@4.0.3": {
     "licenses": "MIT",
     "repository": "https://github.com/tinylibs/tinyspy",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\tinyspy",
@@ -4707,20 +4816,13 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\validate-npm-package-license",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\validate-npm-package-license\\LICENSE"
   },
-  "vite-node@2.1.9": {
+  "vite-node@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "publisher": "Anthony Fu",
     "email": "anthonyfu117@hotmail.com",
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite-node",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite-node\\LICENSE"
-  },
-  "vite@5.4.19": {
-    "licenses": "MIT",
-    "repository": "https://github.com/vitejs/vite",
-    "publisher": "Evan You",
-    "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vitest\\node_modules\\vite",
-    "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vitest\\node_modules\\vite\\LICENSE.md"
   },
   "vite@7.0.6": {
     "licenses": "MIT",
@@ -4729,7 +4831,7 @@
     "path": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite",
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\vite\\LICENSE.md"
   },
-  "vitest@2.1.9": {
+  "vitest@3.2.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitest-dev/vitest",
     "publisher": "Anthony Fu",
@@ -4938,4 +5040,3 @@
     "licenseFile": "D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\zip-stream\\LICENSE"
   }
 }
-

@@ -3,8 +3,14 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const scanManager = require('./scan-manager.cjs'); // RESTORED: necessário para startScan e eventos
+const { validateSchema } = require('./ipc-validation.cjs'); // SEC-2 basic input validation
 const DEV_PORT_ENV = process.env.VITE_DEV_PORT || 5173;
 let detectedDevPort = null;
+// CORE-4 centralized logger (phase 1). Fallback to console if import fails.
+// CORE-4: use CommonJS runtime logger (avoids requiring TS transpile in Electron main during tests)
+let coreLogger, getRecentLogs, enableFileLogger; try { ({ log: coreLogger, getRecentLogs, enableFile: enableFileLogger } = require('./src/logger/central-logger.cjs')); } catch { coreLogger = console; getRecentLogs = () => []; enableFileLogger = ()=>{}; }
+process.on('uncaughtException', (err) => { try { coreLogger.error('[uncaughtException]', { message: err.message, stack: err.stack }); } catch {} });
+process.on('unhandledRejection', (reason) => { try { coreLogger.error('[unhandledRejection]', { reason: (reason && reason.message) ? { message: reason.message, stack: reason.stack } : reason }); } catch {} });
 
 // Simple favorites persistence (CORE-1) – refactored to dedicated module with corruption fallback
 const { createFavoritesStore } = require('./favorites-store.cjs');
@@ -55,22 +61,133 @@ async function probePort(port) {
 async function findDevServerPort() {
   // Prioriza porta configurada e variáveis comuns; remove duplicados
   const candidates = [DEV_PORT_ENV, 5175, 5174, 5176, 5177, 5178].filter((v, i, a) => a.indexOf(v) === i);
-  console.log('[dev-detect] probing candidates', candidates.join(','));
+  coreLogger.info('[dev-detect] probing candidates', { candidates });
   for (const p of candidates) {
     const result = await probePort(p);
     if (result.ok && result.isVite) {
-      console.log('[dev-detect] using dev server port (vite signature found)', p);
+    coreLogger.info('[dev-detect] using dev server port (vite signature found)', { port: p });
       return p;
     }
     if (result.ok) {
-      console.log('[dev-detect] port', p, 'responded but not Vite, skipping');
+    coreLogger.debug('[dev-detect] non-vite response', { port: p });
     }
   }
-  console.log('[dev-detect] no Vite dev server detected, will fallback');
+  coreLogger.warn('[dev-detect] no Vite dev server detected, will fallback');
   return null;
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  try {
+    // CORE-4: enable file sink (production only) under userData/logs
+    if (app.isPackaged) {
+      const logDir = path.join(app.getPath('userData'), 'logs');
+      enableFileLogger(logDir, 'app.ndjson');
+      coreLogger.info('[logger] file sink enabled', { dir: logDir });
+    } else {
+      coreLogger.debug('[logger] dev mode – file sink skipped');
+    }
+  } catch (err) {
+    try { coreLogger.error('[logger] enable file sink failed', { error: err.message }); } catch {}
+  }
+
+  // Register IPC handlers immediately when app is ready
+  registerIPCHandlers();
+  createWindow();
+});
+
+function registerIPCHandlers() {
+
+  // Window state management for dynamic map resizing
+  ipcMain.handle('window:getBounds', () => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (win && !win.isDestroyed()) {
+      return win.getBounds();
+    }
+    return null;
+  });
+
+  ipcMain.handle('window:maximize', () => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (win && !win.isDestroyed()) {
+      win.maximize();
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle('window:unmaximize', () => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (win && !win.isDestroyed()) {
+      win.unmaximize();
+      return true;
+    }
+    return false;
+  });
+
+  ipcMain.handle('window:isMaximized', () => {
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    if (win && !win.isDestroyed()) {
+      return win.isMaximized();
+    }
+    return false;
+  });
+
+  // CORE-2 Recent scans IPC
+  ipcMain.handle('recent:list', () => {
+    recentScansCache = recentScansStore.list();
+    return { success: true, recent: recentScansCache, max: recentScansStore.max };
+  });
+  ipcMain.handle('recent:clear', () => {
+    recentScansCache = recentScansStore.clear();
+    return { success: true, recent: recentScansCache };
+  });
+
+  // CORE-1 Favorites IPC
+  ipcMain.handle('favorites:list', () => {
+    favoritesCache = favoritesStore.list();
+    return { success: true, favorites: favoritesCache };
+  });
+  ipcMain.handle('favorites:add', (e, path) => {
+    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [path]);
+    if (!v.ok) return { success: false, error: 'validation', details: v.errors };
+    try {
+      favoritesCache = favoritesStore.add(path);
+      return { success: true, favorites: favoritesCache };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
+  ipcMain.handle('favorites:remove', (e, path) => {
+    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [path]);
+    if (!v.ok) return { success: false, error: 'validation', details: v.errors };
+    try {
+      favoritesCache = favoritesStore.remove(path);
+      return { success: true, favorites: favoritesCache };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
+
+  // CORE-3 Settings IPC
+  ipcMain.handle('settings:get', () => {
+    try {
+      const s = userSettingsStore.get();
+      return { success: true, settings: s, file: userSettingsStore.path() };
+    } catch (e) { return { success: false, error: e.message }; }
+  });
+  ipcMain.handle('settings:update', (e, patch) => {
+    const v = validateSchema([{ type: 'record' }], [patch]);
+    if (!v.ok) return { success: false, error: 'validation', details: v.errors };
+    try {
+      const s = userSettingsStore.update(patch);
+      try {
+        const windows = BrowserWindow.getAllWindows();
+        windows.forEach(win => {
+          if (!win.isDestroyed()) {
+            win.webContents.send('settings:updated', s);
+          }
+        });
+      } catch (_) {}
+      return { success: true, settings: s };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
+}
 
 // LEGACY synchronous scanFolder REMOVED (Item 9) – replaced by async scan manager.
 // (If needed for fallback debugging, can temporarily restore behind DEV flag.)
@@ -79,56 +196,122 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false, // Start hidden to prevent visual resize
     webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
+      preload: __dirname + '/preload.cjs',
       contextIsolation: true,
-      nodeIntegration: false
+  nodeIntegration: false,
+  sandbox: true, // SEC-3 sandbox enabled to harden renderer, no Node primitives in DOM
+  enableRemoteModule: false // explicit: remote module deprecated/disabled
     }
   });
+
+  // Set proper Content Security Policy headers
+  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';"
+        ]
+      }
+    });
+  });
+  
+  // Maximize window to use full display area
+  win.maximize();
+  win.show();
   // Load user settings early (theme etc.) and inform renderer after load
   let initialSettings = userSettingsStore.get();
   const isDev = !app.isPackaged; // re-evaluate here after ready
   if (isDev) {
-    if (!detectedDevPort) {
+    if (process.env.DEV_FORCE_URL) {
+      // Developer override: assume the dev server is at the configured port.
+      detectedDevPort = DEV_PORT_ENV;
+  coreLogger.info('[dev-detect] DEV_FORCE_URL set', { port: detectedDevPort });
+    } else if (!detectedDevPort) {
       detectedDevPort = await findDevServerPort();
+      // Retry curto adicional: às vezes Vite ainda está a bootstrapar quando electron arranca
+      if (!detectedDevPort) {
+        try { coreLogger.info('[dev-detect] retry in 1200ms'); } catch {}
+        await new Promise(r => setTimeout(r, 1200));
+        detectedDevPort = await findDevServerPort();
+      }
     }
     if (detectedDevPort) {
   win.loadURL(`http://localhost:${detectedDevPort}/#forceStage`);
-      // Dev-only CSP allowing Vite HMR websocket
+      // Dev-only CSP allowing Vite HMR websocket. We still avoid arbitrary remote origins.
+      // SEC-1 (dev mode relaxed): allow 'unsafe-inline' style for Vite injected styles; no remote scripts.
       win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-        callback({
-          responseHeaders: {
-            ...details.responseHeaders,
-            'Content-Security-Policy': [
-              `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:${detectedDevPort};`
-            ]
-          }
-        });
+        // DEV: permitir inline + eval para Vite preamble + React Fast Refresh.
+        // Mantemos restrições em outras diretivas.
+        // Ajuste: remover 'unsafe-inline' e 'unsafe-eval' para alinhar com SEC-1 mesmo em dev, já que React 19 + Vite permitem sem inline se preamble carregado.
+        // Se surgir erro de preamble novamente poderemos reintroduzir condicional controlada por env.
+        // DEV: relax CSP to allow Vite's injected preamble (inline scripts/styles)
+        // and HMR websocket. This is strictly dev-only and kept permissive
+        // to avoid blocking the Vite/react preamble that is injected at runtime.
+        const devCsp = [
+          "default-src 'self'",
+          // Allow inline scripts and eval in dev so Vite/react preamble can run.
+          "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+          // Allow inline styles injected by Vite in dev.
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data:",
+          "font-src 'self'",
+          // Permit both http(s) and ws to localhost dev server for HMR and client requests
+          `connect-src 'self' http://localhost:${detectedDevPort} ws://localhost:${detectedDevPort}`,
+          "object-src 'none'",
+          "frame-ancestors 'none'",
+          "base-uri 'self'"
+        ].join('; ');
+        callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [devCsp] } });
       });
     } else {
-      console.log('[dev-detect] fallback path engaged (no running dev server)');
-      // Fallback: tenta servir build se dev server não estiver ativo
+      coreLogger.warn('[dev-detect] fallback path engaged (no running dev server)');
+      // Fallback temporário + tentativa tardia de reconectar se Vite surgir depois
       const indexPathDevFail = path.join(__dirname, 'dist', 'index.html');
       if (fs.existsSync(indexPathDevFail)) {
         win.loadFile(indexPathDevFail);
       } else {
-        win.loadURL('data:text/html,<h1>Falha ao localizar dev server</h1><p>Inicia "npm run dev" ou executa "npm run build".</p>');
+        win.loadURL('data:text/html,<h1>Dev server não encontrado</h1><p>A iniciar tentativa tardia...</p>');
+      }
+      // Nova tentativa pós fallback (até 3 vezes)
+      for (let attempt=1; attempt<=3 && !detectedDevPort; attempt++) {
+        await new Promise(r => setTimeout(r, 1500));
+        detectedDevPort = await findDevServerPort();
+        if (detectedDevPort) {
+          try {
+            coreLogger.info('[dev-detect] late connect success', { attempt, port: detectedDevPort });
+            win.loadURL(`http://localhost:${detectedDevPort}/#forceStage`);
+            break;
+          } catch (e) { coreLogger.error('[dev-detect] late loadURL failed', { error: e.message }); }
+        } else {
+          try { coreLogger.debug('[dev-detect] late retry no server', { attempt }); } catch {}
+        }
       }
     }
   } else {
     // Production: load built static assets (run: npm run build)
     const indexPath = path.join(__dirname, 'dist', 'index.html');
     win.loadFile(indexPath);
-    // Minimal CSP for file:// context
+    // SEC-1 Production CSP hardened: restrict connect-src, allow only self + data: images.
+    // NOTE: If inline styles required, migrate them to external CSS (handled by Vite build already).
     win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-      callback({
-        responseHeaders: {
-          ...details.responseHeaders,
-          'Content-Security-Policy': [
-            `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;`
-          ]
-        }
-      });
+      const csp = [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self'", // no inline
+        "img-src 'self' data:",
+        "font-src 'self'", // limit fonts
+        "connect-src 'self'", // no external fetch
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "base-uri 'self'"
+      ].join('; ');
+  // SEC-1 instrumentation (test visibility only): capture last production CSP for E2E header assertion.
+  // Stored on process global to avoid exposing via IPC in production runtime; harmless string.
+  try { process._lastProdCSP = csp; } catch (_) { /* ignore */ }
+      callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] } });
     });
   }
 
@@ -168,55 +351,41 @@ async function createWindow() {
   });
 
   ipcMain.handle('open-path', async (event, pathArg) => {
+    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [pathArg]);
+  if (!v.ok) { coreLogger.warn('[ipc][open-path] validation fail', { errors: v.errors }); return { success: false, error: 'validation', details: v.errors }; }
     shell.openPath(pathArg);
-    return true;
+    return { success: true };
   });
 
   ipcMain.handle('rename-path', async (event, oldPath, newName) => {
+    const v = validateSchema([
+      { type: 'string', nonEmpty: true, noTraversal: true },
+      { type: 'string', nonEmpty: true }
+    ], [oldPath, newName]);
+  if (!v.ok) { coreLogger.warn('[ipc][rename-path] validation fail', { errors: v.errors }); return { success: false, error: 'validation', details: v.errors }; }
     try {
       const dir = path.dirname(oldPath);
       const newPath = path.join(dir, newName);
       fs.renameSync(oldPath, newPath);
       return { success: true, newPath };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    } catch (err) { return { success: false, error: err.message }; }
   });
 
   ipcMain.handle('delete-path', async (event, targetPath) => {
+    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [targetPath]);
+  if (!v.ok) { coreLogger.warn('[ipc][delete-path] validation fail', { errors: v.errors }); return { success: false, error: 'validation', details: v.errors }; }
     try {
-      if (fs.lstatSync(targetPath).isDirectory()) {
-        fs.rmdirSync(targetPath, { recursive: true });
-      } else {
-        fs.unlinkSync(targetPath);
-      }
+      if (fs.lstatSync(targetPath).isDirectory()) fs.rmdirSync(targetPath, { recursive: true });
+      else fs.unlinkSync(targetPath);
       return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
+    } catch (err) { return { success: false, error: err.message }; }
   });
 
   ipcMain.handle('toggle-favorite', async () => {
     return { success: true };
   });
 
-  // CORE-1 Favorites IPC
-  ipcMain.handle('favorites:list', () => {
-    favoritesCache = favoritesStore.list();
-    return { success: true, favorites: favoritesCache, file: favoritesStore.path() };
-  });
-  ipcMain.handle('favorites:add', (e, absPath) => {
-    try {
-      favoritesCache = favoritesStore.add(absPath);
-      return { success: true, favorites: favoritesCache };
-    } catch (err) { return { success: false, error: err.message }; }
-  });
-  ipcMain.handle('favorites:remove', (e, absPath) => {
-    try {
-      favoritesCache = favoritesStore.remove(absPath);
-      return { success: true, favorites: favoritesCache };
-    } catch (err) { return { success: false, error: err.message }; }
-  });
+
 
   ipcMain.handle('show-properties', async (event, pathArg) => {
     await dialog.showMessageBox(win, {
@@ -245,6 +414,17 @@ async function createWindow() {
   };
   const onProgress = forward('scan:progress');
   const onPartial = forward('scan:partial');
+  if (process.env.DEBUG_SCAN_VERBOSE) {
+    scanManager.on('scan:partial', (payload) => {
+      try {
+  const n = payload?.nodes?.length || 0;
+  const firstNode = payload?.nodes?.[0];
+  const depthsSample = payload?.nodes?.slice(0,5).map(n=>n.depth).join(',');
+  const anyDepth0 = payload?.nodes?.some(x => x.depth === 0);
+  console.log('[main][scan:partial]', 'count=', n, 'first=', firstNode?.path, 'firstDepth=', firstNode?.depth, 'sampleDepths=', depthsSample, 'hasDepth0=', anyDepth0);
+      } catch { /* ignore */ }
+    });
+  }
   const onDone = forward('scan:done');
   scanManager.on('scan:progress', onProgress);
   scanManager.on('scan:partial', onPartial);
@@ -258,55 +438,41 @@ async function createWindow() {
 
   ipcMain.handle('scan:start', (event, rootPath, options = {}) => {
     try {
-      if (typeof rootPath !== 'string' || !rootPath.trim()) throw new Error('rootPath must be a non-empty string');
+      const v = validateSchema([
+        { type: 'string', nonEmpty: true },
+        { type: 'object', optional: true }
+      ], [rootPath, options]);
+      if (!v.ok) return { success: false, error: 'validation', details: v.errors };
+  // CORE-4: always emit request debug (will filter by level) so tests can assert presence without env flags
+  try { coreLogger.debug('[scan:start] request', { rootPath, options }); } catch {}
       // Cancel any existing scans before starting a new one
       try {
         const existing = scanManager.listScans();
         for (const sid of existing) { try { scanManager.cancelScan(sid); } catch (_) {} }
-      } catch (e) { console.warn('[scan:start] failed to cancel existing scans', e.message); }
+  } catch (e) { coreLogger.warn('[scan:start] failed to cancel existing scans', { error: e.message }); }
       const result = scanManager.startScan(rootPath, options);
       // CORE-2 track programmatic start as well
       recentScansCache = recentScansStore.touch(rootPath);
       try { event.sender.send('scan:started', { scanId: result.scanId, rootPath }); } catch (_) {}
+  // CORE-4: unconditional info log (ring buffer capture) – removed env gating to satisfy centralized logging acceptance
+  try { coreLogger.info('[scan:start] started', { scanId: result.scanId, rootPath }); } catch {}
       return { success: true, ...result };
     } catch (e) {
+      coreLogger.error('[scan:start] exception', { error: e.message });
       return { success: false, error: e.message };
     }
   });
 
-  // CORE-2 Recent scans IPC
-  ipcMain.handle('recent:list', () => {
-    recentScansCache = recentScansStore.list();
-    return { success: true, recent: recentScansCache, max: recentScansStore.max };
-  });
-  ipcMain.handle('recent:clear', () => {
-    recentScansCache = recentScansStore.clear();
-    return { success: true, recent: recentScansCache };
-  });
 
-  // CORE-3 Settings IPC
-  ipcMain.handle('settings:get', () => {
-    try {
-      const s = userSettingsStore.get();
-      return { success: true, settings: s, file: userSettingsStore.path() };
-    } catch (e) { return { success: false, error: e.message }; }
-  });
-  ipcMain.handle('settings:update', (e, patch) => {
-    try {
-      if (!patch || typeof patch !== 'object') throw new Error('patch must be object');
-      const s = userSettingsStore.update(patch);
-      // Push updated settings to any open windows (single window model assumed)
-      try { win.webContents.send('settings:updated', s); } catch (_) {}
-      return { success: true, settings: s };
-    } catch (err) { return { success: false, error: err.message }; }
-  });
 
   ipcMain.handle('scan:cancel', (event, scanId) => {
     try {
       if (typeof scanId !== 'string') throw new Error('scanId must be string');
       const ok = scanManager.cancelScan(scanId);
+      coreLogger.info('[scan:cancel]', { scanId, ok });
       return { success: ok };
     } catch (e) {
+      coreLogger.error('[scan:cancel] exception', { error: e.message, scanId });
       return { success: false, error: e.message };
     }
   });
@@ -317,7 +483,25 @@ async function createWindow() {
       if (!state) return { success: false, error: 'not found' };
       return { success: true, state };
     } catch (e) {
+      coreLogger.warn('[scan:state] error', { error: e.message, scanId });
       return { success: false, error: e.message };
     }
+  });
+
+  // CORE-4 expose recent logs (dev only)
+  ipcMain.handle('logs:recent', (_e, limit = 100) => {
+    try { return { success: true, logs: getRecentLogs(Math.min(Math.max(limit,1),500)) }; }
+    catch (err) { return { success: false, error: err.message }; }
+  });
+
+  // CORE-4: renderer forwarded log events (limited surface – only accepted shape)
+  ipcMain.on('renderer:log', (e, payload) => {
+    try {
+      if (!payload || typeof payload !== 'object') return;
+      const { level, msg, detail, component } = payload;
+      const allowed = ['debug','info','warn','error'];
+      if (!allowed.includes(level)) return;
+      (coreLogger[level] || coreLogger.info).call(coreLogger, `[renderer] ${msg}`, { component: component||'renderer', detail });
+    } catch { /* swallow */ }
   });
 }

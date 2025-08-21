@@ -4,12 +4,30 @@ import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-interface DonePayload { scanId: string; status: string; cancelled: boolean }
-interface ScanStateSnapshot { filesProcessed: number; dirsProcessed: number; truncated: boolean }
-interface PartialPayload { scanId: string; nodes: Array<{ path: string; depth: number; [k: string]: unknown }>; truncated?: boolean }
-interface ProgressPayload { scanId: string; approxCompletion: number | null }
+interface DonePayload {
+  scanId: string;
+  status: string;
+  cancelled: boolean;
+}
+interface ScanStateSnapshot {
+  filesProcessed: number;
+  dirsProcessed: number;
+  truncated: boolean;
+}
+interface PartialPayload {
+  scanId: string;
+  nodes: Array<{ path: string; depth: number; [k: string]: unknown }>;
+  truncated?: boolean;
+}
+interface ProgressPayload {
+  scanId: string;
+  approxCompletion: number | null;
+}
 interface ScanAPI {
-  startScan(root: string, opts?: { includeMetadata?: boolean; maxDepth?: number; maxEntries?: number }): { scanId: string };
+  startScan(
+    root: string,
+    opts?: { includeMetadata?: boolean; maxDepth?: number; maxEntries?: number }
+  ): { scanId: string };
   cancelScan(id: string): boolean;
   getScanState(id: string): ScanStateSnapshot & Record<string, unknown>;
   on(event: 'scan:done', cb: (payload: DonePayload) => void): unknown;
@@ -57,7 +75,7 @@ function createTempTree(struct: Record<string, string | null>, baseDir: string) 
 describe('scan-manager basic', () => {
   it('scans a small tree and produces progress and done events', async () => {
     const tmp = fs.mkdtempSync(path.join(process.cwd(), 'scan-test-'));
-    createTempTree({ 'dirA': null, 'dirA/file1.txt': 'a', 'dirB': null, 'dirB/file2.txt': 'b' }, tmp);
+    createTempTree({ dirA: null, 'dirA/file1.txt': 'a', dirB: null, 'dirB/file2.txt': 'b' }, tmp);
     const { scanId } = scanManager.startScan(tmp, { includeMetadata: false });
     expect(scanId).toBeDefined();
     const done = await waitForDone(scanId);
@@ -79,7 +97,7 @@ describe('scan-manager basic', () => {
 
   it('respects maxDepth', async () => {
     const tmp = fs.mkdtempSync(path.join(process.cwd(), 'scan-test-depth-'));
-    createTempTree({ 'L0': null, 'L0/L1': null, 'L0/L1/L2': null }, tmp);
+    createTempTree({ L0: null, 'L0/L1': null, 'L0/L1/L2': null }, tmp);
     const { scanId } = scanManager.startScan(path.join(tmp, 'L0'), { maxDepth: 1 });
     const done = await waitForDone(scanId);
     expect(done.cancelled).toBe(false);
@@ -89,7 +107,7 @@ describe('scan-manager basic', () => {
 
   it('respects maxEntries truncation', async () => {
     const tmp = fs.mkdtempSync(path.join(process.cwd(), 'scan-test-maxentries-'));
-    const files: Record<string, string | null> = { 'root': null };
+    const files: Record<string, string | null> = { root: null };
     for (let i = 0; i < 50; i++) files[`root/f${i}.txt`] = 'x';
     createTempTree(files, tmp);
     const { scanId } = scanManager.startScan(path.join(tmp, 'root'), { maxEntries: 10 });
@@ -104,7 +122,11 @@ describe('scan-manager basic', () => {
     const tmp = fs.mkdtempSync(path.join(process.cwd(), 'scan-test-perm-'));
     const restrictedDir = path.join(tmp, 'noaccess');
     fs.mkdirSync(restrictedDir);
-    try { fs.chmodSync(restrictedDir, 0o000); } catch { /* ignore permission change failure (e.g. Windows) */ }
+    try {
+      fs.chmodSync(restrictedDir, 0o000);
+    } catch {
+      /* ignore permission change failure (e.g. Windows) */
+    }
     const { scanId } = scanManager.startScan(tmp, {});
     const done = await waitForDone(scanId);
     expect(done.cancelled).toBe(false);
@@ -124,7 +146,10 @@ describe('scan-manager basic', () => {
     const onPartial = (p: PartialPayload) => {
       if (p.scanId !== scanId) return;
       for (const n of p.nodes) {
-        if (seen.has(n.path)) { duplicate = true; break; }
+        if (seen.has(n.path)) {
+          duplicate = true;
+          break;
+        }
         seen.add(n.path);
       }
     };
@@ -142,7 +167,7 @@ describe('scan-manager basic', () => {
     let depthLimitedFound = false;
     const onPartial = (p: PartialPayload) => {
       if (p.scanId !== scanId) return;
-      if (p.nodes.some(n => n.depthLimited)) depthLimitedFound = true;
+      if (p.nodes.some((n) => n.depthLimited)) depthLimitedFound = true;
     };
     scanManager.on('scan:partial', onPartial);
     const done = await waitForDone(scanId);
@@ -177,13 +202,15 @@ describe('scan-manager basic', () => {
     createTempTree(struct, tmp);
     const { scanId } = scanManager.startScan(path.join(tmp, 'root'));
     let progressCount = 0;
-    const onProgress = (p: { scanId: string }) => { if (p.scanId === scanId) progressCount++; };
+    const onProgress = (p: { scanId: string }) => {
+      if (p.scanId === scanId) progressCount++;
+    };
     scanManager.on('scan:progress', onProgress);
     // Cancel soon after start
     setTimeout(() => scanManager.cancelScan(scanId), 10);
     const done = await waitForDone(scanId);
     const countAtDone = progressCount;
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 150));
     scanManager.off('scan:progress', onProgress);
     expect(done.cancelled).toBe(true);
     expect(progressCount).toBe(countAtDone); // no further increments

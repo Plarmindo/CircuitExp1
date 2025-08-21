@@ -12,14 +12,33 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         headless: true,
         baseURL: 'http://localhost:5175',
-        launchOptions: { args: ['--enable-unsafe-swiftshader','--disable-web-security'] }
+        launchOptions: { args: ['--enable-unsafe-swiftshader', '--disable-web-security'] },
+      },
+    },
+    {
+      name: 'web-firefox',
+      use: {
+        ...devices['Desktop Firefox'],
+        headless: true,
+        baseURL: 'http://localhost:5175',
+        launchOptions: { args: ['--disable-web-security'] },
+      },
+    },
+    {
+      name: 'web-webkit',
+      use: {
+        ...devices['Desktop Safari'],
+        headless: true,
+        baseURL: 'http://localhost:5175',
+        launchOptions: { args: ['--disable-web-security'] },
       },
     },
     {
       name: 'electron',
-      testMatch: /recent-scans-electron\.spec\.ts/,
+      testMatch:
+        /(recent-scans-electron\.spec|csp-header-electron\.sec-1\.spec|ipc-validation-electron\.sec-2\.spec|sandbox-runtime-electron\.sec-3\.spec|core-4-logging-electron\.spec)\.ts/,
       use: { headless: true },
-    }
+    },
   ],
   webServer: [
     {

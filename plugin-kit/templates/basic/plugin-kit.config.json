@@ -1,0 +1,133 @@
+{
+  "name": "basic-external-plugin",
+  "version": "1.0.0",
+  "description": "Basic external plugin for CircuitExp1 AI LLM integration",
+  "integration": {
+    "type": "npm-package",
+    "entryPoint": "dist/index.js",
+    "runtime": "node"
+  },
+  "ai": {
+    "providers": {
+      "openai": {
+        "enabled": false,
+        "models": ["gpt-4", "gpt-3.5-turbo"],
+        "defaultModel": "gpt-4"
+      },
+      "anthropic": {
+        "enabled": false,
+        "models": ["claude-3-sonnet", "claude-3-opus"],
+        "defaultModel": "claude-3-sonnet"
+      },
+      "google": {
+        "enabled": false,
+        "models": ["gemini-pro", "gemini-pro-vision"],
+        "defaultModel": "gemini-pro"
+      }
+    },
+    "features": {
+      "codeCompletion": true,
+      "codeReview": true,
+      "bugDetection": true,
+      "documentation": true,
+      "testGeneration": true,
+      "performanceAnalysis": true,
+      "securityScanning": true
+    },
+    "limits": {
+      "maxTokens": 4000,
+      "maxRequestsPerMinute": 60,
+      "maxContextLength": 8000
+    }
+  },
+  "api": {
+    "endpoints": {
+      "health": "/health",
+      "completion": "/api/completion",
+      "review": "/api/review",
+      "analysis": "/api/analysis",
+      "chat": "/api/chat",
+      "config": "/api/config"
+    },
+    "authentication": {
+      "type": "api-key",
+      "header": "X-API-Key",
+      "required": true
+    },
+    "cors": {
+      "enabled": true,
+      "origins": ["*"],
+      "methods": ["GET", "POST", "PUT", "DELETE"],
+      "headers": ["Content-Type", "Authorization", "X-API-Key"]
+    },
+    "rateLimit": {
+      "enabled": true,
+      "windowMs": 60000,
+      "maxRequests": 100
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "file": {
+      "enabled": true,
+      "path": "logs/plugin.log",
+      "maxSize": "10MB",
+      "maxFiles": 5
+    },
+    "console": {
+      "enabled": true,
+      "colorize": true
+    }
+  },
+  "storage": {
+    "type": "memory",
+    "cache": {
+      "enabled": true,
+      "ttl": 3600,
+      "maxSize": 100
+    },
+    "persistence": {
+      "enabled": false,
+      "path": "data/plugin.db"
+    }
+  },
+  "security": {
+    "inputValidation": true,
+    "outputSanitization": true,
+    "apiKeyRotation": false,
+    "encryption": {
+      "enabled": false,
+      "algorithm": "aes-256-gcm"
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": {
+      "requests": true,
+      "errors": true,
+      "performance": true,
+      "usage": true
+    },
+    "healthChecks": {
+      "enabled": true,
+      "interval": 30000
+    }
+  },
+  "deployment": {
+    "docker": {
+      "enabled": true,
+      "image": "circuitexp1/plugin-kit-external",
+      "tag": "latest"
+    },
+    "kubernetes": {
+      "enabled": true,
+      "namespace": "plugin-kit",
+      "replicas": 2
+    },
+    "serverless": {
+      "enabled": false,
+      "platform": "aws-lambda"
+    }
+  }
+}

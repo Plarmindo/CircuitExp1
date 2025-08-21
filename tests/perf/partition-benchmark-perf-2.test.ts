@@ -22,21 +22,36 @@ import { layoutHierarchicalV2, type LayoutPointV2 } from '../../src/visualizatio
 import { tryPartitionedLayout } from '../../src/visualization/stage/partitioned-layout';
 import type { ScanNode } from '../../src/shared/scan-types';
 
-interface GenParams { breadth: number; depth: number; files: number }
+interface GenParams {
+  breadth: number;
+  depth: number;
+  files: number;
+}
 
 function generateTree(p: GenParams): ScanNode[] {
   const { breadth, depth, files } = p;
   const nodes: ScanNode[] = [];
-  interface DirEntry { path: string; level: number }
+  interface DirEntry {
+    path: string;
+    level: number;
+  }
   const q: DirEntry[] = [{ path: '/root', level: 0 }];
   while (q.length) {
     const { path, level } = q.shift()!;
     nodes.push({ path, kind: 'dir', depth: level, name: path.split('/').pop() || 'dir' });
     if (level < depth) {
-      for (let b=0;b<breadth;b++) q.push({ path: `${path}/d${level}_${b}`, level: level+1 });
+      for (let b = 0; b < breadth; b++)
+        q.push({ path: `${path}/d${level}_${b}`, level: level + 1 });
     }
     if (level < depth) {
-      for (let f=0; f<files; f++) nodes.push({ path: `${path}/f${level}_${f}.txt`, kind: 'file', sizeBytes: 10, name: `f${level}_${f}.txt`, depth: level + 1 });
+      for (let f = 0; f < files; f++)
+        nodes.push({
+          path: `${path}/f${level}_${f}.txt`,
+          kind: 'file',
+          sizeBytes: 10,
+          name: `f${level}_${f}.txt`,
+          depth: level + 1,
+        });
     }
   }
   return nodes;
@@ -51,7 +66,9 @@ function timeMs(fn: () => void): number {
 describe('PERF-2 partition benchmark (node environment)', () => {
   it('achieves required (>=25%) average layout time reduction via partitioned subtree recompute', () => {
     const adapter: GraphAdapter = createGraphAdapter();
-    const breadth = 8; const depth = 4; const files = 2;
+    const breadth = 8;
+    const depth = 4;
+    const files = 2;
     const baselineNodes = generateTree({ breadth, depth, files });
     adapter.applyDelta(baselineNodes);
     // Initial full layout
@@ -59,22 +76,22 @@ describe('PERF-2 partition benchmark (node environment)', () => {
     let lastNodes: LayoutPointV2[] = fullInitial.nodes as LayoutPointV2[];
     let lastIndex = fullInitial.nodeIndex as Map<string, LayoutPointV2>;
 
-  const loops = 24; // sufficient for stable average while keeping test quick
-    const targetDir = `/root/d0_${breadth-1}`; // last root child => tail subtree root
+    const loops = 24; // sufficient for stable average while keeping test quick
+    const targetDir = `/root/d0_${breadth - 1}`; // last root child => tail subtree root
     // Pick one deep descendant file path inside tail subtree; ensure exists
-  const subDir = `${targetDir}/d1_${breadth-1}`;
-  const targetFileA = `${subDir}/f2_0.txt`; // existing file (depth 3)
-  const targetFileB = `${subDir}/f2_1.txt`;
-  expect(adapter.getNode(targetFileA)).toBeTruthy();
-  expect(adapter.getNode(targetFileB)).toBeTruthy();
+    const subDir = `${targetDir}/d1_${breadth - 1}`;
+    const targetFileA = `${subDir}/f2_0.txt`; // existing file (depth 3)
+    const targetFileB = `${subDir}/f2_1.txt`;
+    expect(adapter.getNode(targetFileA)).toBeTruthy();
+    expect(adapter.getNode(targetFileB)).toBeTruthy();
 
     // Baseline loop: full layout each mutation
     const fullTimes: number[] = [];
-    for (let i=0;i<loops;i++) {
+    for (let i = 0; i < loops; i++) {
       // mutate same file plus introduce another sibling file update to enlarge affected set in full layout
       adapter.applyDelta([
         { path: targetFileA, kind: 'file', sizeBytes: 100 + i, name: 'f2_0.txt', depth: 3 },
-        { path: targetFileB, kind: 'file', sizeBytes: 50 + i, name: 'f2_1.txt', depth: 3 }
+        { path: targetFileB, kind: 'file', sizeBytes: 50 + i, name: 'f2_1.txt', depth: 3 },
       ]);
       const dur = timeMs(() => {
         const layout = layoutHierarchicalV2(adapter);
@@ -92,45 +109,56 @@ describe('PERF-2 partition benchmark (node environment)', () => {
     // Partition loop
     const partTimes: number[] = [];
     let appliedCount = 0;
-  const debugEvents: Array<{ stage: string; ctx?: Record<string, unknown> }> = [];
-  for (let i=0;i<loops;i++) {
+    const debugEvents: Array<{ stage: string; ctx?: Record<string, unknown> }> = [];
+    for (let i = 0; i < loops; i++) {
       adapter.applyDelta([
         { path: targetFileA, kind: 'file', sizeBytes: 200 + i, name: 'f2_0.txt', depth: 3 },
-        { path: targetFileB, kind: 'file', sizeBytes: 150 + i, name: 'f2_1.txt', depth: 3 }
+        { path: targetFileB, kind: 'file', sizeBytes: 150 + i, name: 'f2_1.txt', depth: 3 },
       ]);
       const dur = timeMs(() => {
         const part = tryPartitionedLayout({
           adapter,
           previousNodes: lastNodes,
-            previousIndex: lastIndex,
+          previousIndex: lastIndex,
           dirtyPaths: [targetFileA, targetFileB],
-      options: { aggregationThreshold: 28 },
-      debug: (stage, ctx) => { debugEvents.push({ stage, ctx }); }
+          options: { aggregationThreshold: 28 },
+          debug: (stage, ctx) => {
+            debugEvents.push({ stage, ctx });
+          },
         });
         if (part?.attempt.applied) {
-          appliedCount++; lastNodes = part.nodes as LayoutPointV2[]; lastIndex = part.index as Map<string, LayoutPointV2>;
+          appliedCount++;
+          lastNodes = part.nodes as LayoutPointV2[];
+          lastIndex = part.index as Map<string, LayoutPointV2>;
         } else {
           // Fallback full layout (should not happen)
           const layout = layoutHierarchicalV2(adapter);
-          lastNodes = layout.nodes as LayoutPointV2[]; lastIndex = layout.nodeIndex as Map<string, LayoutPointV2>;
+          lastNodes = layout.nodes as LayoutPointV2[];
+          lastIndex = layout.nodeIndex as Map<string, LayoutPointV2>;
         }
       });
       partTimes.push(dur);
     }
 
-  expect(appliedCount).toBe(loops);
-    const avg = (arr: number[]) => arr.reduce((a,b)=>a+b,0)/Math.max(1, arr.length);
+    expect(appliedCount).toBe(loops);
+    const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
     const fullAvg = avg(fullTimes);
     const partAvg = avg(partTimes);
-    const improvementPct = fullAvg > 0 ? ((fullAvg - partAvg)/fullAvg)*100 : 0;
+    const improvementPct = fullAvg > 0 ? ((fullAvg - partAvg) / fullAvg) * 100 : 0;
 
-  // Assertion: >=25% improvement (acceptance threshold)
-  expect(improvementPct).toBeGreaterThanOrEqual(25);
+    // Assertion: >=25% improvement (acceptance threshold)
+    expect(improvementPct).toBeGreaterThanOrEqual(25);
 
     // Guard: partition path must not be drastically slower
     expect(partAvg).toBeLessThan(fullAvg);
 
-  // Provide debug output (not part of assertion threshold besides improvement)
-  console.log('[PERF-2][Benchmark]', { fullAvg: fullAvg.toFixed(3), partAvg: partAvg.toFixed(3), improvementPct: improvementPct.toFixed(2), loops, appliedCount });
+    // Provide debug output (not part of assertion threshold besides improvement)
+    console.log('[PERF-2][Benchmark]', {
+      fullAvg: fullAvg.toFixed(3),
+      partAvg: partAvg.toFixed(3),
+      improvementPct: improvementPct.toFixed(2),
+      loops,
+      appliedCount,
+    });
   }, 20000);
 });

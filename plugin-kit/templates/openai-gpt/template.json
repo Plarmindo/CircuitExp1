@@ -1,0 +1,68 @@
+{
+  "name": "@circuitexp1/template-openai-gpt",
+  "version": "1.0.0",
+  "description": "Template for OpenAI GPT integration plugin",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "validate": "plugin-validator",
+    "package": "plugin-package",
+    "deploy": "plugin-deploy"
+  },
+  "keywords": [
+    "circuitexp1",
+    "plugin",
+    "openai",
+    "gpt",
+    "ai",
+    "chat"
+  ],
+  "author": "CircuitExp1 Team",
+  "license": "MIT",
+  "engines": {
+    "circuitexp1": "^0.1.0",
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "openai": "^4.28.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/jest-dom": "^6.0.0"
+  },
+  "peerDependencies": {
+    "circuitexp1": "^0.1.0"
+  },
+  "circuitexp1": {
+    "plugin": {
+      "id": "openai-gpt-plugin",
+      "name": "OpenAI GPT Plugin",
+      "category": "ai-integration",
+      "capabilities": [
+        "chat-completion",
+        "code-completion",
+        "text-analysis"
+      ],
+      "platforms": [
+        "openai"
+      ]
+    }
+  }
+}
