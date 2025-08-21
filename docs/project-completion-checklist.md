@@ -407,10 +407,13 @@ Legend:
 
 ## F. Documentation & Verification
 
-- [ ] DOC-1 README Realignment
+- [x] DOC-1 README Realignment
   Acceptance:
   - Update feature list to reflect implemented vs planned (clearly marking planned items).
   - Add architecture overview: scan pipeline diagram, adapter + layout flow, rendering pipeline.
+  Evidence:
+  - `README.md`: "Features & Architecture" section added linking to `docs/architecture-overview.md`.
+  - `docs/architecture-overview.md`: consolidated module map & data-flow breakdown.
 
 - [x] DOC-2 CONTRIBUTING Guide
   Acceptance:
