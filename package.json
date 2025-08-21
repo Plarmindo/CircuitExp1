@@ -39,7 +39,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^2.1.9",
     "concurrently": "^9.0.0",
     "cross-env": "^7.0.3",
     "electron": "^37.2.4",
@@ -49,21 +49,19 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "jsdom": "^26.1.0",
-    "license-checker": "^25.0.1",
-    "sharp": "^0.33.4",
     "tsx": "^4.20.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4",
-    "vitest": "^3.2.4",
-    "wait-on": "^7.2.0"
+  "vitest": "^2.0.5",
+  "wait-on": "^7.2.0",
+  "sharp": "^0.33.4",
+  "license-checker": "^25.0.1"
   },
   "build": {
     "appId": "com.circuitexp1.app",
     "productName": "CircuitExp1",
-    "directories": {
-      "buildResources": "build"
-    },
+    "directories": { "buildResources": "build" },
     "files": [
       "dist/**/*",
       "electron-main.cjs",
@@ -79,22 +77,15 @@
       "main": "electron-main.cjs"
     },
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
+      "target": ["nsis", "portable"],
       "icon": "build/icon.png"
     },
     "linux": {
-      "target": [
-        "AppImage"
-      ],
+      "target": ["AppImage"],
       "icon": "build/icon.png"
     },
     "mac": {
-      "target": [
-        "dmg"
-      ],
+      "target": ["dmg"],
       "icon": "build/icon.png"
     }
   }
