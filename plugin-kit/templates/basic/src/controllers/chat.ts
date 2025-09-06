@@ -23,11 +23,11 @@ export class ChatController {
       }
 
       const { message, context, sessionId } = req.body;
-      
-      this.logger.info('Processing chat request', { 
-        message: message.substring(0, 50), 
+
+      this.logger.info('Processing chat request', {
+        message: message.substring(0, 50),
         sessionId,
-        hasContext: !!context
+        hasContext: !!context,
       });
 
       const result = await this.aiService.chat(message, { context, sessionId });
@@ -35,7 +35,7 @@ export class ChatController {
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in chat handler', { error: error.message });
@@ -52,12 +52,12 @@ export class ChatController {
       }
 
       const { message, context, sessionId } = req.body;
-      
+
       res.writeHead(200, {
         'Content-Type': 'text/plain',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
+        Connection: 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
       });
 
       // Mock streaming chat response
@@ -66,14 +66,14 @@ export class ChatController {
         'I understand you want to discuss: ',
         message,
         '. Let me help you with that.',
-        ' [DONE]'
+        ' [DONE]',
       ];
 
       for (const response of responses) {
         res.write(`data: ${response}`);
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
-      
+
       res.write('\n\n');
       res.end();
     } catch (error) {

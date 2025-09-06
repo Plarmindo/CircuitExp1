@@ -4,7 +4,8 @@ Complete guide for integrating CircuitExp1 AI LLM Plugin Kit with TRAE IDE.
 
 ## Overview
 
-The CircuitExp1 AI LLM Plugin Kit provides seamless integration with TRAE IDE through a dedicated adapter that enables AI-powered features directly within TRAE's development environment.
+The CircuitExp1 AI LLM Plugin Kit provides seamless integration with TRAE IDE through a dedicated adapter that enables
+AI-powered features directly within TRAE's development environment.
 
 ## Installation
 
@@ -114,7 +115,7 @@ const calculateTotal = (items: Item[]) => {
 function processData(data: any[]) {
   // AI review: Consider using type safety
   // Suggestion: Use generic type parameter instead of 'any'
-  return data.map(item => item.value);
+  return data.map((item) => item.value);
 }
 ```
 
@@ -169,13 +170,13 @@ Open TRAE Command Palette (`Ctrl+Shift+P`) and use:
 
 ### Keyboard Shortcuts
 
-| Action | Shortcut |
-|--------|----------|
-| AI Code Completion | `Ctrl+Space` |
-| Code Review | `Ctrl+Shift+R` |
-| Bug Detection | `Ctrl+Shift+B` |
-| Generate Docs | `Ctrl+Shift+D` |
-| Create Tests | `Ctrl+Shift+T` |
+| Action             | Shortcut       |
+| ------------------ | -------------- |
+| AI Code Completion | `Ctrl+Space`   |
+| Code Review        | `Ctrl+Shift+R` |
+| Bug Detection      | `Ctrl+Shift+B` |
+| Generate Docs      | `Ctrl+Shift+D` |
+| Create Tests       | `Ctrl+Shift+T` |
 
 ## Integration Examples
 
@@ -191,12 +192,12 @@ interface UserProfileProps {
 
 const UserProfile: React.FC<UserProfileProps> = ({ userId }) => {
   const [user, setUser] = useState(null);
-  
+
   useEffect(() => {
     // AI will suggest fetch implementation
     fetchUser(userId).then(setUser);
   }, [userId]);
-  
+
   // AI will suggest rendering logic
   return (
     <div>
@@ -223,12 +224,12 @@ const router = express.Router();
 router.post('/api/users', async (req, res) => {
   try {
     const { name, email } = req.body;
-    
+
     // AI will suggest validation logic
     if (!name || !email) {
       return res.status(400).json({ error: 'Name and email are required' });
     }
-    
+
     // AI will suggest database operations
     const user = await createUser({ name, email });
     res.json(user);
@@ -276,17 +277,17 @@ Add to your TRAE `settings.json`:
 // AI generates comprehensive test cases
 describe('UserService', () => {
   let userService: UserService;
-  
+
   beforeEach(() => {
     userService = new UserService();
   });
-  
+
   // AI generates edge case tests
   it('should handle empty user list', async () => {
     const users = await userService.getUsers();
     expect(users).toEqual([]);
   });
-  
+
   // AI generates integration tests
   it('should create user with valid data', async () => {
     const userData = { name: 'John Doe', email: 'john@example.com' };
@@ -339,9 +340,9 @@ import { PluginKit } from '@circuitexp1/plugin-kit-trae-adapter';
 PluginKit.addProvider('custom-ai', {
   endpoint: 'https://your-custom-ai.com/api',
   headers: {
-    'Authorization': 'Bearer your-token'
+    Authorization: 'Bearer your-token',
   },
-  capabilities: ['code-completion', 'bug-detection']
+  capabilities: ['code-completion', 'bug-detection'],
 });
 ```
 
@@ -373,6 +374,7 @@ PluginKit.addProvider('custom-ai', {
 If migrating from CircuitExp1's internal plugin system:
 
 1. **Update Dependencies**
+
    ```bash
    npm uninstall @circuitexp1/plugin-kit-internal
    npm install @circuitexp1/plugin-kit-trae-adapter

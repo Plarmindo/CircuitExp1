@@ -11,7 +11,7 @@ export class HealthController {
   async health(req: Request, res: Response): Promise<void> {
     try {
       const metrics = this.metrics.getSummary();
-      
+
       const health = {
         status: 'healthy',
         timestamp: new Date().toISOString(),
@@ -23,8 +23,8 @@ export class HealthController {
           errors: metrics.errors,
           avgResponseTime: metrics.avgResponseTime,
           availability: metrics.availability,
-          totalTokens: metrics.totalTokens
-        }
+          totalTokens: metrics.totalTokens,
+        },
       };
 
       this.logger.debug('Health check requested', { path: req.path });
@@ -34,7 +34,7 @@ export class HealthController {
       res.status(500).json({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
-        error: 'Internal server error'
+        error: 'Internal server error',
       });
     }
   }
@@ -49,8 +49,8 @@ export class HealthController {
           services: true,
           database: true, // Assuming no database for this plugin
           cache: true,
-          ai: true // Assuming OpenAI is available
-        }
+          ai: true, // Assuming OpenAI is available
+        },
       };
 
       this.logger.debug('Readiness check requested', { path: req.path });
@@ -60,7 +60,7 @@ export class HealthController {
       res.status(503).json({
         status: 'not ready',
         timestamp: new Date().toISOString(),
-        error: 'Service unavailable'
+        error: 'Service unavailable',
       });
     }
   }
@@ -72,7 +72,7 @@ export class HealthController {
         timestamp: new Date().toISOString(),
         pid: process.pid,
         memory: process.memoryUsage(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
       };
 
       this.logger.debug('Liveness check requested', { path: req.path });
@@ -82,7 +82,7 @@ export class HealthController {
       res.status(500).json({
         status: 'dead',
         timestamp: new Date().toISOString(),
-        error: 'Service not responding'
+        error: 'Service not responding',
       });
     }
   }

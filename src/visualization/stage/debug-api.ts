@@ -9,17 +9,42 @@ export interface MetroDebugWindow {
   getFastPathUses: () => number;
   getLastFastPathAttempt: () => { stage: string; ctx?: Record<string, unknown> } | null;
   getLastPartitionAttempt: () => { stage: string; ctx?: Record<string, unknown> } | null;
-  getPartitionStats: () => { applied: number; skipped: number; lastAttempt: { stage: string; ctx?: Record<string, unknown> } | null };
+  getPartitionStats: () => {
+    applied: number;
+    skipped: number;
+    lastAttempt: { stage: string; ctx?: Record<string, unknown> } | null;
+  };
   setDisablePartition: (v: boolean) => void;
   getAggregationThreshold: () => number;
   setAggregationThreshold: (n: number) => void;
   getReusePct: () => number;
-  getBenchResult: () => { baselineAvg: number; culledAvg: number; improvementPct: number; reusePct: number } | null;
+  getBenchResult: () => {
+    baselineAvg: number;
+    culledAvg: number;
+    improvementPct: number;
+    reusePct: number;
+  } | null;
   getNodes: () => Array<{ path: string; x: number; y: number; aggregated?: boolean }>;
-  fastAppend: (nodes: Array<{ path: string; name: string; kind: 'file' | 'dir'; depth: number }>) => unknown;
-  appendNodesTest: (nodes: Array<{ path: string; name: string; kind: 'file' | 'dir'; depth: number }>) => { usedFastPath: boolean; lastAttempt: { stage: string; ctx?: Record<string, unknown> } | null };
-  runLayoutCycle: (opts?: { randomizePan?: boolean; randomizeZoom?: boolean }) => { scale: number; pan: { x: number; y: number }; spriteTotal: number } | null;
-  getSpriteCounts: () => { nodes: number; lines: number; badges: number; labels: number; total: number };
+  fastAppend: (
+    nodes: Array<{ path: string; name: string; kind: 'file' | 'dir'; depth: number }>
+  ) => unknown;
+  appendNodesTest: (
+    nodes: Array<{ path: string; name: string; kind: 'file' | 'dir'; depth: number }>
+  ) => {
+    usedFastPath: boolean;
+    lastAttempt: { stage: string; ctx?: Record<string, unknown> } | null;
+  };
+  runLayoutCycle: (opts?: {
+    randomizePan?: boolean;
+    randomizeZoom?: boolean;
+  }) => { scale: number; pan: { x: number; y: number }; spriteTotal: number } | null;
+  getSpriteCounts: () => {
+    nodes: number;
+    lines: number;
+    badges: number;
+    labels: number;
+    total: number;
+  };
   getViewport: () => { x: number; y: number; scale: number } | null;
   panViewport: (dx: number, dy: number) => boolean;
   centerViewportAt: (worldX: number, worldY: number) => boolean;
@@ -161,19 +186,49 @@ export function initDebugAPI(r: DebugInitRefs) {
       try {
         if (!appRef.current) return null;
         const app = appRef.current;
+
         if (opts?.randomizeZoom !== false) {
           const newScale = 0.5 + Math.random() * 1.2;
-          scaleRef.current = newScale;
-          app.stage.scale.set(newScale);
+          // Ensure new scale is finite and within reasonable bounds
+          if (Number.isFinite(newScale) && newScale > 0) {
+            scaleRef.current = newScale;
+            app.stage.scale.set(newScale);
+          }
         }
+
         if (opts?.randomizePan !== false) {
-          app.stage.x += (Math.random() - 0.5) * 300;
-          app.stage.y += (Math.random() - 0.5) * 300;
+          const deltaX = (Math.random() - 0.5) * 300;
+          const deltaY = (Math.random() - 0.5) * 300;
+
+          // Ensure delta values are finite
+          if (Number.isFinite(deltaX) && Number.isFinite(deltaY)) {
+            const newX = app.stage.x + deltaX;
+            const newY = app.stage.y + deltaY;
+
+            // Ensure new positions are finite
+            if (Number.isFinite(newX) && Number.isFinite(newY)) {
+              app.stage.x = newX;
+              app.stage.y = newY;
+            }
+          }
         }
+
+        // Ensure final viewport values are finite
+        const finalScale = scaleRef.current;
+        const finalX = app.stage.x;
+        const finalY = app.stage.y;
+
+        if (!Number.isFinite(finalScale) || !Number.isFinite(finalX) || !Number.isFinite(finalY)) {
+          console.warn(
+            '[MetroStage][runLayoutCycle] Non-finite viewport values detected, skipping update'
+          );
+          return null;
+        }
+
         redraw(false);
         return {
-          scale: scaleRef.current,
-          pan: { x: app.stage.x, y: app.stage.y },
+          scale: finalScale,
+          pan: { x: finalX, y: finalY },
           spriteTotal:
             spriteNodes.current.size +
             spriteLines.current.size +
@@ -217,8 +272,31 @@ export function initDebugAPI(r: DebugInitRefs) {
       const app = appRef.current;
       const canvas = app.canvas as HTMLCanvasElement;
       const rect = canvas.getBoundingClientRect();
-      app.stage.x = rect.width / 2 - worldX * scaleRef.current;
-      app.stage.y = rect.height / 2 - worldY * scaleRef.current;
+
+      // Ensure input coordinates are finite
+      if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return false;
+
+      // Ensure scale is finite and positive
+      const currentScale = scaleRef.current;
+      if (!Number.isFinite(currentScale) || currentScale <= 0) return false;
+
+      // Ensure canvas dimensions are finite and positive
+      if (
+        !Number.isFinite(rect.width) ||
+        !Number.isFinite(rect.height) ||
+        rect.width <= 0 ||
+        rect.height <= 0
+      )
+        return false;
+
+      const newX = rect.width / 2 - worldX * currentScale;
+      const newY = rect.height / 2 - worldY * currentScale;
+
+      // Ensure final viewport coordinates are finite
+      if (!Number.isFinite(newX) || !Number.isFinite(newY)) return false;
+
+      app.stage.x = newX;
+      app.stage.y = newY;
       redraw(false);
       return true;
     },

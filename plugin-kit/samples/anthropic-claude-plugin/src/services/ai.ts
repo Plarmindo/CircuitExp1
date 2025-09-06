@@ -62,7 +62,7 @@ export class AIService {
   constructor(logger: LoggerService) {
     this.logger = logger;
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    
+
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY environment variable is required');
     }
@@ -112,7 +112,7 @@ export class AIService {
   private buildCompletionPrompt(request: CompletionRequest): string {
     const language = request.language || 'unknown';
     const context = request.context || '';
-    
+
     return `You are an expert ${language} developer. Provide code completion based on the context.
 
 Context: ${context}
@@ -133,9 +133,10 @@ Completion:`;
     const reviewType = request.reviewType || 'detailed';
     const context = request.context || '';
 
-    const focus = reviewType === 'quick' 
-      ? 'Focus on the most critical issues only'
-      : 'Provide comprehensive review covering all aspects';
+    const focus =
+      reviewType === 'quick'
+        ? 'Focus on the most critical issues only'
+        : 'Provide comprehensive review covering all aspects';
 
     return `You are a senior ${language} code reviewer. Review the following code for quality, best practices, and potential issues.
 
@@ -164,7 +165,7 @@ Provide structured feedback with specific line references when applicable.`;
       performance: 'performance bottlenecks, efficiency improvements, algorithmic complexity',
       security: 'security vulnerabilities, input validation, authentication, data protection',
       complexity: 'code complexity, cyclomatic complexity, maintainability metrics',
-      maintainability: 'code organization, readability, testability, documentation needs'
+      maintainability: 'code organization, readability, testability, documentation needs',
     }[analysisType];
 
     return `You are a ${language} expert specializing in ${analysisType} analysis. Analyze the following code for ${analysisFocus}.
@@ -241,7 +242,7 @@ Provide complete, runnable test code with proper assertions.`;
     const docFormat = {
       inline: 'Generate inline comments explaining complex logic',
       summary: 'Provide a comprehensive function/class documentation',
-      api: 'Generate API documentation with parameters, return values, and examples'
+      api: 'Generate API documentation with parameters, return values, and examples',
     }[docType];
 
     return `You are a technical documentation expert for ${language}. ${docFormat}.
@@ -254,9 +255,11 @@ ${request.code}
 Generate clear, concise documentation following best practices. Include examples where helpful.`;
   }
 
-  private buildChatMessages(request: ChatRequest): Array<{ role: 'user' | 'assistant'; content: string }> {
+  private buildChatMessages(
+    request: ChatRequest
+  ): Array<{ role: 'user' | 'assistant'; content: string }> {
     const messages = request.history || [];
-    
+
     const systemPrompt = `You are an expert programming assistant. Help with:
 - Code questions and explanations
 - Debugging assistance
@@ -267,15 +270,19 @@ Generate clear, concise documentation following best practices. Include examples
 Be helpful, accurate, and provide practical solutions.`;
 
     const context = request.context ? `Context: ${request.context}\n\n` : '';
-    
+
     return [
       { role: 'user' as const, content: systemPrompt },
       ...messages,
-      { role: 'user' as const, content: `${context}${request.message}` }
+      { role: 'user' as const, content: `${context}${request.message}` },
     ];
   }
 
-  private async callAI(prompt: string, maxTokens: number, temperature: number): Promise<AIResponse> {
+  private async callAI(
+    prompt: string,
+    maxTokens: number,
+    temperature: number
+  ): Promise<AIResponse> {
     try {
       this.logger.debug('Calling Claude API', { maxTokens, temperature });
 
@@ -286,9 +293,9 @@ Be helpful, accurate, and provide practical solutions.`;
         messages: [
           {
             role: 'user',
-            content: prompt
-          }
-        ]
+            content: prompt,
+          },
+        ],
       });
 
       const content = response.content[0];
@@ -301,21 +308,23 @@ Be helpful, accurate, and provide practical solutions.`;
         tokens: {
           prompt: response.usage.input_tokens,
           completion: response.usage.output_tokens,
-          total: response.usage.input_tokens + response.usage.output_tokens
+          total: response.usage.input_tokens + response.usage.output_tokens,
         },
-        model: response.model
+        model: response.model,
       };
 
       this.logger.debug('Claude API response received', {
         promptTokens: result.tokens.prompt,
         completionTokens: result.tokens.completion,
-        totalTokens: result.tokens.total
+        totalTokens: result.tokens.total,
       });
 
       return result;
     } catch (error) {
       this.logger.error('Error calling Claude API', error);
-      throw new Error(`AI service error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `AI service error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -331,10 +340,10 @@ Be helpful, accurate, and provide practical solutions.`;
         model: this.defaultModel,
         max_tokens: maxTokens,
         temperature,
-        messages: messages.map(msg => ({
+        messages: messages.map((msg) => ({
           role: msg.role,
-          content: msg.content
-        }))
+          content: msg.content,
+        })),
       });
 
       const content = response.content[0];
@@ -347,21 +356,23 @@ Be helpful, accurate, and provide practical solutions.`;
         tokens: {
           prompt: response.usage.input_tokens,
           completion: response.usage.output_tokens,
-          total: response.usage.input_tokens + response.usage.output_tokens
+          total: response.usage.input_tokens + response.usage.output_tokens,
         },
-        model: response.model
+        model: response.model,
       };
 
       this.logger.debug('Claude API response received', {
         promptTokens: result.tokens.prompt,
         completionTokens: result.tokens.completion,
-        totalTokens: result.tokens.total
+        totalTokens: result.tokens.total,
       });
 
       return result;
     } catch (error) {
       this.logger.error('Error calling Claude API', error);
-      throw new Error(`AI service error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `AI service error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

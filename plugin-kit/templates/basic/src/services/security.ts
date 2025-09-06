@@ -21,7 +21,11 @@ export class SecurityService {
     return this.apiKeys.has(key);
   }
 
-  checkRateLimit(key: string, limit: number = 100, window: number = 60000): { allowed: boolean; remaining: number; resetTime: number } {
+  checkRateLimit(
+    key: string,
+    limit: number = 100,
+    window: number = 60000
+  ): { allowed: boolean; remaining: number; resetTime: number } {
     const now = Date.now();
     const limitData = this.rateLimits.get(key);
 

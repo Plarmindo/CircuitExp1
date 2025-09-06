@@ -1,11 +1,14 @@
 # CircuitExp1 Security Hardening Guide
 
 ## Overview
-This guide provides comprehensive security hardening procedures for CircuitExp1 production deployments. It covers all security aspects from initial setup to ongoing maintenance.
+
+This guide provides comprehensive security hardening procedures for CircuitExp1 production deployments. It covers all
+security aspects from initial setup to ongoing maintenance.
 
 ## 1. Pre-Deployment Security Checklist
 
 ### ✅ Security Assessment
+
 - [ ] All dependencies audited with `npm audit`
 - [ ] No high/critical vulnerabilities present
 - [ ] Security test suite passes 100%
@@ -13,6 +16,7 @@ This guide provides comprehensive security hardening procedures for CircuitExp1 
 - [ ] Penetration testing performed
 
 ### ✅ Code Signing
+
 - [ ] EV Code Signing Certificate (Windows)
 - [ ] Apple Developer Certificate (macOS)
 - [ ] GPG signing configured (Linux)
@@ -20,6 +24,7 @@ This guide provides comprehensive security hardening procedures for CircuitExp1 
 - [ ] Auto-updater signing configured
 
 ### ✅ Build Security
+
 - [ ] Production builds from clean environment
 - [ ] No debug symbols in production builds
 - [ ] Source maps disabled in production
@@ -31,6 +36,7 @@ This guide provides comprehensive security hardening procedures for CircuitExp1 
 ### 2.1 Electron Security Hardening
 
 #### WebPreferences Configuration
+
 ```javascript
 // electron-main.cjs - Production Configuration
 const createWindow = () => {
@@ -44,20 +50,21 @@ const createWindow = () => {
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
       webSecurity: true,
-      
+
       // Additional hardening
       allowPopups: false,
       allowRunningInsecureContent: false,
       webgl: false,
-      
+
       // Preload script for secure IPC
-      preload: path.join(__dirname, 'preload.cjs')
-    }
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
   });
 };
 ```
 
 #### Content Security Policy (Production)
+
 ```javascript
 // Strict CSP for production
 const CSP_PRODUCTION = [
@@ -70,116 +77,121 @@ const CSP_PRODUCTION = [
   "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'none'"
+  "form-action 'none'",
 ].join('; ');
 ```
 
 ### 2.2 File System Security
 
 #### Path Traversal Protection
+
 ```typescript
 // Path validation implementation
 const validatePath = (inputPath: string): string | null => {
   // Normalize path
   const normalized = path.normalize(inputPath);
-  
+
   // Check for traversal attempts
   if (normalized.includes('..')) {
     auditLogger.logSecurityViolation('path-traversal', inputPath);
     return null;
   }
-  
+
   // Check against allowed directories
   const allowedRoots = ['/Users', '/home', 'C:\\Users'];
-  const isAllowed = allowedRoots.some(root => normalized.startsWith(root));
-  
+  const isAllowed = allowedRoots.some((root) => normalized.startsWith(root));
+
   if (!isAllowed) {
     auditLogger.logSecurityViolation('unauthorized-path', inputPath);
     return null;
   }
-  
+
   return normalized;
 };
 ```
 
 #### File Size Limits
+
 ```typescript
 const FILE_SIZE_LIMITS = {
-  MAX_FILE_SIZE: 50 * 1024 * 1024,      // 50MB
-  MAX_TOTAL_SIZE: 500 * 1024 * 1024,    // 500MB
-  MAX_FILE_COUNT: 10000,                // 10,000 files
-  MAX_DEPTH: 10                         // 10 levels deep
+  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB
+  MAX_TOTAL_SIZE: 500 * 1024 * 1024, // 500MB
+  MAX_FILE_COUNT: 10000, // 10,000 files
+  MAX_DEPTH: 10, // 10 levels deep
 };
 ```
 
 ### 2.3 Rate Limiting Configuration
 
 #### Production Rate Limits
+
 ```typescript
 const PRODUCTION_RATE_LIMITS = {
   // API rate limiting
   api: {
     maxRequests: 100,
-    windowMs: 15 * 60 * 1000,  // 15 minutes
-    maxBurst: 20
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxBurst: 20,
   },
-  
+
   // File operations
   file: {
     maxRequests: 50,
-    windowMs: 5 * 60 * 1000,   // 5 minutes
-    maxConcurrent: 3
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    maxConcurrent: 3,
   },
-  
+
   // Scan operations
   scan: {
     maxRequests: 5,
-    windowMs: 60 * 60 * 1000,  // 1 hour
-    maxConcurrent: 1
-  }
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxConcurrent: 1,
+  },
 };
 ```
 
 ### 2.4 PII Detection Configuration
 
 #### Production PII Rules
+
 ```typescript
 const PRODUCTION_PII_CONFIG = {
   email: {
     enabled: true,
     redaction: '[EMAIL]',
-    allowlist: ['example.com', 'test.com']
+    allowlist: ['example.com', 'test.com'],
   },
-  
+
   phone: {
     enabled: true,
     redaction: '[PHONE]',
-    formats: ['US', 'International']
+    formats: ['US', 'International'],
   },
-  
+
   ssn: {
     enabled: true,
     redaction: '[SSN]',
-    strict: true
+    strict: true,
   },
-  
+
   creditCard: {
     enabled: true,
     redaction: '[CARD]',
-    luhnCheck: true
+    luhnCheck: true,
   },
-  
+
   ipAddress: {
     enabled: true,
     redaction: '[IP]',
-    includePrivate: false
-  }
+    includePrivate: false,
+  },
 };
 ```
 
 ## 3. Network Security
 
 ### 3.1 Network Isolation
+
 - [ ] Application runs in isolated network environment
 - [ ] Firewall rules configured for outbound connections only
 - [ ] No inbound network access required
@@ -187,6 +199,7 @@ const PRODUCTION_PII_CONFIG = {
 - [ ] HTTPS enforcement for all connections
 
 ### 3.2 Update Mechanism Security
+
 ```javascript
 // Auto-updater security configuration
 autoUpdater.setFeedURL({
@@ -194,11 +207,11 @@ autoUpdater.setFeedURL({
   owner: 'your-org',
   repo: 'CircuitExp1',
   private: true,
-  token: process.env.GITHUB_TOKEN
+  token: process.env.GITHUB_TOKEN,
 });
 
 // Signature verification
-autoUpdater.checkForUpdatesAndNotify().catch(err => {
+autoUpdater.checkForUpdatesAndNotify().catch((err) => {
   logger.error('Auto-updater failed:', err);
 });
 
@@ -208,7 +221,7 @@ autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
     buttons: ['Restart', 'Later'],
     title: 'Application Update',
     message: process.platform === 'win32' ? releaseNotes : releaseName,
-    detail: 'A new version has been downloaded. Restart the application to apply the updates.'
+    detail: 'A new version has been downloaded. Restart the application to apply the updates.',
   };
 
   dialog.showMessageBox(dialogOpts).then((returnValue) => {
@@ -217,13 +230,14 @@ autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
 });
 autoUpdater.checkForUpdatesAndNotify({
   signatureVerification: true,
-  certificateCheck: true
+  certificateCheck: true,
 });
 ```
 
 ## 4. Data Protection
 
 ### 4.1 Encryption at Rest
+
 ```typescript
 // File encryption for sensitive data
 import crypto from 'crypto';
@@ -232,18 +246,16 @@ const encryptFile = (data: Buffer, key: string): Buffer => {
   const algorithm = 'aes-256-gcm';
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipher(algorithm, key);
-  
-  const encrypted = Buffer.concat([
-    cipher.update(data),
-    cipher.final()
-  ]);
-  
+
+  const encrypted = Buffer.concat([cipher.update(data), cipher.final()]);
+
   const authTag = cipher.getAuthTag();
   return Buffer.concat([iv, authTag, encrypted]);
 };
 ```
 
 ### 4.2 Secure Storage
+
 - [ ] User preferences encrypted
 - [ ] Recent scans history sanitized
 - [ ] Temporary files auto-cleanup
@@ -252,6 +264,7 @@ const encryptFile = (data: Buffer, key: string): Buffer => {
 ## 5. Monitoring and Logging
 
 ### 5.1 Security Event Monitoring
+
 ```typescript
 // Security event types
 enum SecurityEvent {
@@ -259,7 +272,7 @@ enum SecurityEvent {
   RATE_LIMIT_EXCEEDED = 'rate-limit-exceeded',
   PII_DETECTED = 'pii-detected',
   UNAUTHORIZED_ACCESS = 'unauthorized-access',
-  INVALID_SIGNATURE = 'invalid-signature'
+  INVALID_SIGNATURE = 'invalid-signature',
 }
 
 // Audit logging
@@ -270,23 +283,24 @@ const auditLogger = {
       event,
       details,
       userId: getCurrentUserId(),
-      sessionId: getSessionId()
+      sessionId: getSessionId(),
     };
-    
+
     // Send to security monitoring
     securityMonitor.log(logEntry);
-  }
+  },
 };
 ```
 
 ### 5.2 Performance Monitoring
+
 ```typescript
 // Performance thresholds
 const PERFORMANCE_THRESHOLDS = {
-  memoryUsage: 80,      // 80%
-  cpuUsage: 90,         // 90%
-  fileCount: 10000,     // 10,000 files
-  scanDuration: 300000  // 5 minutes
+  memoryUsage: 80, // 80%
+  cpuUsage: 90, // 90%
+  fileCount: 10000, // 10,000 files
+  scanDuration: 300000, // 5 minutes
 };
 
 // Alert system
@@ -297,7 +311,7 @@ const performanceMonitor = {
         alertManager.send(`Performance threshold exceeded: ${key} = ${metrics[key]}`);
       }
     });
-  }
+  },
 };
 ```
 
@@ -306,6 +320,7 @@ const performanceMonitor = {
 ### 6.1 Security Incident Playbook
 
 #### Immediate Actions (0-15 minutes)
+
 1. **Isolate affected systems**
    - Stop all file operations
    - Disable network access
@@ -322,6 +337,7 @@ const performanceMonitor = {
    - Legal/compliance team
 
 #### Investigation (15 minutes - 2 hours)
+
 1. **Gather evidence**
    - System logs
    - Security logs
@@ -334,6 +350,7 @@ const performanceMonitor = {
    - Identify attack timeline
 
 #### Recovery (2-24 hours)
+
 1. **System restoration**
    - Restore from clean backup
    - Rebuild affected systems
@@ -345,6 +362,7 @@ const performanceMonitor = {
    - Implement additional monitoring
 
 ### 6.2 Communication Plan
+
 ```typescript
 // Incident notification system
 const incidentNotification = {
@@ -354,21 +372,22 @@ const incidentNotification = {
       type: incident.type,
       affectedSystems: incident.affectedSystems,
       timeline: incident.timeline,
-      actionsTaken: incident.actionsTaken
+      actionsTaken: incident.actionsTaken,
     };
-    
+
     // Send to security team
     securityTeam.notify(notification);
-    
+
     // Log for compliance
     complianceLogger.log(notification);
-  }
+  },
 };
 ```
 
 ## 7. Compliance and Governance
 
 ### 7.1 Compliance Requirements
+
 - [ ] **GDPR**: Data protection and privacy
 - [ ] **CCPA**: California Consumer Privacy Act
 - [ ] **HIPAA**: Health Insurance Portability and Accountability Act (if applicable)
@@ -376,6 +395,7 @@ const incidentNotification = {
 - [ ] **PCI-DSS**: Payment Card Industry Data Security Standard
 
 ### 7.2 Regular Security Reviews
+
 - [ ] **Weekly**: Security log review
 - [ ] **Monthly**: Vulnerability scans
 - [ ] **Quarterly**: Penetration testing
@@ -383,6 +403,7 @@ const incidentNotification = {
 - [ ] **On-demand**: Incident post-mortems
 
 ### 7.3 Security Training
+
 - [ ] **Developer training**: Secure coding practices
 - [ ] **User training**: Security awareness
 - [ ] **Admin training**: Incident response
@@ -391,6 +412,7 @@ const incidentNotification = {
 ## 8. Deployment Checklist
 
 ### Pre-Production
+
 - [ ] Security review completed
 - [ ] All tests passing
 - [ ] Code signing configured
@@ -398,6 +420,7 @@ const incidentNotification = {
 - [ ] Documentation updated
 
 ### Production Deployment
+
 - [ ] Blue-green deployment configured
 - [ ] Rollback procedures tested
 - [ ] Monitoring dashboards active
@@ -405,6 +428,7 @@ const incidentNotification = {
 - [ ] Backup verification completed
 
 ### Post-Deployment
+
 - [ ] Health checks passing
 - [ ] Security monitoring active
 - [ ] Performance metrics baseline
@@ -414,6 +438,7 @@ const incidentNotification = {
 ## 9. Emergency Procedures
 
 ### 9.1 Security Breach Response
+
 ```bash
 # Immediate lockdown script
 #!/bin/bash
@@ -433,6 +458,7 @@ echo "Security incident detected" | mail security@company.com
 ```
 
 ### 9.2 Data Recovery Procedures
+
 ```bash
 # Restore from backup
 #!/bin/bash
@@ -454,19 +480,21 @@ systemctl start circuitexp1
 ## 10. Security Contacts
 
 ### 10.1 Emergency Contacts
+
 - **Security Team**: security@company.com
 - **System Admin**: admin@company.com
 - **Legal Team**: legal@company.com
 - **On-call**: +1-XXX-XXX-XXXX
 
 ### 10.2 Vendor Contacts
+
 - **Certificate Authority**: [Your CA]
 - **Security Tools**: [Vendor Support]
 - **Cloud Provider**: [Cloud Support]
 
 ---
 
-**Remember**: Security is an ongoing process. This guide should be reviewed and updated regularly based on new threats, vulnerabilities, and lessons learned from security incidents.
+**Remember**: Security is an ongoing process. This guide should be reviewed and updated regularly based on new threats,
+vulnerabilities, and lessons learned from security incidents.
 
-*Last updated: $(date)*
-*Version: 1.0.0*
+_Last updated: $(date)_ _Version: 1.0.0_

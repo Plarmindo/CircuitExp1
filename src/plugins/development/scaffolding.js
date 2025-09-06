@@ -6,19 +6,21 @@ const readline = require('readline');
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 function askQuestion(question) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     rl.question(question, resolve);
   });
 }
 
 function toPascalCase(str) {
-  return str.replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
-    return word.toUpperCase();
-  }).replace(/\s+/g, '');
+  return str
+    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
+      return word.toUpperCase();
+    })
+    .replace(/\s+/g, '');
 }
 
 function toKebabCase(str) {
@@ -27,27 +29,27 @@ function toKebabCase(str) {
 
 async function createPlugin() {
   console.log('🔌 CircuitExp1 Plugin Creator\n');
-  
+
   const name = await askQuestion('Plugin name: ');
   const description = await askQuestion('Plugin description: ');
   const author = await askQuestion('Author name: ');
   const category = await askQuestion('Category (themes/export/interaction/analysis/integration): ');
-  const license = await askQuestion('License (MIT/Apache-2.0/GPL-3.0): ') || 'MIT';
-  
+  const license = (await askQuestion('License (MIT/Apache-2.0/GPL-3.0): ')) || 'MIT';
+
   const pluginId = toKebabCase(name);
   const className = toPascalCase(name) + 'Plugin';
   const pluginDir = path.join(process.cwd(), 'src', 'plugins', 'custom', pluginId);
-  
+
   if (fs.existsSync(pluginDir)) {
     console.error(`❌ Plugin "${pluginId}" already exists!`);
     process.exit(1);
   }
-  
+
   fs.mkdirSync(pluginDir, { recursive: true });
   fs.mkdirSync(path.join(pluginDir, 'src'), { recursive: true });
   fs.mkdirSync(path.join(pluginDir, 'tests'), { recursive: true });
   fs.mkdirSync(path.join(pluginDir, 'docs'), { recursive: true });
-  
+
   // Create package.json
   const packageJson = {
     name: `@circuitexp1/plugin-${pluginId}`,
@@ -59,27 +61,24 @@ async function createPlugin() {
       build: 'tsc',
       test: 'vitest',
       lint: 'eslint src --ext .ts,.tsx',
-      'lint:fix': 'eslint src --ext .ts,.tsx --fix'
+      'lint:fix': 'eslint src --ext .ts,.tsx --fix',
     },
     keywords: ['circuitexp1', 'plugin', category],
     author,
     license,
     peerDependencies: {
-      'circuitexp1': '^0.1.0'
+      circuitexp1: '^0.1.0',
     },
     devDependencies: {
       '@types/node': '^20.0.0',
-      'typescript': '^5.0.0',
-      'vitest': '^1.0.0',
-      'eslint': '^8.0.0'
-    }
+      typescript: '^5.0.0',
+      vitest: '^1.0.0',
+      eslint: '^8.0.0',
+    },
   };
-  
-  fs.writeFileSync(
-    path.join(pluginDir, 'package.json'),
-    JSON.stringify(packageJson, null, 2)
-  );
-  
+
+  fs.writeFileSync(path.join(pluginDir, 'package.json'), JSON.stringify(packageJson, null, 2));
+
   // Create TypeScript config
   const tsConfig = {
     compilerOptions: {
@@ -94,17 +93,14 @@ async function createPlugin() {
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
       moduleResolution: 'node',
-      allowSyntheticDefaultImports: true
+      allowSyntheticDefaultImports: true,
     },
     include: ['src/**/*'],
-    exclude: ['node_modules', 'dist', 'tests']
+    exclude: ['node_modules', 'dist', 'tests'],
   };
-  
-  fs.writeFileSync(
-    path.join(pluginDir, 'tsconfig.json'),
-    JSON.stringify(tsConfig, null, 2)
-  );
-  
+
+  fs.writeFileSync(path.join(pluginDir, 'tsconfig.json'), JSON.stringify(tsConfig, null, 2));
+
   // Create main plugin file
   const pluginTemplate = `import { Plugin, PluginAPI } from '../../core/PluginSystem';
 
@@ -244,11 +240,8 @@ export default ${className};
 // Export for programmatic use
 export { ${className} };`;
 
-  fs.writeFileSync(
-    path.join(pluginDir, 'src', 'index.ts'),
-    pluginTemplate
-  );
-  
+  fs.writeFileSync(path.join(pluginDir, 'src', 'index.ts'), pluginTemplate);
+
   // Create test file
   const testTemplate = `import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ${className} } from '../src/index';
@@ -298,11 +291,8 @@ describe('${className}', () => {
   });
 });`;
 
-  fs.writeFileSync(
-    path.join(pluginDir, 'tests', `${pluginId}.test.ts`),
-    testTemplate
-  );
-  
+  fs.writeFileSync(path.join(pluginDir, 'tests', `${pluginId}.test.ts`), testTemplate);
+
   // Create README
   const readme = `# ${name}
 
@@ -362,11 +352,8 @@ npm run lint
 
 ${license}`;
 
-  fs.writeFileSync(
-    path.join(pluginDir, 'docs', 'README.md'),
-    readme
-  );
-  
+  fs.writeFileSync(path.join(pluginDir, 'docs', 'README.md'), readme);
+
   // Create .gitignore
   const gitignore = `node_modules/
 dist/
@@ -378,11 +365,8 @@ coverage/
 .vscode/
 .idea/`;
 
-  fs.writeFileSync(
-    path.join(pluginDir, '.gitignore'),
-    gitignore
-  );
-  
+  fs.writeFileSync(path.join(pluginDir, '.gitignore'), gitignore);
+
   console.log(`\n✅ Plugin "${name}" created successfully!`);
   console.log(`📁 Location: ${pluginDir}`);
   console.log(`📝 Next steps:`);
@@ -390,7 +374,7 @@ coverage/
   console.log(`   2. npm install`);
   console.log(`   3. npm run build`);
   console.log(`   4. npm test`);
-  
+
   rl.close();
 }
 

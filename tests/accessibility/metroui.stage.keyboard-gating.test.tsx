@@ -25,8 +25,9 @@ const MockStageImpl: React.FC = () => {
   return <div data-testid="mock-stage" />;
 };
 // Use factory returning component defined inside to avoid temporal dead zone
-vi.mock('../../src/visualization/metro-stage', () => ({
-  MetroStage: () => React.createElement(MockStageImpl),
+vi.mock('../../src/visualization/stage', () => ({
+  __esModule: true,
+  default: () => React.createElement(MockStageImpl),
 }));
 vi.mock('../../src/components/MiniMap', () => ({ MiniMap: () => React.createElement('div') }));
 
@@ -56,18 +57,34 @@ const baseProps = {
 } as unknown as BaseProps;
 
 describe('Stage keyboard navigation gating', () => {
-  it('does not trigger selection when stage not focused, triggers when focused', () => {
+  it('does not trigger selection when stage not focused, triggers when focused', async () => {
     const { container } = render(<MetroUI {...baseProps} />);
-    const stageContainer = container.querySelector('.stage-container') as HTMLElement;
-    // Ensure not focused
+    // Wait for stage container to mount because MetroUI performs layout effects asynchronously
+    let stageContainer: HTMLElement | null = null;
+    const start = Date.now();
+    while (!stageContainer && Date.now() - start < 500) {
+      stageContainer = container.querySelector('.stage-container') as HTMLElement | null;
+      if (!stageContainer) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+    }
+    expect(stageContainer).toBeTruthy();
+
+    // Ensure not focused initially
     expect(document.activeElement).not.toBe(stageContainer);
-    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(stageContainer!, { key: 'ArrowRight' });
     expect(lastSelect).toBeNull();
+
     // Focus stage and try again
-    stageContainer.focus();
+    // Programmatically focus. JSDOM occasionally requires explicit focus event
+    stageContainer!.focus();
+    fireEvent.focus(stageContainer!);
     expect(document.activeElement).toBe(stageContainer);
+    // Allow any pending focus events to propagate
+    await new Promise((r) => setTimeout(r, 20)); // allow Lazy component effect to register listener
     fireEvent.keyDown(window, { key: 'ArrowRight' });
+    await new Promise((r) => setTimeout(r, 0));
     expect(lastSelect).toBeTruthy();
-    expect(lastSelect.path).toBe('mock/node');
+    expect(lastSelect!.path).toBe('mock/node');
   });
 });

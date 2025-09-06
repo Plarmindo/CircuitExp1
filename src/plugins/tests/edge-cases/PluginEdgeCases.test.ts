@@ -18,7 +18,7 @@ function createTestPlugin(overrides: Partial<Plugin> = {}): Plugin {
       category: 'test',
       engines: { circuitexp1: '^1.0.0' },
       main: 'index.js',
-      ...overrides.metadata
+      ...overrides.metadata,
     },
     async activate() {
       // Default implementation
@@ -26,7 +26,7 @@ function createTestPlugin(overrides: Partial<Plugin> = {}): Plugin {
     async deactivate() {
       // Default implementation
     },
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -61,10 +61,14 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
-        async activate() { /* missing implementation */ },
-        async deactivate() { /* missing implementation */ }
+        async activate() {
+          /* missing implementation */
+        },
+        async deactivate() {
+          /* missing implementation */
+        },
       };
 
       // Should still register successfully
@@ -84,8 +88,8 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
-        }
+          main: 'index.js',
+        },
       });
 
       await pluginManager.register(plugin);
@@ -103,8 +107,8 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
-        }
+          main: 'index.js',
+        },
       });
 
       await pluginManager.register(plugin);
@@ -122,10 +126,10 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {},
-        async deactivate() {}
+        async deactivate() {},
       };
 
       await pluginManager.register(plugin);
@@ -145,8 +149,8 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
-        }
+          main: 'index.js',
+        },
       });
 
       await pluginManager.register(maliciousPlugin);
@@ -165,7 +169,7 @@ describe('Plugin Edge Cases Tests', () => {
             // Expected to fail
           }
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(fsPlugin);
@@ -182,7 +186,7 @@ describe('Plugin Edge Cases Tests', () => {
             // Expected to fail
           }
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(networkPlugin);
@@ -198,7 +202,7 @@ describe('Plugin Edge Cases Tests', () => {
           const largeArray = new Array(10000000).fill(0);
           throw new Error('Memory limit exceeded');
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(memoryBombPlugin);
@@ -213,7 +217,7 @@ describe('Plugin Edge Cases Tests', () => {
             setTimeout(() => reject(new Error('Activation timeout')), 5000);
           });
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(infiniteLoopPlugin);
@@ -228,18 +232,18 @@ describe('Plugin Edge Cases Tests', () => {
             nodes: new Array(10000).fill(null).map((_, i) => ({
               id: i,
               name: `Node ${i}`,
-              properties: { x: Math.random(), y: Math.random() }
+              properties: { x: Math.random(), y: Math.random() },
             })),
             edges: new Array(50000).fill(null).map((_, i) => ({
               from: Math.floor(Math.random() * 10000),
               to: Math.floor(Math.random() * 10000),
-              weight: Math.random()
-            }))
+              weight: Math.random(),
+            })),
           };
-          
+
           api.setData('large-graph', largeData);
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(largeDataPlugin);
@@ -269,7 +273,7 @@ describe('Plugin Edge Cases Tests', () => {
             setTimeout(() => reject(new Error('Async activation error')), 10);
           });
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(asyncErrorPlugin);
@@ -283,7 +287,7 @@ describe('Plugin Edge Cases Tests', () => {
         },
         async deactivate() {
           throw new Error('Deactivation error');
-        }
+        },
       });
 
       await pluginManager.register(deactivationErrorPlugin);
@@ -293,26 +297,46 @@ describe('Plugin Edge Cases Tests', () => {
 
     it('should handle circular dependencies', async () => {
       const plugin1 = createTestPlugin({
-        metadata: { id: 'plugin-1', name: 'Plugin 1', version: '1.0.0', description: '', author: 'Test', license: 'MIT', category: 'test', engines: { circuitexp1: '^1.0.0' }, main: 'index.js' },
+        metadata: {
+          id: 'plugin-1',
+          name: 'Plugin 1',
+          version: '1.0.0',
+          description: '',
+          author: 'Test',
+          license: 'MIT',
+          category: 'test',
+          engines: { circuitexp1: '^1.0.0' },
+          main: 'index.js',
+        },
         async activate() {
           // Try to activate plugin 2
           await pluginManager.enable('plugin-2');
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       const plugin2 = createTestPlugin({
-        metadata: { id: 'plugin-2', name: 'Plugin 2', version: '1.0.0', description: '', author: 'Test', license: 'MIT', category: 'test', engines: { circuitexp1: '^1.0.0' }, main: 'index.js' },
+        metadata: {
+          id: 'plugin-2',
+          name: 'Plugin 2',
+          version: '1.0.0',
+          description: '',
+          author: 'Test',
+          license: 'MIT',
+          category: 'test',
+          engines: { circuitexp1: '^1.0.0' },
+          main: 'index.js',
+        },
         async activate() {
           // Try to activate plugin 1
           await pluginManager.enable('plugin-1');
         },
-        async deactivate() {}
+        async deactivate() {},
       });
 
       await pluginManager.register(plugin1);
       await pluginManager.register(plugin2);
-      
+
       // Should handle circular dependency gracefully
       await expect(pluginManager.enable('plugin-1')).rejects.toThrow();
     });
@@ -331,8 +355,8 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
-        }
+          main: 'index.js',
+        },
       });
 
       await pluginManager.register(plugin);
@@ -346,7 +370,7 @@ describe('Plugin Edge Cases Tests', () => {
         '1.0.0+build.123',
         '1.0.0-alpha.1+build.456',
         '0.0.1',
-        '999.999.999'
+        '999.999.999',
       ];
 
       for (const version of versions) {
@@ -360,8 +384,8 @@ describe('Plugin Edge Cases Tests', () => {
             license: 'MIT',
             category: 'test',
             engines: { circuitexp1: '^1.0.0' },
-            main: 'index.js'
-          }
+            main: 'index.js',
+          },
         });
 
         await pluginManager.register(plugin);
@@ -383,8 +407,8 @@ describe('Plugin Edge Cases Tests', () => {
           engines: { circuitexp1: '^1.0.0' },
           main: 'index.js',
           tags: [],
-          dependencies: {}
-        }
+          dependencies: {},
+        },
       });
 
       await pluginManager.register(plugin);
@@ -402,8 +426,8 @@ describe('Plugin Edge Cases Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
-        }
+          main: 'index.js',
+        },
       });
 
       await pluginManager.register(plugin);
@@ -413,7 +437,7 @@ describe('Plugin Edge Cases Tests', () => {
 
   describe('Concurrent Operations', () => {
     it('should handle concurrent plugin registration', async () => {
-      const plugins = Array.from({ length: 50 }, (_, i) => 
+      const plugins = Array.from({ length: 50 }, (_, i) =>
         createTestPlugin({
           metadata: {
             id: `concurrent-plugin-${i}`,
@@ -424,17 +448,17 @@ describe('Plugin Edge Cases Tests', () => {
             license: 'MIT',
             category: 'test',
             engines: { circuitexp1: '^1.0.0' },
-            main: 'index.js'
-          }
+            main: 'index.js',
+          },
         })
       );
 
-      await Promise.all(plugins.map(plugin => pluginManager.register(plugin)));
+      await Promise.all(plugins.map((plugin) => pluginManager.register(plugin)));
       expect(pluginManager.list()).toHaveLength(50);
     });
 
     it('should handle concurrent activation/deactivation', async () => {
-      const plugins = Array.from({ length: 10 }, (_, i) => 
+      const plugins = Array.from({ length: 10 }, (_, i) =>
         createTestPlugin({
           metadata: {
             id: `concurrent-activation-${i}`,
@@ -445,26 +469,26 @@ describe('Plugin Edge Cases Tests', () => {
             license: 'MIT',
             category: 'test',
             engines: { circuitexp1: '^1.0.0' },
-            main: 'index.js'
-          }
+            main: 'index.js',
+          },
         })
       );
 
-      await Promise.all(plugins.map(plugin => pluginManager.register(plugin)));
+      await Promise.all(plugins.map((plugin) => pluginManager.register(plugin)));
 
       // Concurrent activation
-      await Promise.all(
-        plugins.map(plugin => pluginManager.enable(plugin.metadata.id))
-      );
+      await Promise.all(plugins.map((plugin) => pluginManager.enable(plugin.metadata.id)));
 
-      expect(pluginManager.list().filter(p => pluginManager.isEnabled(p.metadata.id))).toHaveLength(10);
+      expect(
+        pluginManager.list().filter((p) => pluginManager.isEnabled(p.metadata.id))
+      ).toHaveLength(10);
 
       // Concurrent deactivation
-      await Promise.all(
-        plugins.map(plugin => pluginManager.disable(plugin.metadata.id))
-      );
+      await Promise.all(plugins.map((plugin) => pluginManager.disable(plugin.metadata.id)));
 
-      expect(pluginManager.list().filter(p => pluginManager.isEnabled(p.metadata.id))).toHaveLength(0);
+      expect(
+        pluginManager.list().filter((p) => pluginManager.isEnabled(p.metadata.id))
+      ).toHaveLength(0);
     });
   });
 });

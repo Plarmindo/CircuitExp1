@@ -1,6 +1,6 @@
 /**
  * CircuitExp1 Plugin Deployment System
- * 
+ *
  * Automated deployment pipeline with testing, validation, and version management
  */
 
@@ -87,7 +87,7 @@ export class PluginDeploymentSystem {
       autoValidate: true,
       createBackup: true,
       rollbackOnFailure: true,
-      notify: true
+      notify: true,
     }
   ): Promise<DeploymentResult> {
     const startTime = Date.now();
@@ -98,12 +98,16 @@ export class PluginDeploymentSystem {
       logs.push({
         level: 'info',
         message: `Starting deployment of ${plugin.metadata.name} v${plugin.metadata.version}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Step 1: Pre-deployment validation
       if (config.autoValidate) {
-        logs.push({ level: 'info', message: 'Running validation checks...', timestamp: new Date().toISOString() });
+        logs.push({
+          level: 'info',
+          message: 'Running validation checks...',
+          timestamp: new Date().toISOString(),
+        });
         const validation = await this.runValidation(plugin, logs);
         if (!validation.overall) {
           throw new Error(`Validation failed: ${validation.metadata.errors.join(', ')}`);
@@ -113,7 +117,11 @@ export class PluginDeploymentSystem {
       // Step 2: Automated testing
       let testingMetrics: TestingMetrics = { testsRun: 0, passed: 0, failed: 0, coverage: 0 };
       if (config.autoTest) {
-        logs.push({ level: 'info', message: 'Running automated tests...', timestamp: new Date().toISOString() });
+        logs.push({
+          level: 'info',
+          message: 'Running automated tests...',
+          timestamp: new Date().toISOString(),
+        });
         const testResults = await this.runTests(plugin, logs);
         testingMetrics = testResults;
         if (!testResults.passed) {
@@ -124,17 +132,29 @@ export class PluginDeploymentSystem {
       // Step 3: Create backup if requested
       let backupPath: string | undefined;
       if (config.createBackup) {
-        logs.push({ level: 'info', message: 'Creating backup...', timestamp: new Date().toISOString() });
+        logs.push({
+          level: 'info',
+          message: 'Creating backup...',
+          timestamp: new Date().toISOString(),
+        });
         backupPath = await this.createBackup(plugin, logs);
         rollbackAvailable = true;
       }
 
       // Step 4: Deploy to target
-      logs.push({ level: 'info', message: `Deploying to ${config.target}...`, timestamp: new Date().toISOString() });
+      logs.push({
+        level: 'info',
+        message: `Deploying to ${config.target}...`,
+        timestamp: new Date().toISOString(),
+      });
       await this.deployToTarget(plugin, config, logs);
 
       // Step 5: Post-deployment verification
-      logs.push({ level: 'info', message: 'Running post-deployment verification...', timestamp: new Date().toISOString() });
+      logs.push({
+        level: 'info',
+        message: 'Running post-deployment verification...',
+        timestamp: new Date().toISOString(),
+      });
       await this.verifyDeployment(plugin, config, logs);
 
       const duration = Date.now() - startTime;
@@ -148,33 +168,36 @@ export class PluginDeploymentSystem {
         metrics: {
           validation: await this.getValidationMetrics(plugin),
           testing: testingMetrics,
-          performance: await this.getPerformanceMetrics(plugin)
+          performance: await this.getPerformanceMetrics(plugin),
         },
-        rollbackAvailable
+        rollbackAvailable,
       };
 
       this.deploymentHistory.push(result);
-      
+
       logs.push({
         level: 'info',
         message: `Deployment completed successfully in ${duration}ms`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       return result;
-
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       logs.push({
         level: 'error',
         message: `Deployment failed: ${error.message}`,
         timestamp: new Date().toISOString(),
-        details: error
+        details: error,
       });
 
       if (config.rollbackOnFailure && rollbackAvailable) {
-        logs.push({ level: 'info', message: 'Initiating rollback...', timestamp: new Date().toISOString() });
+        logs.push({
+          level: 'info',
+          message: 'Initiating rollback...',
+          timestamp: new Date().toISOString(),
+        });
         await this.rollback(plugin, logs);
       }
 
@@ -188,9 +211,9 @@ export class PluginDeploymentSystem {
         metrics: {
           validation: await this.getValidationMetrics(plugin),
           testing: { testsRun: 0, passed: 0, failed: 0, coverage: 0 },
-          performance: { bundleSize: 0, loadTime: 0, memoryUsage: 0 }
+          performance: { bundleSize: 0, loadTime: 0, memoryUsage: 0 },
         },
-        rollbackAvailable
+        rollbackAvailable,
       };
 
       this.deploymentHistory.push(result);
@@ -199,7 +222,7 @@ export class PluginDeploymentSystem {
   }
 
   async rollback(plugin: Plugin, logs: DeploymentLog[]): Promise<void> {
-    const rollbackInfo = this.rollbackStack.find(r => r.pluginId === plugin.metadata.id);
+    const rollbackInfo = this.rollbackStack.find((r) => r.pluginId === plugin.metadata.id);
     if (!rollbackInfo) {
       throw new Error('No backup available for rollback');
     }
@@ -207,7 +230,7 @@ export class PluginDeploymentSystem {
     logs.push({
       level: 'info',
       message: `Rolling back to version ${rollbackInfo.version}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Restore from backup
@@ -216,25 +239,25 @@ export class PluginDeploymentSystem {
     logs.push({
       level: 'info',
       message: 'Rollback completed',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
   getDeploymentHistory(pluginId?: string): DeploymentResult[] {
     if (pluginId) {
-      return this.deploymentHistory.filter(d => d.pluginId === pluginId);
+      return this.deploymentHistory.filter((d) => d.pluginId === pluginId);
     }
     return this.deploymentHistory;
   }
 
   private async runValidation(plugin: Plugin, logs: DeploymentLog[]) {
     const validation = await this.validator.validatePlugin(plugin);
-    
+
     logs.push({
       level: validation.metadata.valid ? 'info' : 'error',
       message: `Validation: ${validation.metadata.valid ? 'PASSED' : 'FAILED'}`,
       timestamp: new Date().toISOString(),
-      details: validation
+      details: validation,
     });
 
     return validation;
@@ -242,25 +265,25 @@ export class PluginDeploymentSystem {
 
   private async runTests(plugin: Plugin, logs: DeploymentLog[]): Promise<TestingMetrics> {
     const testResults = await this.testSuite.runTests(plugin);
-    
+
     logs.push({
       level: testResults.passed ? 'info' : 'error',
-      message: `Tests: ${testResults.tests.length} run, ${testResults.passed ? 'ALL PASSED' : `${testResults.tests.filter(t => !t.passed).length} FAILED`}`,
+      message: `Tests: ${testResults.tests.length} run, ${testResults.passed ? 'ALL PASSED' : `${testResults.tests.filter((t) => !t.passed).length} FAILED`}`,
       timestamp: new Date().toISOString(),
-      details: testResults
+      details: testResults,
     });
 
     return {
       testsRun: testResults.tests.length,
-      passed: testResults.tests.filter(t => t.passed).length,
-      failed: testResults.tests.filter(t => !t.passed).length,
-      coverage: testResults.coverage
+      passed: testResults.tests.filter((t) => t.passed).length,
+      failed: testResults.tests.filter((t) => !t.passed).length,
+      coverage: testResults.coverage,
     };
   }
 
   private async createBackup(plugin: Plugin, logs: DeploymentLog[]): Promise<string> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    
+
     if (window.electronAPI?.createPluginBackup) {
       const result = await window.electronAPI.createPluginBackup(plugin, timestamp);
       const backupPath = result.backupPath;
@@ -270,18 +293,18 @@ export class PluginDeploymentSystem {
         version: plugin.metadata.version,
         backupPath,
         timestamp: new Date().toISOString(),
-        reason: 'Pre-deployment backup'
+        reason: 'Pre-deployment backup',
       });
 
       logs.push({
         level: 'info',
         message: `Backup created: ${backupPath}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       return backupPath;
     }
-    
+
     throw new Error('Backup creation not available in renderer process');
   }
 
@@ -292,11 +315,11 @@ export class PluginDeploymentSystem {
   ): Promise<void> {
     if (window.electronAPI?.deployPlugin) {
       const result = await window.electronAPI.deployPlugin(plugin, config.target);
-      
+
       logs.push({
         level: 'info',
         message: `Plugin deployed to: ${result.pluginPath}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else {
       throw new Error('Plugin deployment not available in renderer process');
@@ -310,11 +333,11 @@ export class PluginDeploymentSystem {
   ): Promise<void> {
     if (window.electronAPI?.verifyPluginDeployment) {
       const result = await window.electronAPI.verifyPluginDeployment(plugin, config.target);
-      
+
       if (!result.exists) {
         throw new Error('Plugin file not found after deployment');
       }
-      
+
       if (result.version !== plugin.metadata.version) {
         throw new Error('Version mismatch after deployment');
       }
@@ -322,7 +345,7 @@ export class PluginDeploymentSystem {
       logs.push({
         level: 'info',
         message: 'Post-deployment verification completed',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else {
       throw new Error('Plugin verification not available in renderer process');
@@ -332,11 +355,11 @@ export class PluginDeploymentSystem {
   private async restoreFromBackup(backupPath: string, logs: DeploymentLog[]): Promise<void> {
     if (window.electronAPI?.restoreFromBackup) {
       const result = await window.electronAPI.restoreFromBackup(backupPath);
-      
+
       logs.push({
         level: 'info',
         message: `Restored from backup: ${backupPath}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } else {
       throw new Error('Restore from backup not available in renderer process');
@@ -347,7 +370,7 @@ export class PluginDeploymentSystem {
     const baseDir = {
       local: join(process.cwd(), 'plugins', 'local'),
       staging: join(process.cwd(), 'plugins', 'staging'),
-      production: join(process.cwd(), 'plugins', 'production')
+      production: join(process.cwd(), 'plugins', 'production'),
     };
 
     return join(baseDir[target], pluginId);
@@ -359,7 +382,7 @@ export class PluginDeploymentSystem {
       passed: validation.overall,
       errors: validation.metadata.errors.length,
       warnings: validation.metadata.warnings.length,
-      score: validation.security.score
+      score: validation.security.score,
     };
   }
 
@@ -368,7 +391,7 @@ export class PluginDeploymentSystem {
     return {
       bundleSize: JSON.stringify(plugin).length,
       loadTime: 150,
-      memoryUsage: 1024 * 1024
+      memoryUsage: 1024 * 1024,
     };
   }
 }
@@ -425,15 +448,15 @@ Examples:
           autoValidate: true,
           createBackup: true,
           rollbackOnFailure: true,
-          notify: true
+          notify: true,
         };
 
         const result = await this.deploymentSystem.deploy(plugin, config);
-        
+
         console.log(`\nDeployment ${result.success ? 'SUCCEEDED' : 'FAILED'}`);
         console.log(`Duration: ${result.duration}ms`);
         console.log(`\nLogs:`);
-        result.logs.forEach(log => {
+        result.logs.forEach((log) => {
           console.log(`[${log.level.toUpperCase()}] ${log.message}`);
         });
 
@@ -468,7 +491,7 @@ Examples:
 
   private async handleHistory(pluginId: string): Promise<void> {
     const history = this.deploymentSystem.getDeploymentHistory(pluginId);
-    
+
     if (history.length === 0) {
       console.log(`No deployment history found for plugin: ${pluginId}`);
       return;
@@ -499,7 +522,9 @@ Examples:
         if (result.metadata.warnings.length > 0) {
           console.log(`Warnings: ${result.metadata.warnings.join(', ')}`);
         }
-        console.log(`\nSecurity: ${result.security.passed ? 'PASSED' : 'FAILED'} (Score: ${result.security.score}/100)`);
+        console.log(
+          `\nSecurity: ${result.security.passed ? 'PASSED' : 'FAILED'} (Score: ${result.security.score}/100)`
+        );
         console.log(`\nCompatibility: ${result.compatibility.compatible ? 'PASSED' : 'FAILED'}`);
       } else {
         throw new Error('Plugin file loading not available in renderer process');

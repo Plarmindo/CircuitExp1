@@ -1,8 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
-import MetroStage from '../visualization/metro-stage';
-interface ResponsiveMetroStageProps {}
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import type { LayoutNodeLite, RouteCommand } from '../visualization/stage/types';
 
-const ResponsiveMetroStage: React.FC<ResponsiveMetroStageProps> = () => {
+// Dynamic import of MetroStage enables code splitting
+const LazyMetroStage = lazy(() => import('../visualization/stage'));
+
+interface ResponsiveMetroStageProps {
+  layout?: LayoutNodeLite[];
+  routes?: RouteCommand[];
+  onNodeClick?: (path: string) => void;
+  onNodeHover?: (path: string | null) => void;
+  onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
+  theme?: any;
+  debug?: boolean;
+}
+
+const ResponsiveMetroStage: React.FC<ResponsiveMetroStageProps> = ({
+  layout = [],
+  routes = [],
+  onNodeClick,
+  onNodeHover,
+  onLayoutUpdate,
+  theme,
+  debug = false,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -59,9 +79,23 @@ const ResponsiveMetroStage: React.FC<ResponsiveMetroStageProps> = () => {
 
   return (
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <MetroStage width={dimensions.width} height={dimensions.height} />
+      <Suspense fallback={null}>
+        <LazyMetroStage
+          width={dimensions.width}
+          height={dimensions.height}
+          layout={layout}
+          routes={routes}
+          onNodeClick={onNodeClick}
+          onNodeHover={onNodeHover}
+          onLayoutUpdate={onLayoutUpdate}
+          theme={theme}
+          debug={debug}
+        />
+      </Suspense>
     </div>
   );
 };
 
 export default ResponsiveMetroStage;
+
+// Remove trailing LazyMetroStage declaration

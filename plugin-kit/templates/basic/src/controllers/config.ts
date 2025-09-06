@@ -17,23 +17,23 @@ export class ConfigController {
         version: this.config.version,
         ai: {
           providers: Object.keys(this.config.ai.providers),
-          features: this.config.ai.features
+          features: this.config.ai.features,
         },
         api: {
           port: this.config.api.port,
           host: this.config.api.host,
-          endpoints: this.config.api.endpoints
+          endpoints: this.config.api.endpoints,
         },
         logging: {
           level: this.config.logging.level,
-          file: this.config.logging.file
-        }
+          file: this.config.logging.file,
+        },
       };
 
       res.json({
         success: true,
         data: safeConfig,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in get config handler', { error: error.message });
@@ -44,7 +44,7 @@ export class ConfigController {
   async updateConfig(req: Request, res: Response): Promise<void> {
     try {
       const { section, updates } = req.body;
-      
+
       if (!section || !updates) {
         res.status(400).json({ error: 'Section and updates are required' });
         return;
@@ -64,7 +64,7 @@ export class ConfigController {
       res.json({
         success: true,
         message: 'Configuration updated successfully',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in update config handler', { error: error.message });
@@ -78,13 +78,13 @@ export class ConfigController {
         status: 'healthy',
         uptime: process.uptime(),
         memory: process.memoryUsage(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       res.json({
         success: true,
         data: health,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in health handler', { error: error.message });

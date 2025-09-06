@@ -2,20 +2,24 @@
 
 ## Overview
 
-The CircuitExp1 plugin system provides a comprehensive API for extending the application's functionality while maintaining security and stability. This document outlines all available endpoints, authentication mechanisms, and usage patterns.
+The CircuitExp1 plugin system provides a comprehensive API for extending the application's functionality while
+maintaining security and stability. This document outlines all available endpoints, authentication mechanisms, and usage
+patterns.
 
 ## Core API Endpoints
 
 ### Plugin Registration
 
 #### Register Plugin
+
 ```typescript
-POST /api/plugins/register
+POST / api / plugins / register;
 ```
 
 Registers a new plugin with the system.
 
 **Request Body:**
+
 ```json
 {
   "metadata": {
@@ -34,6 +38,7 @@ Registers a new plugin with the system.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -43,6 +48,7 @@ Registers a new plugin with the system.
 ```
 
 **Error Responses:**
+
 - `400 Bad Request`: Invalid plugin metadata
 - `409 Conflict`: Plugin ID already exists
 - `422 Unprocessable Entity`: Validation errors
@@ -50,17 +56,20 @@ Registers a new plugin with the system.
 ### Plugin Management
 
 #### List Plugins
+
 ```typescript
-GET /api/plugins
+GET / api / plugins;
 ```
 
 Lists all registered plugins.
 
 **Query Parameters:**
+
 - `status`: Filter by status (registered, enabled, disabled)
 - `type`: Filter by plugin type
 
 **Response:**
+
 ```json
 {
   "plugins": [
@@ -77,6 +86,7 @@ Lists all registered plugins.
 ```
 
 #### Enable Plugin
+
 ```typescript
 POST /api/plugins/:pluginId/enable
 ```
@@ -84,6 +94,7 @@ POST /api/plugins/:pluginId/enable
 Enables a registered plugin.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -92,6 +103,7 @@ Enables a registered plugin.
 ```
 
 #### Disable Plugin
+
 ```typescript
 POST /api/plugins/:pluginId/disable
 ```
@@ -99,6 +111,7 @@ POST /api/plugins/:pluginId/disable
 Disables an enabled plugin.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -107,6 +120,7 @@ Disables an enabled plugin.
 ```
 
 #### Get Plugin Info
+
 ```typescript
 GET /api/plugins/:pluginId
 ```
@@ -114,6 +128,7 @@ GET /api/plugins/:pluginId
 Gets detailed information about a specific plugin.
 
 **Response:**
+
 ```json
 {
   "id": "my-plugin",
@@ -140,6 +155,7 @@ Gets detailed information about a specific plugin.
 ### Configuration Management
 
 #### Get Plugin Configuration
+
 ```typescript
 GET /api/plugins/:pluginId/config
 ```
@@ -147,6 +163,7 @@ GET /api/plugins/:pluginId/config
 Gets the current configuration for a plugin.
 
 **Response:**
+
 ```json
 {
   "pluginId": "my-plugin",
@@ -158,6 +175,7 @@ Gets the current configuration for a plugin.
 ```
 
 #### Update Plugin Configuration
+
 ```typescript
 PUT /api/plugins/:pluginId/config
 ```
@@ -165,6 +183,7 @@ PUT /api/plugins/:pluginId/config
 Updates plugin configuration.
 
 **Request Body:**
+
 ```json
 {
   "setting1": "new-value",
@@ -173,6 +192,7 @@ Updates plugin configuration.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -186,13 +206,15 @@ Updates plugin configuration.
 ### Event System
 
 #### Subscribe to Events
+
 ```typescript
-POST /api/events/subscribe
+POST / api / events / subscribe;
 ```
 
 Subscribes to system events.
 
 **Request Body:**
+
 ```json
 {
   "pluginId": "my-plugin",
@@ -201,6 +223,7 @@ Subscribes to system events.
 ```
 
 **Response:**
+
 ```json
 {
   "subscriptionId": "sub-123",
@@ -209,13 +232,15 @@ Subscribes to system events.
 ```
 
 #### Emit Event
+
 ```typescript
-POST /api/events/emit
+POST / api / events / emit;
 ```
 
 Emits a custom event.
 
 **Request Body:**
+
 ```json
 {
   "event": "custom:event",
@@ -227,6 +252,7 @@ Emits a custom event.
 ### Data Storage
 
 #### Store Data
+
 ```typescript
 POST /api/data/:pluginId
 ```
@@ -234,6 +260,7 @@ POST /api/data/:pluginId
 Stores plugin-specific data.
 
 **Request Body:**
+
 ```json
 {
   "key": "user-preferences",
@@ -245,6 +272,7 @@ Stores plugin-specific data.
 ```
 
 #### Retrieve Data
+
 ```typescript
 GET /api/data/:pluginId/:key
 ```
@@ -252,6 +280,7 @@ GET /api/data/:pluginId/:key
 Retrieves stored plugin data.
 
 **Response:**
+
 ```json
 {
   "key": "user-preferences",
@@ -263,6 +292,7 @@ Retrieves stored plugin data.
 ```
 
 #### Delete Data
+
 ```typescript
 DELETE /api/data/:pluginId/:key
 ```
@@ -272,13 +302,15 @@ Deletes stored plugin data.
 ### UI Integration
 
 #### Register Component
+
 ```typescript
-POST /api/ui/components/register
+POST / api / ui / components / register;
 ```
 
 Registers a new UI component.
 
 **Request Body:**
+
 ```json
 {
   "pluginId": "my-plugin",
@@ -293,6 +325,7 @@ Registers a new UI component.
 ```
 
 #### Unregister Component
+
 ```typescript
 DELETE /api/ui/components/:componentId
 ```
@@ -302,17 +335,20 @@ Unregisters a UI component.
 ### File System Access
 
 #### Read File
+
 ```typescript
-GET /api/fs/read
+GET / api / fs / read;
 ```
 
 Reads a file with sandboxed access.
 
 **Query Parameters:**
+
 - `path`: Relative path within plugin's sandbox
 - `encoding`: File encoding (default: 'utf8')
 
 **Response:**
+
 ```json
 {
   "content": "file content here",
@@ -322,13 +358,15 @@ Reads a file with sandboxed access.
 ```
 
 #### Write File
+
 ```typescript
-POST /api/fs/write
+POST / api / fs / write;
 ```
 
 Writes a file with sandboxed access.
 
 **Request Body:**
+
 ```json
 {
   "path": "config/settings.json",
@@ -340,13 +378,15 @@ Writes a file with sandboxed access.
 ### Network Access
 
 #### Fetch Resource
+
 ```typescript
-POST /api/network/fetch
+POST / api / network / fetch;
 ```
 
 Fetches external resources with security controls.
 
 **Request Body:**
+
 ```json
 {
   "url": "https://api.example.com/data",
@@ -359,6 +399,7 @@ Fetches external resources with security controls.
 ```
 
 **Response:**
+
 ```json
 {
   "status": 200,
@@ -386,10 +427,11 @@ Authorization: Bearer <plugin-api-key>
 ### Obtaining API Keys
 
 ```typescript
-POST /api/auth/token
+POST / api / auth / token;
 ```
 
 **Request Body:**
+
 ```json
 {
   "pluginId": "my-plugin",
@@ -398,6 +440,7 @@ POST /api/auth/token
 ```
 
 **Response:**
+
 ```json
 {
   "token": "plugin-api-key-here",
@@ -426,20 +469,21 @@ All errors follow a consistent format:
 
 ### Common Error Codes
 
-| Code | Description | HTTP Status |
-|------|-------------|-------------|
-| `PLUGIN_NOT_FOUND` | Plugin does not exist | 404 |
-| `PLUGIN_ALREADY_EXISTS` | Plugin ID already registered | 409 |
-| `INVALID_PLUGIN_METADATA` | Plugin metadata validation failed | 422 |
-| `SECURITY_VIOLATION` | Security policy violation | 403 |
-| `RATE_LIMIT_EXCEEDED` | API rate limit exceeded | 429 |
-| `NETWORK_ERROR` | Network access failed | 502 |
-| `FILESYSTEM_ERROR` | File system operation failed | 500 |
-| `CONFIG_ERROR` | Configuration validation failed | 400 |
+| Code                      | Description                       | HTTP Status |
+| ------------------------- | --------------------------------- | ----------- |
+| `PLUGIN_NOT_FOUND`        | Plugin does not exist             | 404         |
+| `PLUGIN_ALREADY_EXISTS`   | Plugin ID already registered      | 409         |
+| `INVALID_PLUGIN_METADATA` | Plugin metadata validation failed | 422         |
+| `SECURITY_VIOLATION`      | Security policy violation         | 403         |
+| `RATE_LIMIT_EXCEEDED`     | API rate limit exceeded           | 429         |
+| `NETWORK_ERROR`           | Network access failed             | 502         |
+| `FILESYSTEM_ERROR`        | File system operation failed      | 500         |
+| `CONFIG_ERROR`            | Configuration validation failed   | 400         |
 
 ### Error Handling Examples
 
 #### Handling Plugin Registration Errors
+
 ```typescript
 try {
   await pluginAPI.register(plugin);
@@ -478,18 +522,15 @@ X-RateLimit-Reset: 1640995200
 Subscribe to plugin lifecycle events:
 
 ```typescript
-POST /api/webhooks/subscribe
+POST / api / webhooks / subscribe;
 ```
 
 **Request Body:**
+
 ```json
 {
   "url": "https://your-server.com/webhook",
-  "events": [
-    "plugin:enabled",
-    "plugin:disabled",
-    "plugin:error"
-  ],
+  "events": ["plugin:enabled", "plugin:disabled", "plugin:error"],
   "secret": "your-webhook-secret"
 }
 ```
@@ -516,7 +557,7 @@ import { PluginSDK } from '@circuitexp1/plugin-sdk';
 
 const sdk = new PluginSDK({
   apiKey: 'your-api-key',
-  baseURL: 'http://localhost:5175/api'
+  baseURL: 'http://localhost:5175/api',
 });
 
 // Register a plugin
@@ -524,7 +565,7 @@ await sdk.plugins.register({
   metadata: pluginMetadata,
   activate: async (api) => {
     // Plugin activation logic
-  }
+  },
 });
 ```
 
@@ -534,7 +575,7 @@ await sdk.plugins.register({
 const CircuitExp1 = require('@circuitexp1/plugin-sdk');
 
 const sdk = new CircuitExp1.PluginSDK({
-  apiKey: 'your-api-key'
+  apiKey: 'your-api-key',
 });
 
 // Enable a plugin
@@ -546,19 +587,21 @@ await sdk.plugins.enable('my-plugin');
 ### Test Endpoints
 
 #### Test Plugin Registration
+
 ```typescript
-POST /api/test/plugins/register
+POST / api / test / plugins / register;
 ```
 
-**Request Body:** Same as registration endpoint
-**Response:** Test registration without persisting
+**Request Body:** Same as registration endpoint **Response:** Test registration without persisting
 
 #### Test Configuration
+
 ```typescript
-POST /api/test/config/validate
+POST / api / test / config / validate;
 ```
 
 **Request Body:**
+
 ```json
 {
   "pluginId": "test-plugin",
@@ -573,11 +616,13 @@ POST /api/test/config/validate
 ### From v1 to v2 API
 
 #### Breaking Changes
+
 - Plugin IDs must be kebab-case
 - Configuration validation is stricter
 - API keys now expire after 30 days
 
 #### Migration Steps
+
 1. Update plugin metadata format
 2. Add required fields to configuration
 3. Update API key handling
@@ -588,16 +633,19 @@ POST /api/test/config/validate
 ### Common Issues
 
 #### Plugin Won't Activate
+
 - Check plugin metadata for required fields
 - Verify API key permissions
 - Check browser console for errors
 
 #### Configuration Not Saving
+
 - Ensure configuration schema is valid
 - Check for validation errors in response
 - Verify plugin has write permissions
 
 #### Network Requests Failing
+
 - Check security policy settings
 - Verify allowed domains
 - Check for CORS issues
@@ -607,10 +655,11 @@ POST /api/test/config/validate
 Enable debug logging:
 
 ```typescript
-POST /api/debug/enable
+POST / api / debug / enable;
 ```
 
 **Request Body:**
+
 ```json
 {
   "pluginId": "my-plugin",

@@ -18,16 +18,16 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.spec.ts',
         'src/plugins/development/scaffolding.js',
-        'src/plugins/deployment/deploy.ts'
-      ]
-    }
+        'src/plugins/deployment/deploy.ts',
+      ],
+    },
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
       '@plugins': resolve(__dirname, './src/plugins'),
       '@core': resolve(__dirname, './src/plugins/core'),
-      '@test-utils': resolve(__dirname, './src/plugins/tests/utils')
-    }
-  }
+      '@test-utils': resolve(__dirname, './src/plugins/tests/utils'),
+    },
+  },
 });

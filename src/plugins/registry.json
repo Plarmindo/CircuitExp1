@@ -9,13 +9,23 @@
         "id": "themes",
         "name": "Themes & Styling",
         "description": "Visual themes and styling plugins",
-        "subcategories": ["dark-themes", "light-themes", "custom-colors", "animations"]
+        "subcategories": [
+          "dark-themes",
+          "light-themes",
+          "custom-colors",
+          "animations"
+        ]
       },
       {
         "id": "export",
         "name": "Export & Sharing",
         "description": "Export formats and sharing capabilities",
-        "subcategories": ["image-formats", "data-formats", "cloud-services", "printing"]
+        "subcategories": [
+          "image-formats",
+          "data-formats",
+          "cloud-services",
+          "printing"
+        ]
       },
       {
         "id": "interaction",
@@ -33,7 +43,12 @@
         "id": "integration",
         "name": "Integrations",
         "description": "Third-party service integrations",
-        "subcategories": ["cloud-storage", "version-control", "collaboration", "apis"]
+        "subcategories": [
+          "cloud-storage",
+          "version-control",
+          "collaboration",
+          "apis"
+        ]
       }
     ],
     "plugins": [

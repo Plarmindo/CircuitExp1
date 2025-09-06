@@ -5,29 +5,12 @@
   "type": "external-integration-kit",
   "scope": "standalone",
   "architecture": "microservice",
-  
+
   "integration": {
     "mode": "external",
-    "providers": [
-      "trae",
-      "github-copilot",
-      "vscode",
-      "jetbrains",
-      "custom"
-    ],
-    "interfaces": [
-      "rest-api",
-      "websocket",
-      "graphql",
-      "grpc",
-      "webhooks"
-    ],
-    "protocols": [
-      "http",
-      "https",
-      "ws",
-      "wss"
-    ]
+    "providers": ["trae", "github-copilot", "vscode", "jetbrains", "custom"],
+    "interfaces": ["rest-api", "websocket", "graphql", "grpc", "webhooks"],
+    "protocols": ["http", "https", "ws", "wss"]
   },
 
   "deployment": {
@@ -52,20 +35,8 @@
   },
 
   "authentication": {
-    "methods": [
-      "oauth2",
-      "api-key",
-      "jwt",
-      "basic-auth",
-      "custom"
-    ],
-    "providers": [
-      "github",
-      "microsoft",
-      "google",
-      "auth0",
-      "custom"
-    ]
+    "methods": ["oauth2", "api-key", "jwt", "basic-auth", "custom"],
+    "providers": ["github", "microsoft", "google", "auth0", "custom"]
   },
 
   "services": {
@@ -99,14 +70,7 @@
       "java",
       "rust"
     ],
-    "package-managers": [
-      "npm",
-      "yarn",
-      "pip",
-      "nuget",
-      "cargo",
-      "go-modules"
-    ]
+    "package-managers": ["npm", "yarn", "pip", "nuget", "cargo", "go-modules"]
   },
 
   "isolation": {
@@ -155,10 +119,7 @@
   "dependencies": {
     "external": [],
     "internal": [],
-    "runtime": [
-      "node >= 18.0.0",
-      "npm >= 8.0.0"
-    ]
+    "runtime": ["node >= 18.0.0", "npm >= 8.0.0"]
   },
 
   "metadata": {

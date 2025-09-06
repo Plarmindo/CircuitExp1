@@ -20,19 +20,19 @@ export class AIService {
   }> {
     try {
       const systemPrompt = this.buildCodeCompletionPrompt(options.language);
-      
+
       const response = await this.openai.chat.completions.create({
         model: options.model || 'gpt-3.5-turbo',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: options.prompt }
+          { role: 'user', content: options.prompt },
         ],
         max_tokens: options.maxTokens || 150,
         temperature: options.temperature || 0.1,
         top_p: 0.9,
         frequency_penalty: 0,
         presence_penalty: 0,
-        stop: ['```', '\n\n']
+        stop: ['```', '\n\n'],
       });
 
       const completion = response.choices[0]?.message?.content?.trim() || '';
@@ -40,7 +40,7 @@ export class AIService {
 
       this.logger.info('Code completion generated', {
         model: response.model,
-        tokens: usage.total_tokens
+        tokens: usage.total_tokens,
       });
 
       return {
@@ -48,9 +48,9 @@ export class AIService {
         tokens: {
           prompt: usage.prompt_tokens,
           completion: usage.completion_tokens,
-          total: usage.total_tokens
+          total: usage.total_tokens,
         },
-        model: response.model
+        model: response.model,
       };
     } catch (error) {
       this.logger.error('Error generating code completion', error);
@@ -76,16 +76,25 @@ export class AIService {
     recommendations: string[];
   }> {
     try {
-      const prompt = this.buildCodeReviewPrompt(options.code, options.language, options.rules, options.context);
-      
+      const prompt = this.buildCodeReviewPrompt(
+        options.code,
+        options.language,
+        options.rules,
+        options.context
+      );
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: 'You are an expert code reviewer. Analyze the provided code for quality, security, performance, and best practices.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content:
+              'You are an expert code reviewer. Analyze the provided code for quality, security, performance, and best practices.',
+          },
+          { role: 'user', content: prompt },
         ],
         max_tokens: 1000,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const reviewText = response.choices[0]?.message?.content || '';
@@ -93,7 +102,7 @@ export class AIService {
 
       this.logger.info('Code review completed', {
         issues: parsedReview.review.length,
-        score: parsedReview.score
+        score: parsedReview.score,
       });
 
       return parsedReview;
@@ -143,16 +152,24 @@ export class AIService {
     suggestions: string[];
   }> {
     try {
-      const prompt = this.buildAnalysisPrompt(options.code, options.type, options.language, options.context);
-      
+      const prompt = this.buildAnalysisPrompt(
+        options.code,
+        options.type,
+        options.language,
+        options.context
+      );
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: `You are an expert ${options.type} analyst. Provide detailed analysis and actionable recommendations.` },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content: `You are an expert ${options.type} analyst. Provide detailed analysis and actionable recommendations.`,
+          },
+          { role: 'user', content: prompt },
         ],
         max_tokens: 1500,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const analysisText = response.choices[0]?.message?.content || '';
@@ -163,11 +180,7 @@ export class AIService {
     }
   }
 
-  async detectBugs(options: {
-    code: string;
-    language?: string;
-    context?: string;
-  }): Promise<{
+  async detectBugs(options: { code: string; language?: string; context?: string }): Promise<{
     bugs: Array<{
       type: string;
       severity: 'low' | 'medium' | 'high';
@@ -181,15 +194,19 @@ export class AIService {
   }> {
     try {
       const prompt = this.buildBugDetectionPrompt(options.code, options.language, options.context);
-      
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: 'You are an expert bug detector. Identify potential bugs, edge cases, and issues in the provided code.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content:
+              'You are an expert bug detector. Identify potential bugs, edge cases, and issues in the provided code.',
+          },
+          { role: 'user', content: prompt },
         ],
         max_tokens: 1000,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const bugText = response.choices[0]?.message?.content || '';
@@ -199,13 +216,13 @@ export class AIService {
 
       this.logger.info('Bug detection completed', {
         bugs: bugs.length,
-        confidence: this.calculateConfidence(bugs)
+        confidence: this.calculateConfidence(bugs),
       });
 
       return {
         bugs,
         confidence: this.calculateConfidence(bugs),
-        analysisTime
+        analysisTime,
       };
     } catch (error) {
       this.logger.error('Error detecting bugs', error);
@@ -232,16 +249,26 @@ export class AIService {
     dependencies: string[];
   }> {
     try {
-      const prompt = this.buildTestGenerationPrompt(options.code, options.framework, options.language, options.testType, options.coverageTarget);
-      
+      const prompt = this.buildTestGenerationPrompt(
+        options.code,
+        options.framework,
+        options.language,
+        options.testType,
+        options.coverageTarget
+      );
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: 'You are an expert test engineer. Generate comprehensive, well-structured tests following best practices.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content:
+              'You are an expert test engineer. Generate comprehensive, well-structured tests following best practices.',
+          },
+          { role: 'user', content: prompt },
         ],
         max_tokens: 2000,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const testText = response.choices[0]?.message?.content || '';
@@ -271,16 +298,24 @@ export class AIService {
     }>;
   }> {
     try {
-      const prompt = this.buildDocumentationPrompt(options.code, options.format, options.language, options.style);
-      
+      const prompt = this.buildDocumentationPrompt(
+        options.code,
+        options.format,
+        options.language,
+        options.style
+      );
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          { role: 'system', content: `Generate ${options.format} documentation in ${options.style} style.` },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content: `Generate ${options.format} documentation in ${options.style} style.`,
+          },
+          { role: 'user', content: prompt },
         ],
         max_tokens: 1500,
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       const docText = response.choices[0]?.message?.content || '';
@@ -305,15 +340,19 @@ export class AIService {
   }> {
     try {
       const prompt = this.buildChatPrompt(options.message, options.context);
-      
+
       const response = await this.openai.chat.completions.create({
         model: options.model || 'gpt-3.5-turbo',
         messages: [
-          { role: 'system', content: 'You are a helpful AI assistant for developers. Provide clear, accurate, and helpful responses.' },
-          { role: 'user', content: prompt }
+          {
+            role: 'system',
+            content:
+              'You are a helpful AI assistant for developers. Provide clear, accurate, and helpful responses.',
+          },
+          { role: 'user', content: prompt },
         ],
         max_tokens: 1000,
-        temperature: options.temperature || 0.7
+        temperature: options.temperature || 0.7,
       });
 
       const reply = response.choices[0]?.message?.content || '';
@@ -321,7 +360,7 @@ export class AIService {
 
       this.logger.info('Chat response generated', {
         model: response.model,
-        tokens: usage.total_tokens
+        tokens: usage.total_tokens,
       });
 
       return {
@@ -329,10 +368,10 @@ export class AIService {
         tokens: {
           prompt: usage.prompt_tokens,
           completion: usage.completion_tokens,
-          total: usage.total_tokens
+          total: usage.total_tokens,
         },
         sessionId: options.sessionId,
-        context: options.context
+        context: options.context,
       };
     } catch (error) {
       this.logger.error('Error generating chat response', error);
@@ -344,10 +383,15 @@ export class AIService {
     return `You are an expert ${language || 'code'} developer. Complete the given code snippet following best practices and conventions. Only return the completion without explanations or markdown formatting.`;
   }
 
-  private buildCodeReviewPrompt(code: string, language?: string, rules?: string[], context?: string): string {
+  private buildCodeReviewPrompt(
+    code: string,
+    language?: string,
+    rules?: string[],
+    context?: string
+  ): string {
     const rulesText = rules ? `\nReview Rules:\n${rules.join('\n')}` : '';
     const contextText = context ? `\nContext:\n${context}` : '';
-    
+
     return `Review the following ${language || 'code'} code for quality, security, performance, and best practices.${contextText}${rulesText}
 
 Code to review:
@@ -362,9 +406,14 @@ Provide a JSON response with:
 - recommendations: list of improvement suggestions`;
   }
 
-  private buildAnalysisPrompt(code: string, type: string, language?: string, context?: string): string {
+  private buildAnalysisPrompt(
+    code: string,
+    type: string,
+    language?: string,
+    context?: string
+  ): string {
     const contextText = context ? `\nContext:\n${context}` : '';
-    
+
     return `Analyze the following ${language || 'code'} code for ${type}.${contextText}
 
 Code to analyze:
@@ -377,7 +426,7 @@ Provide detailed analysis including metrics, vulnerabilities, bottlenecks, and a
 
   private buildBugDetectionPrompt(code: string, language?: string, context?: string): string {
     const contextText = context ? `\nContext:\n${context}` : '';
-    
+
     return `Detect potential bugs, edge cases, and issues in the following ${language || 'code'} code.${contextText}
 
 Code to analyze:
@@ -388,7 +437,13 @@ ${code}
 Identify bugs with type, severity, description, line numbers, and fixes.`;
   }
 
-  private buildTestGenerationPrompt(code: string, framework?: string, language?: string, testType?: string, coverageTarget?: number): string {
+  private buildTestGenerationPrompt(
+    code: string,
+    framework?: string,
+    language?: string,
+    testType?: string,
+    coverageTarget?: number
+  ): string {
     return `Generate ${testType || 'unit'} tests for the following ${language || 'code'} code using ${framework || 'standard'} framework. Target ${coverageTarget || '80'}% coverage.
 
 Code to test:
@@ -399,7 +454,12 @@ ${code}
 Provide well-structured tests with proper assertions and mocking.`;
   }
 
-  private buildDocumentationPrompt(code: string, format: string, language?: string, style?: string): string {
+  private buildDocumentationPrompt(
+    code: string,
+    format: string,
+    language?: string,
+    style?: string
+  ): string {
     return `Generate ${format} documentation for the following ${language || 'code'} code in ${style || 'detailed'} style.
 
 Code to document:
@@ -423,7 +483,7 @@ Include overview, parameters, returns, examples, and usage notes.`;
         review: [],
         score: 75,
         summary: 'Code review completed',
-        recommendations: ['Follow best practices']
+        recommendations: ['Follow best practices'],
       };
     }
   }
@@ -434,7 +494,9 @@ Include overview, parameters, returns, examples, and usage notes.`;
       suggestions: ['Analysis completed'],
       ...(type === 'security' && { security: { vulnerabilities: [], riskScore: 0 } }),
       ...(type === 'performance' && { performance: { bottlenecks: [], recommendations: [] } }),
-      ...(type === 'complexity' && { complexity: { cyclomatic: 0, cognitive: 0, maintainability: 0 } })
+      ...(type === 'complexity' && {
+        complexity: { cyclomatic: 0, cognitive: 0, maintainability: 0 },
+      }),
     };
   }
 
@@ -447,7 +509,7 @@ Include overview, parameters, returns, examples, and usage notes.`;
       tests: [],
       framework: 'jest',
       coverageEstimate: 80,
-      dependencies: []
+      dependencies: [],
     };
   }
 
@@ -456,11 +518,11 @@ Include overview, parameters, returns, examples, and usage notes.`;
       documentation: text,
       format,
       sections: [],
-      examples: []
+      examples: [],
     };
   }
 
   private calculateConfidence(bugs: any[]): number {
-    return Math.min(95, Math.max(50, 100 - (bugs.length * 10)));
+    return Math.min(95, Math.max(50, 100 - bugs.length * 10));
   }
 }

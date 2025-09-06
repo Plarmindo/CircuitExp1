@@ -38,7 +38,7 @@ export interface PluginMetadata {
   };
 }
 
-export type PluginCategory = 
+export type PluginCategory =
   | 'ai-integration'
   | 'chat-assistant'
   | 'code-generation'
@@ -48,7 +48,7 @@ export type PluginCategory =
   | 'data-processing'
   | 'integration';
 
-export type AIPlatform = 
+export type AIPlatform =
   | 'openai'
   | 'anthropic'
   | 'google-gemini'
@@ -89,19 +89,19 @@ export interface PluginAPI {
   events: EventManager;
   logger: Logger;
   storage: StorageManager;
-  
+
   // UI integration
   ui: UIManager;
-  
+
   // AI services
   ai: AIServices;
-  
+
   // File operations (sandboxed)
   files: FileManager;
-  
+
   // Network operations (controlled)
   network: NetworkManager;
-  
+
   // Plugin management
   plugins: PluginManager;
 }
@@ -124,7 +124,7 @@ export interface EventManager {
   once(event: PluginEvent, listener: EventListener): () => void;
 }
 
-export type PluginEvent = 
+export type PluginEvent =
   | 'plugin:activated'
   | 'plugin:deactivated'
   | 'config:changed'
@@ -174,16 +174,16 @@ export interface ScopedStorage {
 export interface UIManager {
   registerComponent(type: string, component: React.ComponentType<any>): void;
   unregisterComponent(type: string, componentId: string): void;
-  
+
   registerPanel(panel: PanelConfig): void;
   unregisterPanel(panelId: string): void;
-  
+
   registerMenuItem(item: MenuItemConfig): void;
   unregisterMenuItem(itemId: string): void;
-  
+
   showNotification(notification: NotificationConfig): void;
   showModal(modal: ModalConfig): Promise<any>;
-  
+
   getTheme(): string;
   onThemeChange(callback: (theme: string) => void): () => void;
 }
@@ -248,16 +248,16 @@ export interface OpenAIService {
     createCompletion(params: OpenAIChatParams): Promise<OpenAIChatResponse>;
     createStream(params: OpenAIChatParams): Promise<ReadableStream<OpenAIChatStreamChunk>>;
   };
-  
+
   embeddings: {
     create(params: OpenAIEmbeddingParams): Promise<OpenAIEmbeddingResponse>;
   };
-  
+
   images: {
     generate(params: OpenAIImageParams): Promise<OpenAIImageResponse>;
     edit(params: OpenAIImageEditParams): Promise<OpenAIImageResponse>;
   };
-  
+
   audio: {
     transcribe(params: OpenAITranscriptionParams): Promise<OpenAITranscriptionResponse>;
     translate(params: OpenAITranslationParams): Promise<OpenAITranslationResponse>;
@@ -276,11 +276,7 @@ export interface OpenAIChatParams {
   response_format?: { type: 'text' | 'json_object' };
 }
 
-export type OpenAIModel = 
-  | 'gpt-4-turbo-preview'
-  | 'gpt-4'
-  | 'gpt-3.5-turbo'
-  | 'gpt-3.5-turbo-16k';
+export type OpenAIModel = 'gpt-4-turbo-preview' | 'gpt-4' | 'gpt-3.5-turbo' | 'gpt-3.5-turbo-16k';
 
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
@@ -317,7 +313,9 @@ export interface OpenAIChatStreamChunk {
 export interface AnthropicService {
   chat: {
     createMessage(params: AnthropicMessageParams): Promise<AnthropicMessageResponse>;
-    createStream(params: AnthropicMessageParams): Promise<ReadableStream<AnthropicMessageStreamChunk>>;
+    createStream(
+      params: AnthropicMessageParams
+    ): Promise<ReadableStream<AnthropicMessageStreamChunk>>;
   };
 }
 
@@ -372,7 +370,7 @@ export interface FileManager {
   list(dir: string): Promise<string[]>;
   mkdir(path: string): Promise<void>;
   stat(path: string): Promise<FileStats>;
-  
+
   // Restricted to plugin directory
   getPluginDir(): string;
   getTempDir(): string;
@@ -393,11 +391,11 @@ export interface NetworkManager {
   post(url: string, data?: any, options?: RequestInit): Promise<Response>;
   put(url: string, data?: any, options?: RequestInit): Promise<Response>;
   delete(url: string, options?: RequestInit): Promise<Response>;
-  
+
   // Rate limiting and caching
   setRateLimit(domain: string, requests: number, period: number): void;
   clearCache(): void;
-  
+
   // WebSocket support
   createWebSocket(url: string): WebSocket;
 }
@@ -409,7 +407,7 @@ export interface PluginManager {
   enablePlugin(id: string): Promise<void>;
   disablePlugin(id: string): Promise<void>;
   isPluginEnabled(id: string): boolean;
-  
+
   // Plugin communication
   callPlugin(id: string, method: string, ...args: any[]): Promise<any>;
   onPluginEvent(pluginId: string, event: string, callback: EventListener): () => void;
@@ -419,7 +417,7 @@ export interface PluginManager {
 export interface CustomAIService {
   registerProvider(name: string, provider: AIProvider): void;
   unregisterProvider(name: string): void;
-  
+
   chat: {
     createCompletion(params: CustomAIParams): Promise<CustomAIResponse>;
   };

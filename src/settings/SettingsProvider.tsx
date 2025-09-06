@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { UserSettings } from './user-settings-client';
-import { getUserSettings, updateUserSettings, onUserSettingsLoaded, onUserSettingsUpdated } from './user-settings-client';
+import {
+  getUserSettings,
+  updateUserSettings,
+  onUserSettingsLoaded,
+  onUserSettingsUpdated,
+} from './user-settings-client';
 
 interface SettingsContextType {
   settings: UserSettings | null;

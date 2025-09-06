@@ -1,6 +1,6 @@
 /**
  * Rate Limiting Service
- * 
+ *
  * Implements rate limiting for file operations to prevent system abuse
  * and ensure stable performance under high load conditions.
  */
@@ -40,7 +40,7 @@ export class RateLimiter {
     rejectedRequests: 0,
     averageResponseTime: 0,
     peakConcurrent: 0,
-    lastReset: Date.now()
+    lastReset: Date.now(),
   };
   private config: RateLimitConfig;
 
@@ -57,9 +57,9 @@ export class RateLimiter {
 
   private cleanup(): void {
     const cutoff = Date.now() - this.config.windowMs;
-    
+
     for (const [key, timestamps] of this.requests.entries()) {
-      const filtered = timestamps.filter(t => t > cutoff);
+      const filtered = timestamps.filter((t) => t > cutoff);
       if (filtered.length === 0) {
         this.requests.delete(key);
       } else {
@@ -74,7 +74,7 @@ export class RateLimiter {
         rejectedRequests: 0,
         averageResponseTime: 0,
         peakConcurrent: 0,
-        lastReset: Date.now()
+        lastReset: Date.now(),
       };
     }
   }
@@ -84,7 +84,7 @@ export class RateLimiter {
       return {
         allowed: true,
         remaining: this.config.maxRequests,
-        resetTime: Date.now() + this.config.windowMs
+        resetTime: Date.now() + this.config.windowMs,
       };
     }
 
@@ -100,7 +100,7 @@ export class RateLimiter {
           remaining: 0,
           resetTime: Date.now() + this.config.cooldownMs,
           retryAfter: this.config.cooldownMs,
-          reason: 'Maximum concurrent scans exceeded'
+          reason: 'Maximum concurrent scans exceeded',
         };
       }
     }
@@ -113,7 +113,7 @@ export class RateLimiter {
         remaining: 0,
         resetTime: Date.now() + this.config.cooldownMs,
         retryAfter: this.config.cooldownMs,
-        reason: 'File size exceeds limit'
+        reason: 'File size exceeds limit',
       };
     }
 
@@ -122,12 +122,12 @@ export class RateLimiter {
     const timestamps = this.requests.get(key) || [];
     const now = Date.now();
     const cutoff = now - this.config.windowMs;
-    const validRequests = timestamps.filter(t => t > cutoff);
+    const validRequests = timestamps.filter((t) => t > cutoff);
 
     // Burst protection
     const burstKey = `${identifier}:burst`;
     const burstTimestamps = this.requests.get(burstKey) || [];
-    const validBurst = burstTimestamps.filter(t => t > now - 1000); // 1 second window
+    const validBurst = burstTimestamps.filter((t) => t > now - 1000); // 1 second window
 
     if (validBurst.length >= this.config.burstLimit) {
       this.stats.rejectedRequests++;
@@ -136,7 +136,7 @@ export class RateLimiter {
         remaining: 0,
         resetTime: now + 1000,
         retryAfter: 1000,
-        reason: 'Burst limit exceeded'
+        reason: 'Burst limit exceeded',
       };
     }
 
@@ -145,13 +145,13 @@ export class RateLimiter {
       const oldestRequest = Math.min(...validRequests);
       const resetTime = oldestRequest + this.config.windowMs;
       const retryAfter = Math.max(0, resetTime - now);
-      
+
       return {
         allowed: false,
         remaining: 0,
         resetTime,
         retryAfter,
-        reason: 'Rate limit exceeded'
+        reason: 'Rate limit exceeded',
       };
     }
 
@@ -164,7 +164,7 @@ export class RateLimiter {
     return {
       allowed: true,
       remaining: this.config.maxRequests - validRequests.length,
-      resetTime: now + this.config.windowMs
+      resetTime: now + this.config.windowMs,
     };
   }
 
@@ -173,7 +173,7 @@ export class RateLimiter {
     if (check.allowed) {
       const current = this.concurrentScans.get(identifier) || 0;
       this.concurrentScans.set(identifier, current + 1);
-      
+
       // Update peak concurrent
       if (current + 1 > this.stats.peakConcurrent) {
         this.stats.peakConcurrent = current + 1;
@@ -228,7 +228,7 @@ export class RateLimiter {
       stats: this.stats,
       activeRequests: Object.fromEntries(this.requests),
       concurrentScans: Object.fromEntries(this.concurrentScans),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 }
@@ -241,7 +241,7 @@ export const defaultRateLimitConfig: RateLimitConfig = {
   maxFileSize: 100 * 1024 * 1024, // 100MB
   maxConcurrentScans: 3,
   burstLimit: 10,
-  cooldownMs: 60 * 1000 // 1 minute
+  cooldownMs: 60 * 1000, // 1 minute
 };
 
 // Predefined rate limit profiles
@@ -250,18 +250,18 @@ export const rateLimitProfiles = {
     maxRequests: 50,
     maxFileSize: 50 * 1024 * 1024,
     maxConcurrentScans: 2,
-    burstLimit: 5
+    burstLimit: 5,
   },
   moderate: {
     maxRequests: 100,
     maxFileSize: 100 * 1024 * 1024,
     maxConcurrentScans: 3,
-    burstLimit: 10
+    burstLimit: 10,
   },
   relaxed: {
     maxRequests: 200,
     maxFileSize: 500 * 1024 * 1024,
     maxConcurrentScans: 5,
-    burstLimit: 20
-  }
+    burstLimit: 20,
+  },
 };

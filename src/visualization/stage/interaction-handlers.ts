@@ -32,6 +32,9 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
     const worldW = bounds.maxX - bounds.minX + pad * 2;
     const worldH = bounds.maxY - bounds.minY + pad * 2;
 
+    // Abort if any dimension is non-finite to prevent invalid viewport calculations
+    if (!Number.isFinite(worldW) || !Number.isFinite(worldH)) return;
+
     if (!renderer || typeof (renderer as unknown as { width?: number }).width !== 'number') {
       return; // jsdom fallback guard
     }
@@ -42,6 +45,8 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
     if (worldW <= 0 || worldH <= 0 || viewW <= 0 || viewH <= 0) return;
 
     const scale = Math.min(viewW / worldW, viewH / worldH) * 0.95;
+    // Guard against non-finite scale values
+    if (!Number.isFinite(scale)) return;
     const minZoom = 0.3;
     const maxZoom = 3.0;
     const newScale = Math.min(maxZoom, Math.max(minZoom, scale));
@@ -52,6 +57,9 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
     const worldCenterX = (bounds.minX + bounds.maxX) / 2;
     const worldCenterY = (bounds.minY + bounds.maxY) / 2;
 
+    // Ensure calculated positions are finite before applying
+    if (!Number.isFinite(worldCenterX) || !Number.isFinite(worldCenterY)) return;
+
     app.stage.x = viewW / 2 - worldCenterX * newScale;
     app.stage.y = viewH / 2 - worldCenterY * newScale;
   };
@@ -59,13 +67,13 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
   const handleSelect = (path: string): void => {
     // Toggle selection logic
     selectedKeyRef.current = path === selectedKeyRef.current ? null : path;
-    
+
     window.dispatchEvent(
       new CustomEvent('metro:select', {
         detail: selectedKeyRef.current ? { path: selectedKeyRef.current, type: 'node' } : null,
       })
     );
-    
+
     redraw(false);
   };
 

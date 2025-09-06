@@ -40,19 +40,19 @@ export class SecurityService {
       max: 100, // Limit each IP to 100 requests per windowMs
       message: 'Too many requests from this IP, please try again later.',
       standardHeaders: true,
-      legacyHeaders: false
+      legacyHeaders: false,
     });
 
     this.rateLimits.set('api', {
       windowMs: 60 * 60 * 1000, // 1 hour
       max: 1000,
-      message: 'API rate limit exceeded'
+      message: 'API rate limit exceeded',
     });
 
     this.rateLimits.set('ai', {
       windowMs: 60 * 60 * 1000, // 1 hour
       max: 50,
-      message: 'AI service rate limit exceeded'
+      message: 'AI service rate limit exceeded',
     });
   }
 
@@ -67,7 +67,7 @@ export class SecurityService {
   }> {
     const config = this.rateLimits.get(endpoint) || this.rateLimits.get('default')!;
     const key = `rate_limit:${endpoint}:${identifier}`;
-    
+
     try {
       const current = await this.cache.get<number>(key);
       const now = Date.now();
@@ -80,7 +80,7 @@ export class SecurityService {
           allowed: true,
           resetTime: now + config.windowMs,
           remaining: config.max - 1,
-          total: config.max
+          total: config.max,
         };
       }
 
@@ -91,7 +91,7 @@ export class SecurityService {
           allowed: false,
           resetTime: now + config.windowMs,
           remaining: 0,
-          total: config.max
+          total: config.max,
         };
       }
 
@@ -100,7 +100,7 @@ export class SecurityService {
         allowed: true,
         resetTime: now + config.windowMs,
         remaining: config.max - count - 1,
-        total: config.max
+        total: config.max,
       };
     } catch (error) {
       this.logger.error('Error checking rate limit', error);
@@ -143,7 +143,7 @@ export class SecurityService {
       created: new Date(),
       usageCount: 0,
       permissions,
-      active: true
+      active: true,
     };
 
     this.apiKeys.set(key, apiKey);
@@ -189,7 +189,7 @@ export class SecurityService {
     }
 
     if (Array.isArray(obj)) {
-      return obj.map(item => this.sanitizeObject(item));
+      return obj.map((item) => this.sanitizeObject(item));
     }
 
     if (obj && typeof obj === 'object') {
@@ -217,17 +217,17 @@ export class SecurityService {
 
   validateOrigin(origin: string, allowedOrigins: string[]): boolean {
     if (!origin) return false;
-    
-    return allowedOrigins.some(allowed => {
+
+    return allowedOrigins.some((allowed) => {
       if (allowed === '*') return true;
       if (allowed === origin) return true;
-      
+
       // Handle wildcard patterns
       if (allowed.includes('*')) {
         const regex = new RegExp(allowed.replace(/\*/g, '.*'));
         return regex.test(origin);
       }
-      
+
       return false;
     });
   }
@@ -239,14 +239,16 @@ export class SecurityService {
     }
 
     if (Array.isArray(data)) {
-      return data.map(item => this.maskSensitiveData(item));
+      return data.map((item) => this.maskSensitiveData(item));
     }
 
     if (data && typeof data === 'object') {
       const masked: any = {};
       for (const [key, value] of Object.entries(data)) {
         const lowerKey = key.toLowerCase();
-        if (['password', 'token', 'secret', 'key', 'apikey', 'auth'].some(s => lowerKey.includes(s))) {
+        if (
+          ['password', 'token', 'secret', 'key', 'apikey', 'auth'].some((s) => lowerKey.includes(s))
+        ) {
           masked[key] = this.maskSensitiveData(String(value));
         } else {
           masked[key] = this.maskSensitiveData(value);
@@ -270,8 +272,8 @@ export class SecurityService {
   async cleanup(): Promise<void> {
     // Clean up expired rate limit keys
     const keys = await this.cache.keys();
-    const rateLimitKeys = keys.filter(key => key.startsWith('rate_limit:'));
-    
+    const rateLimitKeys = keys.filter((key) => key.startsWith('rate_limit:'));
+
     for (const key of rateLimitKeys) {
       const ttl = await this.cache.ttl(key);
       if (ttl <= 0) {

@@ -35,7 +35,7 @@ export class ReviewController {
           success: false,
           error: 'Invalid input',
           details: validationResult.errors,
-          requestId
+          requestId,
         });
         return;
       }
@@ -50,7 +50,7 @@ export class ReviewController {
         codeLength: code.length,
         contextLength: context?.length || 0,
         reviewType,
-        model: model || 'default'
+        model: model || 'default',
       });
 
       // Generate review
@@ -59,11 +59,14 @@ export class ReviewController {
         language,
         context,
         reviewType,
-
       });
 
       this.metrics.recordRequest('POST', '/api/review', 200, Date.now() - startTime);
-      this.metrics.recordAIUsage(model || 'claude-3-sonnet-20240229', review.tokens.prompt, review.tokens.completion);
+      this.metrics.recordAIUsage(
+        model || 'claude-3-sonnet-20240229',
+        review.tokens.prompt,
+        review.tokens.completion
+      );
 
       res.json({
         success: true,
@@ -75,29 +78,32 @@ export class ReviewController {
           usage: {
             prompt_tokens: review.tokens.prompt,
             completion_tokens: review.tokens.completion,
-            total_tokens: review.tokens.total
+            total_tokens: review.tokens.total,
           },
           issues: this.parseIssues(review.content),
-          summary: this.extractSummary(review.content)
+          summary: this.extractSummary(review.content),
         },
-        requestId
+        requestId,
       });
-
     } catch (error) {
       this.metrics.recordRequest('POST', '/api/review', 500, Date.now() - startTime);
-      this.metrics.recordError('review', '/api/review/quick', error instanceof Error ? error.message : 'Unknown error');
-      
+      this.metrics.recordError(
+        'review',
+        '/api/review/quick',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+
       this.logger.error('Code review failed', {
         requestId,
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       res.status(500).json({
         success: false,
         error: 'Failed to generate review',
         message: error instanceof Error ? error.message : 'Internal server error',
-        requestId
+        requestId,
       });
     }
   }
@@ -114,22 +120,22 @@ export class ReviewController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const data = validationResult.data as any;
-        const { code, language, context } = data;
-        const model = data.model || 'claude-3-sonnet-20240229';
-        const temperature = data.temperature || 0.3;
+      const { code, language, context } = data;
+      const model = data.model || 'claude-3-sonnet-20240229';
+      const temperature = data.temperature || 0.3;
 
       this.logger.info('Quick code review request', {
         requestId,
         language,
         codeLength: code.length,
         contextLength: context?.length || 0,
-        model: model || 'default'
+        model: model || 'default',
       });
 
       // Generate quick review
@@ -137,11 +143,15 @@ export class ReviewController {
         code,
         language,
         context,
-        reviewType: 'quick'
+        reviewType: 'quick',
       });
 
       this.metrics.recordRequest('POST', '/api/review/quick', 200, Date.now() - startTime);
-      this.metrics.recordAIUsage(model || 'claude-3-sonnet-20240229', review.tokens.prompt, review.tokens.completion);
+      this.metrics.recordAIUsage(
+        model || 'claude-3-sonnet-20240229',
+        review.tokens.prompt,
+        review.tokens.completion
+      );
 
       res.json({
         success: true,
@@ -153,29 +163,32 @@ export class ReviewController {
           usage: {
             prompt_tokens: review.tokens.prompt,
             completion_tokens: review.tokens.completion,
-            total_tokens: review.tokens.total
+            total_tokens: review.tokens.total,
           },
           issues: this.parseQuickIssues(review.content),
-          score: this.extractScore(review.content)
+          score: this.extractScore(review.content),
         },
-        requestId
+        requestId,
       });
-
     } catch (error) {
       this.metrics.recordRequest('POST', '/api/review/quick', 500, Date.now() - startTime);
-      this.metrics.recordError('quick-review', '/api/review/quick', error instanceof Error ? error.message : 'Unknown error');
-      
+      this.metrics.recordError(
+        'quick-review',
+        '/api/review/quick',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+
       this.logger.error('Quick code review failed', {
         requestId,
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       res.status(500).json({
         success: false,
         error: 'Failed to generate quick review',
         message: error instanceof Error ? error.message : 'Internal server error',
-        requestId
+        requestId,
       });
     }
   }
@@ -192,22 +205,22 @@ export class ReviewController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const data = validationResult.data as any;
-        const { code, language, context } = data;
-        const model = data.model || 'claude-3-sonnet-20240229';
-        const temperature = data.temperature || 0.3;
+      const { code, language, context } = data;
+      const model = data.model || 'claude-3-sonnet-20240229';
+      const temperature = data.temperature || 0.3;
 
       this.logger.info('Detailed code review request', {
         requestId,
         language,
         codeLength: code.length,
         contextLength: context?.length || 0,
-        model: model || 'claude-3-sonnet-20240229'
+        model: model || 'claude-3-sonnet-20240229',
       });
 
       // Generate detailed review
@@ -215,11 +228,15 @@ export class ReviewController {
         code,
         language,
         context,
-        reviewType: 'detailed'
+        reviewType: 'detailed',
       });
 
       this.metrics.recordRequest('POST', '/api/review/detailed', 200, Date.now() - startTime);
-      this.metrics.recordAIUsage(model || 'claude-3-sonnet-20240229', review.tokens.prompt, review.tokens.completion);
+      this.metrics.recordAIUsage(
+        model || 'claude-3-sonnet-20240229',
+        review.tokens.prompt,
+        review.tokens.completion
+      );
 
       res.json({
         success: true,
@@ -231,26 +248,29 @@ export class ReviewController {
           usage: review.tokens,
           issues: this.parseDetailedIssues(review.content),
           recommendations: this.extractRecommendations(review.content),
-          summary: this.extractDetailedSummary(review.content)
+          summary: this.extractDetailedSummary(review.content),
         },
-        requestId
+        requestId,
       });
-
     } catch (error) {
       this.metrics.recordRequest('POST', '/api/review/detailed', 500, Date.now() - startTime);
-      this.metrics.recordError('detailed-review', '/api/review/detailed', error instanceof Error ? error.message : 'Unknown error');
-      
+      this.metrics.recordError(
+        'detailed-review',
+        '/api/review/detailed',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+
       this.logger.error('Detailed code review failed', {
         requestId,
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       res.status(500).json({
         success: false,
         error: 'Failed to generate detailed review',
         message: error instanceof Error ? error.message : 'Internal server error',
-        requestId
+        requestId,
       });
     }
   }
@@ -264,10 +284,10 @@ export class ReviewController {
   }> {
     const issues = [];
     const lines = reviewContent.split('\n');
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       // Parse issues based on common patterns
       if (trimmed.includes('Issue:') || trimmed.includes('Problem:')) {
         const issue = this.parseIssueLine(trimmed);
@@ -287,10 +307,10 @@ export class ReviewController {
   }> {
     const issues = [];
     const lines = reviewContent.split('\n');
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       // Parse quick issues summary
       if (trimmed.match(/\d+\s+(high|medium|low)\s+priority\s+issues?/i)) {
         const match = trimmed.match(/(\d+)\s+(high|medium|low)\s+priority\s+issues?/i);
@@ -298,7 +318,7 @@ export class ReviewController {
           issues.push({
             severity: match[2].toLowerCase() as 'low' | 'medium' | 'high',
             count: parseInt(match[1]),
-            description: trimmed
+            description: trimmed,
           });
         }
       }
@@ -318,17 +338,17 @@ export class ReviewController {
   }> {
     const issues = [];
     const lines = reviewContent.split('\n');
-    
+
     let currentIssue = null;
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
-      
+
       if (trimmed.match(/^(Issue|Problem|Warning|Error):/i)) {
         if (currentIssue) {
           issues.push(currentIssue);
         }
-        
+
         currentIssue = {
           type: trimmed.split(':')[0],
           severity: this.determineSeverity(trimmed),
@@ -336,7 +356,7 @@ export class ReviewController {
           line: this.extractLineNumber(trimmed),
           file: this.extractFileName(trimmed),
           suggestion: '',
-          code: ''
+          code: '',
         };
       } else if (currentIssue && trimmed.startsWith('Suggestion:')) {
         currentIssue.suggestion = trimmed.replace('Suggestion:', '').trim();
@@ -373,11 +393,11 @@ export class ReviewController {
     const issues = this.parseIssues(reviewContent);
     const summary = {
       totalIssues: issues.length,
-      critical: issues.filter(i => i.severity === 'critical').length,
-      high: issues.filter(i => i.severity === 'high').length,
-      medium: issues.filter(i => i.severity === 'medium').length,
-      low: issues.filter(i => i.severity === 'low').length,
-      summary: this.extractSummary(reviewContent)
+      critical: issues.filter((i) => i.severity === 'critical').length,
+      high: issues.filter((i) => i.severity === 'high').length,
+      medium: issues.filter((i) => i.severity === 'medium').length,
+      low: issues.filter((i) => i.severity === 'low').length,
+      summary: this.extractSummary(reviewContent),
     };
 
     return summary;
@@ -386,11 +406,11 @@ export class ReviewController {
   private extractRecommendations(reviewContent: string): string[] {
     const recommendations = [];
     const lines = reviewContent.split('\n');
-    
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.match(/^\d+\./)) {
-        recommendations.push(trimmed.replace(/^[-•\d+\.\s]+/, '').trim());
+        recommendations.push(trimmed.replace(/^[-•\d+.\s]+/, '').trim());
       }
     }
 
@@ -398,7 +418,8 @@ export class ReviewController {
   }
 
   private extractScore(reviewContent: string): number {
-    const scoreMatch = reviewContent.match(/score:\s*(\d+)/i) || reviewContent.match(/(\d+)\s*\/\s*10/i);
+    const scoreMatch =
+      reviewContent.match(/score:\s*(\d+)/i) || reviewContent.match(/(\d+)\s*\/\s*10/i);
     if (scoreMatch) {
       return parseInt(scoreMatch[1]);
     }
@@ -408,12 +429,14 @@ export class ReviewController {
   private parseIssueLine(line: string): any {
     const severityMatch = line.match(/(critical|high|medium|low)/i);
     const typeMatch = line.match(/(security|performance|style|complexity|bug)/i);
-    
+
     return {
       type: typeMatch ? typeMatch[1].toLowerCase() : 'general',
-      severity: severityMatch ? severityMatch[1].toLowerCase() as 'low' | 'medium' | 'high' | 'critical' : 'medium',
+      severity: severityMatch
+        ? (severityMatch[1].toLowerCase() as 'low' | 'medium' | 'high' | 'critical')
+        : 'medium',
       description: line.replace(/^(Issue|Problem):/i, '').trim(),
-      line: this.extractLineNumber(line)
+      line: this.extractLineNumber(line),
     };
   }
 
@@ -436,6 +459,8 @@ export class ReviewController {
   }
 
   private generateRequestId(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    return (
+      Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    );
   }
 }

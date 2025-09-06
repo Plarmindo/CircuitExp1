@@ -23,11 +23,11 @@ export class ReviewController {
       }
 
       const { code, language, rules } = req.body;
-      
-      this.logger.info('Processing code review request', { 
-        language, 
+
+      this.logger.info('Processing code review request', {
+        language,
         codeLength: code.length,
-        rules: rules?.length || 0
+        rules: rules?.length || 0,
       });
 
       const result = await this.aiService.reviewCode(code, { language, rules });
@@ -35,7 +35,7 @@ export class ReviewController {
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in review handler', { error: error.message });
@@ -57,10 +57,10 @@ export class ReviewController {
         success: true,
         data: {
           score: result.score,
-          issues: result.review.filter(r => r.severity === 'warning' || r.severity === 'error'),
-          summary: `Code review completed with score ${result.score}/100`
+          issues: result.review.filter((r) => r.severity === 'warning' || r.severity === 'error'),
+          summary: `Code review completed with score ${result.score}/100`,
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in quick review handler', { error: error.message });

@@ -1,17 +1,21 @@
 # CircuitExp1 API Documentation
 
 ## Overview
-CircuitExp1 is a secure, high-performance file system visualization tool built with Electron and React. This documentation covers the main APIs, security features, and integration points.
+
+CircuitExp1 is a secure, high-performance file system visualization tool built with Electron and React. This
+documentation covers the main APIs, security features, and integration points.
 
 ## Architecture
 
 ### Frontend Architecture
+
 - **React 18** with TypeScript for type safety
 - **Vite** for fast development and optimized builds
 - **Electron IPC** for secure main/renderer communication
 - **Custom Metro Visualization** for interactive file system mapping
 
 ### Backend Architecture
+
 - **Electron Main Process** for file system operations
 - **Node.js File System APIs** with security hardening
 - **Rate Limiting** and **PII Detection** services
@@ -22,6 +26,7 @@ CircuitExp1 is a secure, high-performance file system visualization tool built w
 ### 1. Electron IPC API
 
 #### Main Process APIs
+
 ```typescript
 // File system operations
 interface ElectronAPI {
@@ -29,11 +34,11 @@ interface ElectronAPI {
   selectAndScanFolder(): Promise<{ folder: string; scanId: string }>;
   openPath(path: string): Promise<void>;
   renamePath(oldPath: string, newPath: string): Promise<void>;
-  
+
   // Security APIs
   getSecurityConfig(): Promise<SecurityConfig>;
   validatePath(path: string): Promise<boolean>;
-  
+
   // Performance APIs
   getPerformanceMetrics(): Promise<PerformanceMetrics>;
   getSystemHealth(): Promise<SystemHealth>;
@@ -44,7 +49,9 @@ const folder = await window.electronAPI.selectFolder();
 ```
 
 #### Security Validation
+
 All file operations include built-in security validation:
+
 - Path traversal protection
 - File size limits
 - Rate limiting
@@ -78,6 +85,7 @@ interface ScanProgress {
 ### 3. Visualization API
 
 #### MetroStage Component
+
 ```typescript
 interface MetroStageProps {
   nodes: NodeEntry[];
@@ -97,6 +105,7 @@ interface NodeEntry {
 ```
 
 #### Performance Optimization
+
 - Automatic LOD (Level of Detail) based on zoom level
 - Efficient batch rendering for large datasets
 - Memory management with garbage collection
@@ -105,6 +114,7 @@ interface NodeEntry {
 ## Security Features
 
 ### 1. Path Traversal Protection
+
 ```typescript
 import { validatePath } from '../security/path-validator';
 
@@ -114,11 +124,13 @@ const safePath = validatePath(userInput);
 ```
 
 ### 2. Content Security Policy (CSP)
+
 - **Development Mode**: Relaxed CSP for debugging
 - **Production Mode**: Hardened CSP without 'unsafe-inline'
 - **Dynamic CSP**: Runtime policy updates based on environment
 
 ### 3. PII Detection Service
+
 ```typescript
 import { PIIDetector, defaultPIIConfig } from '../services/pii-detector';
 
@@ -130,6 +142,7 @@ const results = detector.scanPath('/Users/john.doe/Documents/ssn-123-45-6789.txt
 ```
 
 ### 4. Rate Limiting
+
 ```typescript
 import { RateLimiter, defaultRateLimitConfig } from '../services/rate-limiter';
 
@@ -145,13 +158,14 @@ if (!allowed.allowed) {
 ## Performance Monitoring
 
 ### 1. Real-time Metrics
+
 ```typescript
 interface PerformanceMetrics {
-  memoryUsage: number;    // Percentage
-  cpuUsage: number;       // Percentage
-  fileCount: number;      // Files processed
-  scanSpeed: number;      // Files per second
-  errorCount: number;     // Error count
+  memoryUsage: number; // Percentage
+  cpuUsage: number; // Percentage
+  fileCount: number; // Files processed
+  scanSpeed: number; // Files per second
+  errorCount: number; // Error count
 }
 
 // Access via Electron API
@@ -159,12 +173,14 @@ const metrics = await window.electronAPI.getPerformanceMetrics();
 ```
 
 ### 2. Performance Dashboard
+
 - **Live Monitoring**: Real-time performance data
 - **Historical Trends**: Performance over time
 - **Alert System**: Automatic alerts for performance issues
 - **Export Metrics**: JSON export for analysis
 
 ### 3. Memory Management
+
 - Automatic garbage collection
 - Memory leak detection
 - Large dataset handling with pagination
@@ -173,6 +189,7 @@ const metrics = await window.electronAPI.getPerformanceMetrics();
 ## Configuration
 
 ### 1. User Settings
+
 ```typescript
 interface UserSettings {
   theme: 'light' | 'dark';
@@ -187,6 +204,7 @@ await updateUserSettings({ theme: 'dark', maxDepth: 5 });
 ```
 
 ### 2. Security Configuration
+
 ```typescript
 interface SecurityConfig {
   cspPolicy: string;
@@ -200,6 +218,7 @@ interface SecurityConfig {
 ## Error Handling
 
 ### 1. Error Reporter
+
 ```typescript
 import { errorReporter } from '../services/error-reporter';
 
@@ -212,6 +231,7 @@ try {
 ```
 
 ### 2. Audit Logging
+
 ```typescript
 import { auditLogger } from '../services/audit-logger';
 
@@ -225,21 +245,25 @@ auditLogger.logFileAccess('folder-selection', '/Users/documents');
 ## Testing
 
 ### 1. Unit Tests
+
 ```bash
 npm run test:unit
 ```
 
 ### 2. Integration Tests
+
 ```bash
 npm run test:e2e
 ```
 
 ### 3. Security Tests
+
 ```bash
 npm run test:security
 ```
 
 ### 4. Performance Tests
+
 ```bash
 npm run test:performance
 ```
@@ -247,6 +271,7 @@ npm run test:performance
 ## Deployment
 
 ### 1. Build Commands
+
 ```bash
 # Development
 npm run dev
@@ -261,11 +286,13 @@ npm run build:linux
 ```
 
 ### 2. Code Signing
+
 - Windows: EV Code Signing Certificate
 - macOS: Apple Developer Certificate
 - Linux: GPG signing
 
 ### 3. Distribution
+
 - **Auto-updater**: Built-in update mechanism
 - **Portable**: No installation required
 - **System integration**: Context menu integration
@@ -273,6 +300,7 @@ npm run build:linux
 ## Examples
 
 ### Basic Usage
+
 ```typescript
 // Initialize application
 import { MetroUI } from './components/MetroUI';
@@ -288,6 +316,7 @@ import { MetroUI } from './components/MetroUI';
 ```
 
 ### Advanced Configuration
+
 ```typescript
 // Custom security settings
 const securityConfig = {
@@ -295,33 +324,35 @@ const securityConfig = {
   allowedExtensions: ['.txt', '.pdf', '.doc'],
   rateLimit: {
     maxRequests: 50,
-    windowMs: 15 * 60 * 1000 // 15 minutes
-  }
+    windowMs: 15 * 60 * 1000, // 15 minutes
+  },
 };
 
 // Initialize with custom config
 const detector = new PIIDetector({
   ...defaultPIIConfig,
-  customPatterns: ['\\b[A-Z]{2,}\\d{4}\\b'] // Custom employee ID pattern
+  customPatterns: ['\\b[A-Z]{2,}\\d{4}\\b'], // Custom employee ID pattern
 });
 ```
 
 ## Support
 
 ### 1. Documentation
+
 - [Security Guide](./SECURITY.md)
 - [Performance Guide](./PERFORMANCE.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
 
 ### 2. Community
+
 - [GitHub Issues](https://github.com/your-org/CircuitExp1/issues)
 - [Discussions](https://github.com/your-org/CircuitExp1/discussions)
 
 ### 3. Security
+
 - [Security Policy](./SECURITY.md)
 - [Responsible Disclosure](./SECURITY.md#reporting-vulnerabilities)
 
 ---
 
-*Last updated: $(date)*
-*Version: 1.0.0*
+_Last updated: $(date)_ _Version: 1.0.0_

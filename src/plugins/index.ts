@@ -1,6 +1,6 @@
 /**
  * CircuitExp1 Plugin System
- * 
+ *
  * This is the main entry point for the plugin system.
  * It exports all core components and provides a clean API
  * for plugin development and management.
@@ -29,22 +29,18 @@ export type {
   SecurityPolicy,
   PluginValidationResult,
   DeploymentConfig,
-  DeploymentResult
+  DeploymentResult,
 } from './core/PluginSystem';
 
-export type {
-  ZipPluginBundle,
-  ImportResult,
-  RollbackInfo
-} from './import/ZipPluginImporter';
+export type { ZipPluginBundle, ImportResult, RollbackInfo } from './import/ZipPluginImporter';
 
 // Constants
 export const PLUGIN_CATEGORIES = [
   'themes',
-  'export', 
+  'export',
   'interaction',
   'analysis',
-  'integration'
+  'integration',
 ] as const;
 
 export const PLUGIN_VERSION = '1.0.0';
@@ -52,11 +48,13 @@ export const PLUGIN_API_VERSION = '1.0.0';
 
 // Utility functions
 export function isPlugin(obj: any): obj is import('./core/PluginSystem').Plugin {
-  return obj && 
-         typeof obj.activate === 'function' && 
-         typeof obj.deactivate === 'function' &&
-         obj.metadata &&
-         typeof obj.metadata.id === 'string';
+  return (
+    obj &&
+    typeof obj.activate === 'function' &&
+    typeof obj.deactivate === 'function' &&
+    obj.metadata &&
+    typeof obj.metadata.id === 'string'
+  );
 }
 
 export function validatePluginId(id: string): boolean {
@@ -69,7 +67,7 @@ export function getPluginCategoryName(categoryId: string): string {
     export: 'Export & Sharing',
     interaction: 'Interaction & Navigation',
     analysis: 'Analysis & Insights',
-    integration: 'Integrations'
+    integration: 'Integrations',
   };
   return categoryMap[categoryId] || 'Unknown';
 }
@@ -86,7 +84,7 @@ export { ZipPluginImporter } from './import/ZipPluginImporter';
 // Development helpers
 export const createPlugin = {
   template: () => import('./development/PluginTemplate'),
-  scaffold: () => import('./development/scaffolding.js')
+  scaffold: () => import('./development/scaffolding.js'),
 };
 
 // Error handling
@@ -108,7 +106,7 @@ export function checkCompatibility(
 ): boolean {
   const [pluginMajor, pluginMinor] = pluginVersion.split('.').map(Number);
   const [systemMajor, systemMinor] = systemVersion.split('.').map(Number);
-  
+
   return pluginMajor === systemMajor && pluginMinor <= systemMinor;
 }
 
@@ -125,5 +123,5 @@ export default {
   validatePluginId,
   getPluginCategoryName,
   checkCompatibility,
-  PluginSystemError
+  PluginSystemError,
 };

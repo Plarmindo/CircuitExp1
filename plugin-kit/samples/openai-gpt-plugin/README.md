@@ -1,6 +1,7 @@
 # OpenAI GPT Plugin
 
-A production-ready sample plugin that integrates with OpenAI's GPT models to provide AI-powered code completion, review, analysis, and chat functionality.
+A production-ready sample plugin that integrates with OpenAI's GPT models to provide AI-powered code completion, review,
+analysis, and chat functionality.
 
 ## Features
 
@@ -26,11 +27,13 @@ A production-ready sample plugin that integrates with OpenAI's GPT models to pro
 
 1. Clone or copy this sample
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Set up environment variables:
+
    ```bash
    cp .env.example .env
    # Edit .env with your OpenAI API key and configuration
@@ -44,6 +47,7 @@ A production-ready sample plugin that integrates with OpenAI's GPT models to pro
 ### Docker Setup
 
 1. Build and run with Docker:
+
    ```bash
    docker-compose up --build
    ```
@@ -53,45 +57,51 @@ A production-ready sample plugin that integrates with OpenAI's GPT models to pro
 ## API Endpoints
 
 ### Health & Status
+
 - `GET /health` - Health check
 - `GET /ready` - Readiness check
 - `GET /live` - Liveness check
 
 ### Code Completion
+
 - `POST /api/completion` - Generate code completions
 - `POST /api/completion/stream` - Stream code completions
 
 ### Code Review
+
 - `POST /api/review` - Full code review
 - `POST /api/review/quick` - Quick code review
 
 ### Code Analysis
+
 - `POST /api/analysis` - Analyze code (performance, security, complexity, maintainability)
 - `POST /api/analysis/bugs` - Detect bugs
 - `POST /api/analysis/tests` - Generate tests
 - `POST /api/analysis/docs` - Generate documentation
 
 ### AI Chat
+
 - `POST /api/chat` - Send chat message
 - `POST /api/chat/stream` - Stream chat responses
 
 ### Configuration
+
 - `GET /api/config` - Get plugin configuration
 - `POST /api/config` - Update configuration (not implemented)
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3000` |
-| `HOST` | Server host | `localhost` |
-| `OPENAI_API_KEY` | OpenAI API key | Required |
-| `OPENAI_MODEL` | Default AI model | `gpt-4` |
-| `API_KEYS` | Comma-separated API keys | Required |
-| `RATE_LIMIT_WINDOW_MS` | Rate limit window (ms) | `900000` |
-| `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `100` |
-| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000` |
-| `LOG_LEVEL` | Logging level | `info` |
+| Variable                  | Description              | Default                 |
+| ------------------------- | ------------------------ | ----------------------- |
+| `PORT`                    | Server port              | `3000`                  |
+| `HOST`                    | Server host              | `localhost`             |
+| `OPENAI_API_KEY`          | OpenAI API key           | Required                |
+| `OPENAI_MODEL`            | Default AI model         | `gpt-4`                 |
+| `API_KEYS`                | Comma-separated API keys | Required                |
+| `RATE_LIMIT_WINDOW_MS`    | Rate limit window (ms)   | `900000`                |
+| `RATE_LIMIT_MAX_REQUESTS` | Max requests per window  | `100`                   |
+| `CORS_ORIGINS`            | Allowed CORS origins     | `http://localhost:3000` |
+| `LOG_LEVEL`               | Logging level            | `info`                  |
 
 ## Usage Examples
 
@@ -224,6 +234,7 @@ Access metrics via the `/health` endpoint or view logs in real-time.
 ### Logs
 
 Logs are written to:
+
 - Console (development)
 - `logs/app.log` (production)
 - Use `LOG_LEVEL=debug` for verbose logging

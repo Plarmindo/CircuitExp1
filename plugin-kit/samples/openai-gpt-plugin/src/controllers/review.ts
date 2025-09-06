@@ -14,7 +14,7 @@ export class ReviewController {
 
   async review(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Validate input
       const validationResult = this.validation.validate('codeReview', req.body);
@@ -23,17 +23,17 @@ export class ReviewController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { code, language, rules, context } = validationResult.data!;
 
-      this.logger.info('Code review requested', { 
-        language, 
+      this.logger.info('Code review requested', {
+        language,
         codeLength: code.length,
-        rulesCount: rules?.length || 0
+        rulesCount: rules?.length || 0,
       });
 
       // Generate review
@@ -41,7 +41,7 @@ export class ReviewController {
         code,
         language,
         rules,
-        context
+        context,
       });
 
       // Record metrics
@@ -50,7 +50,7 @@ export class ReviewController {
 
       res.json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
       this.logger.error('Code review failed', error);
@@ -60,14 +60,14 @@ export class ReviewController {
       res.status(500).json({
         success: false,
         error: 'Failed to review code',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   async quickReview(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const { code, language } = req.body;
 
@@ -75,35 +75,35 @@ export class ReviewController {
         this.metrics.recordRequest('/api/review/quick', 400, Date.now() - startTime);
         res.status(400).json({
           success: false,
-          error: 'Code is required'
+          error: 'Code is required',
         });
         return;
       }
 
-      this.logger.info('Quick code review requested', { 
-        language, 
-        codeLength: code.length
+      this.logger.info('Quick code review requested', {
+        language,
+        codeLength: code.length,
       });
 
       // Quick review with default settings
       const result = await this.ai.reviewCode({
         code,
         language,
-        rules: ['basic-quality', 'security-check']
+        rules: ['basic-quality', 'security-check'],
       });
 
       // Simplify response for quick review
       const simplified = {
         score: result.score,
-        issues: result.review.filter(r => r.severity === 'error' || r.severity === 'warning'),
-        summary: result.summary
+        issues: result.review.filter((r) => r.severity === 'error' || r.severity === 'warning'),
+        summary: result.summary,
       };
 
       this.metrics.recordRequest('/api/review/quick', 200, Date.now() - startTime);
 
       res.json({
         success: true,
-        data: simplified
+        data: simplified,
       });
     } catch (error) {
       this.logger.error('Quick code review failed', error);
@@ -113,7 +113,7 @@ export class ReviewController {
       res.status(500).json({
         success: false,
         error: 'Failed to perform quick review',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

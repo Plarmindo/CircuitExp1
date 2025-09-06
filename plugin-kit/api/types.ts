@@ -263,7 +263,7 @@ export interface PluginConfig {
   name: string;
   version: string;
   description?: string;
-  
+
   ai: {
     providers: Record<string, AIProviderConfig>;
     features: {
@@ -390,11 +390,14 @@ export interface MetricsData {
       completion: number;
       total: number;
     };
-    providers: Record<string, {
-      requests: number;
-      errors: number;
-      avgTokens: number;
-    }>;
+    providers: Record<
+      string,
+      {
+        requests: number;
+        errors: number;
+        avgTokens: number;
+      }
+    >;
   };
   uptime: number;
 }

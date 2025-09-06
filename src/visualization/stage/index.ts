@@ -1,7 +1,7 @@
 // Metro Stage - Modular Components Export
 // This file provides a clean API for all stage-related components
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, Suspense } from 'react';
 
 // Core types and interfaces
 export type {
@@ -27,7 +27,7 @@ export type {
   EventListenerConfig,
   InteractionHandlerDeps,
   RenderSceneConfig,
-  Bounds
+  Bounds,
 } from './types';
 
 // Bounds calculation
@@ -52,8 +52,19 @@ export type { FallbackRendererConfig } from './fallback-renderer';
 
 // Main component
 // Use lightweight MetroStage during tests (jsdom) to avoid heavy Pixi hooks
-/* eslint-disable @typescript-eslint/no-var-requires */
-const isTestEnv = typeof process !== 'undefined' && /^(test|testing)$/i.test(process.env.NODE_ENV ?? '');
+
+const isTestEnv =
+  typeof process !== 'undefined' && /^(test|testing)$/i.test(process.env.NODE_ENV ?? '');
+
+// Vitest sets the VITEST environment variable. Detect it explicitly so that the heavy Pixi
+// hooks are never executed inside the happy-dom test environment.
+const isVitest = typeof process !== 'undefined' && process.env.VITEST !== undefined;
+
+// Detect any non-browser (or very limited browser) environment where the global `window` is
+// missing. In those situations we cannot create a real WebGL context.
+const isWindowMissing = typeof window === 'undefined';
+
+// Classic JSDOM UA sniffing – kept for backwards compatibility with older Jest suites.
 const isJsdom = typeof navigator !== 'undefined' && navigator.userAgent?.includes('jsdom');
 
 const PlaceholderMetroStage: React.FC<any> = ({ width = 800, height = 600, children }) => {
@@ -88,18 +99,33 @@ const PlaceholderMetroStage: React.FC<any> = ({ width = 800, height = 600, child
   return React.createElement(
     'canvas',
     { ref: canvasRef, width, height, 'data-testid': 'metro-stage-placeholder' },
-    children,
+    children
   );
 };
 
-const MetroStageExport = (isTestEnv || isJsdom)
-  ? PlaceholderMetroStage
-  : (require('./metro-stage').MetroStage ?? require('./metro-stage').default);
+import React, { Suspense } from 'react';
+
+// Dynamically import the heavy Pixi-powered MetroStage only when needed
+const LazyMetroStage = React.lazy(() =>
+  import('./metro-stage').then((mod) => ({ default: mod.MetroStage ?? mod.default }))
+);
+
+type MetroStageLazyProps = React.ComponentProps<typeof LazyMetroStage>;
+
+const MetroStageExport: React.FC<MetroStageLazyProps> = (props) => {
+  if (isTestEnv || isVitest || isWindowMissing || isJsdom) {
+    return React.createElement(PlaceholderMetroStage, props);
+  }
+  return React.createElement(
+    Suspense,
+    { fallback: null },
+    React.createElement(LazyMetroStage, props)
+  );
+};
 
 export type { MetroStageProps } from './metro-stage';
 export { MetroStageExport as MetroStage };
 export default MetroStageExport;
-/* eslint-enable @typescript-eslint/no-var-requires */
 
 // Legacy exports (for backward compatibility)
 export * from './fast-append-helper';

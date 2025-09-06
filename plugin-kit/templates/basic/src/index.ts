@@ -30,14 +30,14 @@ class BasicExternalPlugin {
   private io: Server;
   private config: PluginKitConfig;
   private logger: winston.Logger;
-  
+
   private healthController: HealthController;
   private completionController: CompletionController;
   private reviewController: ReviewController;
   private analysisController: AnalysisController;
   private chatController: ChatController;
   private configController: ConfigController;
-  
+
   private aiService: AIService;
   private cacheService: CacheService;
   private validationService: ValidationService;
@@ -49,11 +49,11 @@ class BasicExternalPlugin {
     this.server = createServer(this.app);
     this.io = new Server(this.server, {
       cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-      }
+        origin: '*',
+        methods: ['GET', 'POST'],
+      },
     });
-    
+
     this.loadConfig();
     this.initializeServices();
     this.setupMiddleware();
@@ -79,28 +79,46 @@ class BasicExternalPlugin {
     this.securityService = new SecurityService(this.config.security);
     this.metricsService = new MetricsService();
     this.aiService = new AIService(this.config.ai, this.cacheService, this.logger);
-    
+
     this.healthController = new HealthController(this.metricsService);
-    this.completionController = new CompletionController(this.aiService, this.validationService, this.securityService);
-    this.reviewController = new ReviewController(this.aiService, this.validationService, this.securityService);
-    this.analysisController = new AnalysisController(this.aiService, this.validationService, this.securityService);
-    this.chatController = new ChatController(this.aiService, this.validationService, this.securityService);
+    this.completionController = new CompletionController(
+      this.aiService,
+      this.validationService,
+      this.securityService
+    );
+    this.reviewController = new ReviewController(
+      this.aiService,
+      this.validationService,
+      this.securityService
+    );
+    this.analysisController = new AnalysisController(
+      this.aiService,
+      this.validationService,
+      this.securityService
+    );
+    this.chatController = new ChatController(
+      this.aiService,
+      this.validationService,
+      this.securityService
+    );
     this.configController = new ConfigController(this.config);
   }
 
   private setupMiddleware(): void {
     // Security middleware
     this.app.use(helmet());
-    
+
     // CORS
     if (this.config.api.cors.enabled) {
-      this.app.use(cors({
-        origin: this.config.api.cors.origins,
-        methods: this.config.api.cors.methods,
-        allowedHeaders: this.config.api.cors.headers
-      }));
+      this.app.use(
+        cors({
+          origin: this.config.api.cors.origins,
+          methods: this.config.api.cors.methods,
+          allowedHeaders: this.config.api.cors.headers,
+        })
+      );
     }
-    
+
     // Rate limiting
     if (this.config.api.rateLimit.enabled) {
       const limiter = rateLimit({
@@ -108,25 +126,25 @@ class BasicExternalPlugin {
         max: this.config.api.rateLimit.maxRequests,
         message: {
           error: 'Too many requests',
-          retryAfter: Math.ceil(this.config.api.rateLimit.windowMs / 1000)
-        }
+          retryAfter: Math.ceil(this.config.api.rateLimit.windowMs / 1000),
+        },
       });
       this.app.use(limiter);
     }
-    
+
     // Body parsing
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-    
+
     // Request logging
     this.app.use((req, res, next) => {
       this.logger.info(`${req.method} ${req.path}`, {
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
       });
       next();
     });
-    
+
     // Metrics middleware
     this.app.use((req, res, next) => {
       const start = Date.now();
@@ -135,7 +153,7 @@ class BasicExternalPlugin {
           method: req.method,
           path: req.path,
           statusCode: res.statusCode,
-          duration: Date.now() - start
+          duration: Date.now() - start,
         });
       });
       next();
@@ -150,7 +168,7 @@ class BasicExternalPlugin {
     this.app.use('/api/analysis', this.analysisController.router);
     this.app.use('/api/chat', this.chatController.router);
     this.app.use('/api/config', this.configController.router);
-    
+
     // API documentation
     this.app.get('/api/docs', (req, res) => {
       res.json({
@@ -158,7 +176,7 @@ class BasicExternalPlugin {
         version: this.config.version,
         description: this.config.description,
         endpoints: this.config.api.endpoints,
-        documentation: 'https://github.com/CircuitExp1/plugin-kit-external'
+        documentation: 'https://github.com/CircuitExp1/plugin-kit-external',
       });
     });
   }
@@ -166,7 +184,7 @@ class BasicExternalPlugin {
   private setupSocketHandlers(): void {
     this.io.on('connection', (socket) => {
       this.logger.info('Client connected', { socketId: socket.id });
-      
+
       socket.on('completion:request', async (data) => {
         try {
           const result = await this.completionController.handleSocketRequest(data);
@@ -175,7 +193,7 @@ class BasicExternalPlugin {
           socket.emit('completion:error', { error: error.message });
         }
       });
-      
+
       socket.on('chat:request', async (data) => {
         try {
           const result = await this.chatController.handleSocketRequest(data);
@@ -184,7 +202,7 @@ class BasicExternalPlugin {
           socket.emit('chat:error', { error: error.message });
         }
       });
-      
+
       socket.on('disconnect', () => {
         this.logger.info('Client disconnected', { socketId: socket.id });
       });
@@ -196,30 +214,32 @@ class BasicExternalPlugin {
     this.app.use((req, res) => {
       res.status(404).json({
         error: 'Not Found',
-        message: `Cannot ${req.method} ${req.path}`
+        message: `Cannot ${req.method} ${req.path}`,
       });
     });
-    
+
     // Error handler
-    this.app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      this.logger.error('Unhandled error', {
-        error: error.message,
-        stack: error.stack,
-        path: req.path,
-        method: req.method
-      });
-      
-      res.status(error.status || 500).json({
-        error: error.message || 'Internal Server Error',
-        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-      });
-    });
+    this.app.use(
+      (error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        this.logger.error('Unhandled error', {
+          error: error.message,
+          stack: error.stack,
+          path: req.path,
+          method: req.method,
+        });
+
+        res.status(error.status || 500).json({
+          error: error.message || 'Internal Server Error',
+          ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
+        });
+      }
+    );
   }
 
   public async start(port?: number, host?: string): Promise<void> {
     const PORT = port || process.env.PORT || 3000;
     const HOST = host || process.env.HOST || 'localhost';
-    
+
     return new Promise((resolve, reject) => {
       this.server.listen(PORT, HOST, (error?: any) => {
         if (error) {
@@ -257,20 +277,20 @@ export { BasicExternalPlugin };
 // CLI entry point
 if (require.main === module) {
   const plugin = new BasicExternalPlugin();
-  
+
   // Handle graceful shutdown
   process.on('SIGTERM', async () => {
     console.log('Received SIGTERM, shutting down gracefully...');
     await plugin.stop();
     process.exit(0);
   });
-  
+
   process.on('SIGINT', async () => {
     console.log('Received SIGINT, shutting down gracefully...');
     await plugin.stop();
     process.exit(0);
   });
-  
+
   // Start the server
   plugin.start().catch((error) => {
     console.error('Failed to start plugin:', error);

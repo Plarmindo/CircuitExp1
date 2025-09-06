@@ -22,8 +22,8 @@
     },
     {
       "name": "electron launch (dev)",
-      "ok": true,
-      "detail": null
+      "ok": false,
+      "detail": "no loadURL evidence"
     }
   ]
 }

@@ -76,12 +76,30 @@ export const MiniMap: React.FC = () => {
         if (vp && bboxRef.current) {
           const scaleFactorX = (size.w - pad * 2) / spanX;
           const scaleFactorY = (size.h - pad * 2) / spanY;
-          const viewW = (window.innerWidth / vp.scale) * scaleFactorX;
-          const viewH = (window.innerHeight / vp.scale) * scaleFactorY;
-          const worldCenterX = -(vp.x - window.innerWidth / 2) / vp.scale;
-          const worldCenterY = -(vp.y - window.innerHeight / 2) / vp.scale;
+
+          // Ensure viewport calculations produce finite values
+          const scale = vp.scale || 1;
+          if (!Number.isFinite(scale) || scale <= 0) return;
+
+          const viewW = (window.innerWidth / scale) * scaleFactorX;
+          const viewH = (window.innerHeight / scale) * scaleFactorY;
+
+          // Ensure calculated dimensions are finite and positive
+          if (!Number.isFinite(viewW) || !Number.isFinite(viewH) || viewW <= 0 || viewH <= 0)
+            return;
+
+          const worldCenterX = -(vp.x - window.innerWidth / 2) / scale;
+          const worldCenterY = -(vp.y - window.innerHeight / 2) / scale;
+
+          // Ensure center positions are finite
+          if (!Number.isFinite(worldCenterX) || !Number.isFinite(worldCenterY)) return;
+
           const nx = (worldCenterX - minX) / spanX;
           const ny = (worldCenterY - minY) / spanY;
+
+          // Ensure normalized positions are finite
+          if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+
           ctx.strokeStyle = 'rgba(255,255,255,0.8)';
           ctx.lineWidth = 1;
           ctx.strokeRect(

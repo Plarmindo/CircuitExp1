@@ -22,7 +22,7 @@ interface RollbackOption {
 export const PluginImportModal: React.FC<PluginImportModalProps> = ({
   visible,
   onClose,
-  onImportSuccess
+  onImportSuccess,
 }) => {
   const [loading, setLoading] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -33,7 +33,7 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
     try {
       const rollbackVersions = importer.current.listRollbackVersions();
       const options: RollbackOption[] = [];
-      
+
       Object.entries(rollbackVersions).forEach(([pluginId, versions]) => {
         if (versions.length > 0) {
           const latest = versions[0];
@@ -41,72 +41,80 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
             pluginId,
             currentVersion: latest.currentVersion,
             previousVersion: latest.previousVersion,
-            timestamp: latest.timestamp
+            timestamp: latest.timestamp,
           });
         }
       });
-      
+
       setRollbackOptions(options);
     } catch (error) {
       console.error('Failed to load rollback options:', error);
     }
   }, []);
 
-  const handleImport = useCallback(async (file: File) => {
-    setLoading(true);
-    setImportResult(null);
+  const handleImport = useCallback(
+    async (file: File) => {
+      setLoading(true);
+      setImportResult(null);
 
-    try {
-      const buffer = await file.arrayBuffer();
-      const result = await importer.current.importFromZip(Buffer.from(buffer));
-      
-      setImportResult(result);
-      
-      if (result.success) {
-        message.success(`Plugin "${result.plugin.name}" v${result.plugin.version} imported successfully`);
-        onImportSuccess(result);
-        
-        // Refresh rollback options
-        await loadRollbackOptions();
-      } else {
-        message.error(`Import failed: ${result.errors.join(', ')}`);
+      try {
+        const buffer = await file.arrayBuffer();
+        const result = await importer.current.importFromZip(Buffer.from(buffer));
+
+        setImportResult(result);
+
+        if (result.success) {
+          message.success(
+            `Plugin "${result.plugin.name}" v${result.plugin.version} imported successfully`
+          );
+          onImportSuccess(result);
+
+          // Refresh rollback options
+          await loadRollbackOptions();
+        } else {
+          message.error(`Import failed: ${result.errors.join(', ')}`);
+        }
+      } catch (error) {
+        console.error('Import error:', error);
+        message.error('Import failed: ' + (error as Error).message);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Import error:', error);
-      message.error('Import failed: ' + (error as Error).message);
-    } finally {
-      setLoading(false);
-    }
 
-    return false; // Prevent upload
-  }, [onImportSuccess, loadRollbackOptions]);
+      return false; // Prevent upload
+    },
+    [onImportSuccess, loadRollbackOptions]
+  );
 
-  const handleRollback = useCallback(async (pluginId: string) => {
-    setLoading(true);
-    
-    try {
-      const success = await importer.current.rollback(pluginId);
-      
-      if (success) {
-        message.success(`Rolled back plugin "${pluginId}" to previous version`);
-        await loadRollbackOptions();
-      } else {
-        message.error('Rollback failed: no backup found');
+  const handleRollback = useCallback(
+    async (pluginId: string) => {
+      setLoading(true);
+
+      try {
+        const success = await importer.current.rollback(pluginId);
+
+        if (success) {
+          message.success(`Rolled back plugin "${pluginId}" to previous version`);
+          await loadRollbackOptions();
+        } else {
+          message.error('Rollback failed: no backup found');
+        }
+      } catch (error) {
+        console.error('Rollback error:', error);
+        message.error('Rollback failed: ' + (error as Error).message);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Rollback error:', error);
-      message.error('Rollback failed: ' + (error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [loadRollbackOptions]);
+    },
+    [loadRollbackOptions]
+  );
 
   const draggerProps = {
     name: 'file',
     multiple: false,
     accept: '.zip',
     beforeUpload: handleImport,
-    showUploadList: false
+    showUploadList: false,
   };
 
   const renderImportSection = () => (
@@ -117,8 +125,8 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
         </p>
         <p className="ant-upload-text">Drag & Drop ZIP Plugin Here</p>
         <p className="ant-upload-hint">
-          Support for CircuitExp1 plugin ZIP bundles containing plugin.json, 
-          source code, and optional requirements.txt
+          Support for CircuitExp1 plugin ZIP bundles containing plugin.json, source code, and
+          optional requirements.txt
         </p>
       </Dragger>
 
@@ -183,7 +191,8 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
           <Space direction="vertical">
             {importResult.success && (
               <Text>
-                Plugin <strong>{importResult.plugin.name}</strong> v{importResult.plugin.version} has been installed
+                Plugin <strong>{importResult.plugin.name}</strong> v{importResult.plugin.version}{' '}
+                has been installed
               </Text>
             )}
             {importResult.errors.length > 0 && (
@@ -191,7 +200,9 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
                 <Text strong>Errors:</Text>
                 <ul>
                   {importResult.errors.map((error, index) => (
-                    <li key={index}><Text type="danger">{error}</Text></li>
+                    <li key={index}>
+                      <Text type="danger">{error}</Text>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -201,7 +212,9 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
                 <Text strong>Warnings:</Text>
                 <ul>
                   {importResult.warnings.map((warning, index) => (
-                    <li key={index}><Text type="warning">{warning}</Text></li>
+                    <li key={index}>
+                      <Text type="warning">{warning}</Text>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -228,14 +241,14 @@ export const PluginImportModal: React.FC<PluginImportModalProps> = ({
       footer={[
         <Button key="close" onClick={onClose}>
           Close
-        </Button>
+        </Button>,
       ]}
       width={600}
     >
       <Spin spinning={loading}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           {renderImportSection()}
-          
+
           <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
             {renderRollbackSection()}
           </div>

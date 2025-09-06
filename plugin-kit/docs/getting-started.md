@@ -104,6 +104,7 @@ This starts the development server with hot-reload enabled.
 ### Core Files
 
 #### `src/index.ts`
+
 Main plugin entry point that implements the Plugin interface:
 
 ```typescript
@@ -119,18 +120,18 @@ export class MyAIAssistantPlugin implements Plugin {
     description: 'AI-powered chat assistant',
     author: 'Your Name',
     license: 'MIT',
-    category: 'ai-integration'
+    category: 'ai-integration',
   };
 
   private chatService: OpenAIChatService;
 
   async activate(api: PluginAPI): Promise<void> {
     this.chatService = new OpenAIChatService(api);
-    
+
     // Register UI components
     api.ui.registerPanel('ai-chat', ChatPanel);
     api.ui.registerSettings('ai-settings', SettingsPanel);
-    
+
     // Set up event handlers
     api.events.on('file:opened', this.handleFileOpened.bind(this));
   }
@@ -143,6 +144,7 @@ export class MyAIAssistantPlugin implements Plugin {
 ```
 
 #### `src/services/chat-service.ts`
+
 Service for handling AI chat functionality:
 
 ```typescript
@@ -167,9 +169,9 @@ export class OpenAIChatService {
         messages: [
           {
             role: 'system',
-            content: `You are a helpful AI assistant integrated into CircuitExp1. ${context || ''}`
+            content: `You are a helpful AI assistant integrated into CircuitExp1. ${context || ''}`,
           },
-          { role: 'user', content: message }
+          { role: 'user', content: message },
         ],
         max_tokens: this.api.config.get('MAX_TOKENS'),
         temperature: this.api.config.get('TEMPERATURE'),
@@ -224,7 +226,7 @@ describe('OpenAIChatService', () => {
     };
 
     const service = new OpenAIChatService(mockApi as any);
-    
+
     // Mock OpenAI client
     vi.spyOn(service.client.chat.completions, 'create').mockResolvedValue({
       choices: [{ message: { content: 'Hello from AI!' } }],

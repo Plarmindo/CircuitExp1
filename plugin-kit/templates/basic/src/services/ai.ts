@@ -17,7 +17,7 @@ export class AIService {
     return {
       completion: `// Generated code for: ${prompt}`,
       provider: 'mock',
-      tokens: 50
+      tokens: 50,
     };
   }
 
@@ -28,10 +28,10 @@ export class AIService {
         {
           line: 1,
           message: 'Example review comment',
-          severity: 'info'
-        }
+          severity: 'info',
+        },
       ],
-      score: 85
+      score: 85,
     };
   }
 
@@ -42,8 +42,8 @@ export class AIService {
       suggestions: ['Consider adding error handling'],
       metrics: {
         lines: code.split('\n').length,
-        functions: 1
-      }
+        functions: 1,
+      },
     };
   }
 
@@ -53,9 +53,9 @@ export class AIService {
       tests: [
         {
           name: 'test_example',
-          code: `test('example test', () => { expect(true).toBe(true); });`
-        }
-      ]
+          code: `test('example test', () => { expect(true).toBe(true); });`,
+        },
+      ],
     };
   }
 
@@ -63,7 +63,7 @@ export class AIService {
     // Placeholder implementation
     return {
       response: `This is a mock response to: ${message}`,
-      tokens: 20
+      tokens: 20,
     };
   }
 
@@ -71,7 +71,7 @@ export class AIService {
     // Placeholder implementation
     return {
       bugs: [],
-      confidence: 0.95
+      confidence: 0.95,
     };
   }
 
@@ -82,7 +82,7 @@ export class AIService {
  * Generated documentation for the provided code
  */
 ${code}`,
-      format: 'jsdoc'
+      format: 'jsdoc',
     };
   }
 }

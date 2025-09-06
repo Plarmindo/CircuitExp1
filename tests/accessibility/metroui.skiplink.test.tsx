@@ -1,6 +1,6 @@
 /* @vitest-environment jsdom */
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 
@@ -30,10 +30,13 @@ let container: HTMLElement | null = null;
 
 describe('Skip link accessibility', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     const { container: c } = render(React.createElement(MetroUI, baseProps));
     container = c;
   });
   afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
     container = null;
   });
   it('renders skip link and allows focus move to main content', async () => {

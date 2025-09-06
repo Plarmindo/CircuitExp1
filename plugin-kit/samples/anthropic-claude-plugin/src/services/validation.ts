@@ -7,28 +7,30 @@ export class ValidationService {
       language: Joi.string().optional().min(1).max(50),
       context: Joi.string().optional().min(0).max(10000),
       maxTokens: Joi.number().optional().min(10).max(4000),
-      temperature: Joi.number().optional().min(0).max(2)
+      temperature: Joi.number().optional().min(0).max(2),
     }),
 
     review: Joi.object({
       code: Joi.string().required().min(1).max(50000),
       language: Joi.string().optional().min(1).max(50),
       context: Joi.string().optional().min(0).max(10000),
-      reviewType: Joi.string().optional().valid('detailed', 'quick').default('detailed')
+      reviewType: Joi.string().optional().valid('detailed', 'quick').default('detailed'),
     }),
 
     analysis: Joi.object({
       code: Joi.string().required().min(1).max(50000),
       language: Joi.string().optional().min(1).max(50),
       context: Joi.string().optional().min(0).max(10000),
-      analysisType: Joi.string().required().valid('performance', 'security', 'complexity', 'maintainability')
+      analysisType: Joi.string()
+        .required()
+        .valid('performance', 'security', 'complexity', 'maintainability'),
     }),
 
     bugDetection: Joi.object({
       code: Joi.string().required().min(1).max(50000),
       language: Joi.string().optional().min(1).max(50),
       context: Joi.string().optional().min(0).max(10000),
-      severity: Joi.string().optional().valid('low', 'medium', 'high', 'all').default('all')
+      severity: Joi.string().optional().valid('low', 'medium', 'high', 'all').default('all'),
     }),
 
     testGeneration: Joi.object({
@@ -36,71 +38,84 @@ export class ValidationService {
       language: Joi.string().optional().min(1).max(50),
       context: Joi.string().optional().min(0).max(10000),
       testFramework: Joi.string().optional().min(1).max(50),
-      coverageTarget: Joi.number().optional().min(0).max(100)
+      coverageTarget: Joi.number().optional().min(0).max(100),
     }),
 
     documentation: Joi.object({
       code: Joi.string().required().min(1).max(50000),
       language: Joi.string().optional().min(1).max(50),
       context: Joi.string().optional().min(0).max(10000),
-      docType: Joi.string().optional().valid('inline', 'summary', 'api').default('summary')
+      docType: Joi.string().optional().valid('inline', 'summary', 'api').default('summary'),
     }),
 
     chat: Joi.object({
       message: Joi.string().required().min(1).max(10000),
       context: Joi.string().optional().min(0).max(5000),
-      history: Joi.array().optional().items(
-        Joi.object({
-          role: Joi.string().required().valid('user', 'assistant'),
-          content: Joi.string().required().min(1).max(10000)
-        })
-      ).max(50),
+      history: Joi.array()
+        .optional()
+        .items(
+          Joi.object({
+            role: Joi.string().required().valid('user', 'assistant'),
+            content: Joi.string().required().min(1).max(10000),
+          })
+        )
+        .max(50),
       maxTokens: Joi.number().optional().min(10).max(4000),
-      temperature: Joi.number().optional().min(0).max(2)
+      temperature: Joi.number().optional().min(0).max(2),
     }),
 
-    apiKey: Joi.string().required().min(10).max(100).pattern(/^[a-zA-Z0-9_-]+$/),
+    apiKey: Joi.string()
+      .required()
+      .min(10)
+      .max(100)
+      .pattern(/^[a-zA-Z0-9_-]+$/),
 
     rateLimit: Joi.object({
       identifier: Joi.string().required().min(1).max(255),
       limit: Joi.number().required().min(1).max(1000),
-      windowMs: Joi.number().required().min(1000).max(3600000)
+      windowMs: Joi.number().required().min(1000).max(3600000),
     }),
 
     healthCheck: Joi.object({
       includeMetrics: Joi.boolean().optional().default(true),
-      includeSystem: Joi.boolean().optional().default(true)
-    })
+      includeSystem: Joi.boolean().optional().default(true),
+    }),
   };
 
-  validate(data: any, schemaName: keyof ValidationService['schemas']): { valid: boolean; errors?: string[] } {
+  validate(
+    data: any,
+    schemaName: keyof ValidationService['schemas']
+  ): { valid: boolean; errors?: string[] } {
     const schema = this.schemas[schemaName];
     if (!schema) {
       return {
         valid: false,
-        errors: [`Unknown validation schema: ${schemaName}`]
+        errors: [`Unknown validation schema: ${schemaName}`],
       };
     }
 
     const { error, value } = schema.validate(data, {
       abortEarly: false,
-      stripUnknown: true
+      stripUnknown: true,
     });
 
     if (error) {
       return {
         valid: false,
-        errors: error.details.map(detail => detail.message)
+        errors: error.details.map((detail) => detail.message),
       };
     }
 
     return {
       valid: true,
-      errors: undefined
+      errors: undefined,
     };
   }
 
-  validateAsync(data: any, schemaName: keyof ValidationService['schemas']): Promise<{ valid: boolean; errors?: string[] }> {
+  validateAsync(
+    data: any,
+    schemaName: keyof ValidationService['schemas']
+  ): Promise<{ valid: boolean; errors?: string[] }> {
     return new Promise((resolve) => {
       const result = this.validate(data, schemaName);
       resolve(result);
@@ -121,11 +136,31 @@ export class ValidationService {
 
   isValidLanguage(language: string): boolean {
     const validLanguages = [
-      'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'csharp', 'go',
-      'rust', 'php', 'ruby', 'swift', 'kotlin', 'scala', 'html', 'css',
-      'sql', 'bash', 'powershell', 'yaml', 'json', 'xml', 'markdown'
+      'javascript',
+      'typescript',
+      'python',
+      'java',
+      'c',
+      'cpp',
+      'csharp',
+      'go',
+      'rust',
+      'php',
+      'ruby',
+      'swift',
+      'kotlin',
+      'scala',
+      'html',
+      'css',
+      'sql',
+      'bash',
+      'powershell',
+      'yaml',
+      'json',
+      'xml',
+      'markdown',
     ];
-    
+
     return validLanguages.includes(language.toLowerCase());
   }
 
@@ -168,10 +203,30 @@ export class ValidationService {
       temperatureRange: { min: 0, max: 2 },
       maxTokensRange: { min: 10, max: 4000 },
       validLanguages: [
-        'javascript', 'typescript', 'python', 'java', 'c', 'cpp', 'csharp', 'go',
-        'rust', 'php', 'ruby', 'swift', 'kotlin', 'scala', 'html', 'css',
-        'sql', 'bash', 'powershell', 'yaml', 'json', 'xml', 'markdown'
-      ]
+        'javascript',
+        'typescript',
+        'python',
+        'java',
+        'c',
+        'cpp',
+        'csharp',
+        'go',
+        'rust',
+        'php',
+        'ruby',
+        'swift',
+        'kotlin',
+        'scala',
+        'html',
+        'css',
+        'sql',
+        'bash',
+        'powershell',
+        'yaml',
+        'json',
+        'xml',
+        'markdown',
+      ],
     };
   }
 
@@ -179,7 +234,7 @@ export class ValidationService {
     return {
       success: false,
       error: 'Validation failed',
-      details: errors
+      details: errors,
     };
   }
 
@@ -193,27 +248,27 @@ export class ValidationService {
     // Sanitize string fields
     if (sanitize && typeof data === 'object' && data !== null) {
       const sanitized = { ...data };
-      
+
       if (typeof sanitized.code === 'string') {
         sanitized.code = this.sanitizeInput(sanitized.code);
         if (!this.validateCodeLength(sanitized.code, maxLength)) {
           return {
             valid: false,
-            errors: [`Code exceeds maximum length of ${maxLength} characters`]
+            errors: [`Code exceeds maximum length of ${maxLength} characters`],
           };
         }
       }
-      
+
       if (typeof sanitized.context === 'string') {
         sanitized.context = this.sanitizeInput(sanitized.context);
         if (!this.validateContextLength(sanitized.context)) {
           return {
             valid: false,
-            errors: ['Context exceeds maximum length of 10000 characters']
+            errors: ['Context exceeds maximum length of 10000 characters'],
           };
         }
       }
-      
+
       if (typeof sanitized.message === 'string') {
         sanitized.message = this.sanitizeInput(sanitized.message);
       }
@@ -228,7 +283,7 @@ export class ValidationService {
 
     return {
       valid: true,
-      data: data as T
+      data: data as T,
     };
   }
 }

@@ -78,8 +78,8 @@ function App() {
     const handleScanPartial = (event: CustomEvent) => {
       const { scanId: id, nodes: newNodes } = event.detail;
       if (id === scanId || !scanId) {
-        setScanNodes(prev => [...prev, ...newNodes]);
-        setReceivedNodes(prev => prev + newNodes.length);
+        setScanNodes((prev) => [...prev, ...newNodes]);
+        setReceivedNodes((prev) => prev + newNodes.length);
       }
     };
 
@@ -138,7 +138,9 @@ function App() {
           </button>
         </div>
 
-        {showMonitoring ? <MonitoringDashboard /> : (
+        {showMonitoring ? (
+          <MonitoringDashboard />
+        ) : (
           <MetroUI
             scanId={scanId}
             progress={scanProgress}

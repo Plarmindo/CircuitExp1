@@ -11,7 +11,7 @@ class MockPlugin implements Plugin {
     description: 'A test plugin',
     author: 'Test Author',
     license: 'MIT',
-    category: 'themes'
+    category: 'themes',
   };
 
   public activated = false;
@@ -39,7 +39,7 @@ class ErrorPlugin implements Plugin {
     description: 'A plugin that throws errors',
     author: 'Test Author',
     license: 'MIT',
-    category: 'themes'
+    category: 'themes',
   };
 
   async activate(): Promise<void> {
@@ -59,15 +59,15 @@ class AsyncPlugin implements Plugin {
     description: 'An async plugin',
     author: 'Test Author',
     license: 'MIT',
-    category: 'themes'
+    category: 'themes',
   };
 
   async activate(api: PluginAPI): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 100));
+    return new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   async deactivate(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 100));
+    return new Promise((resolve) => setTimeout(resolve, 100));
   }
 }
 
@@ -76,31 +76,31 @@ const mockPluginAPI: PluginAPI = {
   events: {
     on: vi.fn(),
     off: vi.fn(),
-    emit: vi.fn()
+    emit: vi.fn(),
   },
   ui: {
     addMenuItem: vi.fn(),
     removeMenuItem: vi.fn(),
     showDialog: vi.fn(),
     addPanel: vi.fn(),
-    removePanel: vi.fn()
+    removePanel: vi.fn(),
   },
   storage: {
     get: vi.fn(),
     set: vi.fn(),
-    remove: vi.fn()
+    remove: vi.fn(),
   },
   network: {
     fetch: vi.fn(),
     upload: vi.fn(),
-    download: vi.fn()
+    download: vi.fn(),
   },
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    debug: vi.fn()
-  }
+    debug: vi.fn(),
+  },
 };
 
 describe('PluginManager', () => {
@@ -144,10 +144,10 @@ describe('PluginManager', () => {
           description: 'Invalid',
           author: 'Test',
           license: 'MIT',
-          category: 'themes'
+          category: 'themes',
         },
         activate: vi.fn(),
-        deactivate: vi.fn()
+        deactivate: vi.fn(),
       };
 
       await expect(pluginManager.register(invalidPlugin)).rejects.toThrow();
@@ -156,11 +156,11 @@ describe('PluginManager', () => {
     it('should validate required metadata fields', async () => {
       const incompletePlugin: any = {
         metadata: {
-          id: 'incomplete-plugin'
+          id: 'incomplete-plugin',
           // Missing required fields
         },
         activate: vi.fn(),
-        deactivate: vi.fn()
+        deactivate: vi.fn(),
       };
 
       await expect(pluginManager.register(incompletePlugin)).rejects.toThrow();
@@ -328,16 +328,16 @@ describe('PluginManager', () => {
           description: 'Test',
           author: 'Test',
           license: 'MIT',
-          category: 'themes'
+          category: 'themes',
         },
         activate: vi.fn(),
-        deactivate: vi.fn()
+        deactivate: vi.fn(),
       };
 
       pluginManager.setSecurityPolicy({
         allowNetworkAccess: false,
         allowFileSystemAccess: false,
-        allowedOrigins: ['localhost']
+        allowedOrigins: ['localhost'],
       });
 
       const result = pluginManager.registerPlugin(plugin);
@@ -359,13 +359,13 @@ describe('PluginManager', () => {
       const promises = [
         pluginManager.activatePlugin('test-plugin'),
         pluginManager.activatePlugin('test-plugin'),
-        pluginManager.deactivatePlugin('test-plugin')
+        pluginManager.deactivatePlugin('test-plugin'),
       ];
 
       const results = await Promise.all(promises);
-      
+
       // At least one should succeed, others should fail appropriately
-      const successes = results.filter(r => r.success).length;
+      const successes = results.filter((r) => r.success).length;
       expect(successes).toBeGreaterThan(0);
     });
 
@@ -374,7 +374,7 @@ describe('PluginManager', () => {
       pluginManager.registerPlugin(plugin);
 
       const result = await pluginManager.activatePlugin('error-plugin');
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.error?.code).toBeDefined();

@@ -4,7 +4,8 @@ This guide covers debugging and testing utilities provided by the Plugin Develop
 
 ## Overview
 
-The Plugin Development Kit includes comprehensive debugging and testing utilities to help you develop, test, and debug your plugins effectively.
+The Plugin Development Kit includes comprehensive debugging and testing utilities to help you develop, test, and debug
+your plugins effectively.
 
 ## Debugging CLI Tool
 
@@ -33,6 +34,7 @@ npx pdk-debug debug ./my-plugin
 ### Available Commands
 
 #### `help`
+
 Show available commands and usage examples.
 
 ```bash
@@ -40,6 +42,7 @@ pdk-debug> help
 ```
 
 #### `test`
+
 Run plugin tests with various options.
 
 ```bash
@@ -54,6 +57,7 @@ pdk-debug> test ./my-plugin --verbose
 ```
 
 #### `debug`
+
 Enable debug mode for a plugin with verbose logging.
 
 ```bash
@@ -61,6 +65,7 @@ pdk-debug> debug ./my-plugin --verbose
 ```
 
 #### `profile`
+
 Profile plugin performance for specific functions.
 
 ```bash
@@ -72,6 +77,7 @@ pdk-debug> profile ./my-plugin --function analyze
 ```
 
 #### `logs`
+
 View debug logs with optional saving.
 
 ```bash
@@ -83,6 +89,7 @@ pdk-debug> logs --save ./debug.log
 ```
 
 #### `validate`
+
 Validate plugin structure and configuration.
 
 ```bash
@@ -90,6 +97,7 @@ pdk-debug> validate ./my-plugin
 ```
 
 #### `mock`
+
 Setup mock responses for API testing.
 
 ```bash
@@ -126,7 +134,7 @@ export const tests: TestSuite = {
         const plugin = require('../src/index');
         context.assert.notEqual(plugin, null);
         return { success: true };
-      }
+      },
     },
     {
       name: 'handles-invalid-input',
@@ -135,9 +143,9 @@ export const tests: TestSuite = {
         const result = await somePluginFunction(null);
         context.assert.equal(result.success, false);
         return { success: true };
-      }
-    }
-  ]
+      },
+    },
+  ],
 };
 ```
 
@@ -167,7 +175,7 @@ import { TestUtils } from '@plugin-kit/testing';
 const testRunner = TestUtils.createTestRunner({
   pluginPath: './my-plugin',
   testDataDir: './my-plugin/test-data',
-  verbose: true
+  verbose: true,
 });
 
 const results = await testRunner.runTestSuite(testSuite);
@@ -191,7 +199,7 @@ mockServer.addMock({
   method: 'POST',
   status: 200,
   data: { completion: 'mock response' },
-  delay: 100
+  delay: 100,
 });
 
 // Use in tests
@@ -244,9 +252,9 @@ describe('CompletionController', () => {
 
   beforeEach(() => {
     mockAiService = {
-      generateCompletion: jest.fn()
+      generateCompletion: jest.fn(),
     } as any;
-    
+
     controller = new CompletionController(mockAiService);
   });
 
@@ -256,7 +264,7 @@ describe('CompletionController', () => {
 
     const result = await controller.generateCompletion({
       prompt: 'test prompt',
-      language: 'typescript'
+      language: 'typescript',
     });
 
     expect(result).toEqual(mockResponse);
@@ -278,11 +286,11 @@ describe('Plugin Integration', () => {
   it('should handle full workflow', async () => {
     const input = {
       code: 'const x = 5',
-      language: 'javascript'
+      language: 'javascript',
     };
 
     const result = await plugin.analyze(input);
-    
+
     expect(result).toHaveProperty('analysis');
     expect(result).toHaveProperty('suggestions');
   });
@@ -305,9 +313,9 @@ module.exports = {
       branches: 80,
       functions: 80,
       lines: 80,
-      statements: 80
-    }
-  }
+      statements: 80,
+    },
+  },
 };
 ```
 
@@ -385,7 +393,7 @@ mockServer.addMock({
   endpoint: '/api/ai',
   method: 'POST',
   status: 200,
-  data: { response: 'test' }
+  data: { response: 'test' },
 });
 ```
 
@@ -413,7 +421,7 @@ it('should handle network errors gracefully', async () => {
     endpoint: '/api/ai',
     method: 'POST',
     status: 500,
-    data: { error: 'Server error' }
+    data: { error: 'Server error' },
   });
 
   const result = await plugin.analyze('test code');
@@ -429,7 +437,7 @@ it('should complete analysis within timeout', async () => {
   const start = Date.now();
   await plugin.analyze(largeCodebase);
   const duration = Date.now() - start;
-  
+
   expect(duration).toBeLessThan(5000); // 5 second timeout
 });
 ```
@@ -490,4 +498,5 @@ npm run test:coverage
 # Open coverage/lcov-report/index.html
 ```
 
-This debugging guide provides comprehensive coverage of all debugging and testing utilities available in the Plugin Development Kit.
+This debugging guide provides comprehensive coverage of all debugging and testing utilities available in the Plugin
+Development Kit.

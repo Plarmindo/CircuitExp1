@@ -20,7 +20,8 @@ interface LogRecord {
   detail?: unknown;
 }
 
-let globalLevel: LogLevel = (typeof process !== 'undefined' && process.env?.LOG_LEVEL as LogLevel) || 'info';
+let globalLevel: LogLevel =
+  (typeof process !== 'undefined' && (process.env?.LOG_LEVEL as LogLevel)) || 'info';
 const ring: LogRecord[] = [];
 const ringMax = 500;
 const levelOrder: LogLevel[] = LOG_LEVELS;
@@ -48,12 +49,12 @@ function write(rec: LogRecord) {
   // ring buffer (in-memory recent logs)
   ring.push(rec);
   if (ring.length > ringMax) ring.splice(0, ring.length - ringMax);
-  
+
   // Send to main process via IPC if available (renderer context)
   if (typeof window !== 'undefined' && (window as any).electronAPI?.logMessage) {
     (window as any).electronAPI.logMessage(rec);
   }
-  
+
   if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
     // Dev pretty print
     const color =

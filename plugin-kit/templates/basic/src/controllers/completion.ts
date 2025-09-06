@@ -23,20 +23,24 @@ export class CompletionController {
       }
 
       const { prompt, provider, model, temperature, maxTokens } = req.body;
-      
-      this.logger.info('Processing completion request', { prompt: prompt.substring(0, 100), provider, model });
+
+      this.logger.info('Processing completion request', {
+        prompt: prompt.substring(0, 100),
+        provider,
+        model,
+      });
 
       const result = await this.aiService.completeCode(prompt, {
         provider,
         model,
         temperature,
-        maxTokens
+        maxTokens,
       });
 
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in completion handler', { error: error.message });
@@ -53,21 +57,21 @@ export class CompletionController {
       }
 
       const { prompt, provider, model, temperature, maxTokens } = req.body;
-      
+
       res.writeHead(200, {
         'Content-Type': 'text/plain',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
+        Connection: 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
       });
 
       // Mock streaming response
       const words = ['Hello', 'from', 'the', 'AI', 'assistant'];
       for (const word of words) {
         res.write(`data: ${word} `);
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
-      
+
       res.write('data: [DONE]\n\n');
       res.end();
     } catch (error) {

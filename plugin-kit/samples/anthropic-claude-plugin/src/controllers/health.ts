@@ -23,18 +23,20 @@ export class HealthController {
         environment: process.env.NODE_ENV || 'development',
         services: {
           metrics: true, // Metrics service is always available
-          cache: true // Cache is in-memory, always available
-        }
+          cache: true, // Cache is in-memory, always available
+        },
       };
 
       this.logger.info('Health check requested', { ip: req.ip });
       res.json(healthData);
     } catch (error) {
-      this.logger.error('Health check failed', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('Health check failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         status: 'unhealthy',
         error: 'Health check failed',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -42,7 +44,7 @@ export class HealthController {
   async readiness(req: Request, res: Response): Promise<void> {
     try {
       const isReady = this.checkReadiness();
-      
+
       if (isReady) {
         res.json({
           status: 'ready',
@@ -50,8 +52,8 @@ export class HealthController {
           checks: {
             metrics: true,
             cache: true,
-            anthropic: true // Assume Anthropic API is available
-          }
+            anthropic: true, // Assume Anthropic API is available
+          },
         });
       } else {
         res.status(503).json({
@@ -60,16 +62,18 @@ export class HealthController {
           checks: {
             metrics: false,
             cache: true,
-            anthropic: true
-          }
+            anthropic: true,
+          },
         });
       }
     } catch (error) {
-      this.logger.error('Readiness check failed', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('Readiness check failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(503).json({
         status: 'not ready',
         error: 'Readiness check failed',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -82,14 +86,16 @@ export class HealthController {
         timestamp: new Date().toISOString(),
         pid: process.pid,
         memory: process.memoryUsage(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
       });
     } catch (error) {
-      this.logger.error('Liveness check failed', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('Liveness check failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         status: 'dead',
         error: 'Liveness check failed',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -97,16 +103,18 @@ export class HealthController {
   async metricsEndpoint(req: Request, res: Response): Promise<void> {
     try {
       const metricsData = this.metrics.getAIMetrics();
-      
+
       res.json({
         timestamp: new Date().toISOString(),
-        ...metricsData
+        ...metricsData,
       });
     } catch (error) {
-      this.logger.error('Metrics endpoint failed', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('Metrics endpoint failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         error: 'Failed to retrieve metrics',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -126,17 +134,17 @@ export class HealthController {
           pid: process.pid,
           memory: process.memoryUsage(),
           cpu: process.cpuUsage(),
-          uptime: process.uptime()
+          uptime: process.uptime(),
         },
         dependencies: {
           anthropic: {
             status: 'connected',
-            lastCheck: new Date().toISOString()
+            lastCheck: new Date().toISOString(),
           },
           cache: {
             status: 'healthy',
-            stats: this.getCacheStats()
-          }
+            stats: this.getCacheStats(),
+          },
         },
         metrics: this.metrics.getAIMetrics(),
         config: {
@@ -144,18 +152,20 @@ export class HealthController {
           logLevel: process.env.LOG_LEVEL || 'info',
           maxTokens: process.env.MAX_TOKENS || 4000,
           rateLimitWindow: process.env.RATE_LIMIT_WINDOW || '15 minutes',
-          rateLimitMax: process.env.RATE_LIMIT_MAX || 100
-        }
+          rateLimitMax: process.env.RATE_LIMIT_MAX || 100,
+        },
       };
 
       this.logger.info('Detailed health check requested', { ip: req.ip });
       res.json(detailedData);
     } catch (error) {
-      this.logger.error('Detailed health check failed', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('Detailed health check failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       res.status(500).json({
         status: 'unhealthy',
         error: 'Detailed health check failed',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -190,14 +200,14 @@ export class HealthController {
       hits: 0,
       misses: 0,
       keys: 0,
-      size: 0
+      size: 0,
     };
   }
 
   async ping(req: Request, res: Response): Promise<void> {
     res.json({
       status: 'pong',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

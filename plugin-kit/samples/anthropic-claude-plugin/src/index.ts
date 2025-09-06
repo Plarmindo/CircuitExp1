@@ -53,33 +53,37 @@ class AnthropicClaudePlugin {
   private setupMiddleware(): void {
     // Security middleware
     this.app.use(helmet());
-    
+
     // CORS configuration
     const corsOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'];
-    this.app.use(cors({
-      origin: corsOrigins,
-      credentials: true
-    }));
+    this.app.use(
+      cors({
+        origin: corsOrigins,
+        credentials: true,
+      })
+    );
 
     // Rate limiting
     const rateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10);
     const rateLimitMaxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10);
-    
-    this.app.use(rateLimit({
-      windowMs: rateLimitWindowMs,
-      max: rateLimitMaxRequests,
-      message: {
-        success: false,
-        error: 'Too many requests',
-        message: 'Rate limit exceeded. Please try again later.'
-      },
-      standardHeaders: true,
-      legacyHeaders: false,
-      // Custom key generator for API key-based rate limiting
-      keyGenerator: (req) => {
-        return (req.headers['x-api-key'] as string || req.ip) as string;
-      }
-    }));
+
+    this.app.use(
+      rateLimit({
+        windowMs: rateLimitWindowMs,
+        max: rateLimitMaxRequests,
+        message: {
+          success: false,
+          error: 'Too many requests',
+          message: 'Rate limit exceeded. Please try again later.',
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+        // Custom key generator for API key-based rate limiting
+        keyGenerator: (req) => {
+          return ((req.headers['x-api-key'] as string) || req.ip) as string;
+        },
+      })
+    );
 
     // Body parsing
     this.app.use(express.json({ limit: '10mb' }));
@@ -90,7 +94,7 @@ class AnthropicClaudePlugin {
       this.logger.info(`${req.method} ${req.path}`, {
         ip: req.ip,
         userAgent: req.get('User-Agent'),
-        apiKey: req.headers['x-api-key'] ? '[REDACTED]' : 'none'
+        apiKey: req.headers['x-api-key'] ? '[REDACTED]' : 'none',
       });
       next();
     });
@@ -98,7 +102,11 @@ class AnthropicClaudePlugin {
     // API key validation middleware
     this.app.use((req, res, next) => {
       // Skip API key validation for health endpoints
-      if (req.path.startsWith('/health') || req.path.startsWith('/ready') || req.path.startsWith('/live')) {
+      if (
+        req.path.startsWith('/health') ||
+        req.path.startsWith('/ready') ||
+        req.path.startsWith('/live')
+      ) {
         return next();
       }
 
@@ -107,7 +115,7 @@ class AnthropicClaudePlugin {
         return res.status(401).json({
           success: false,
           error: 'Unauthorized',
-          message: 'API key is required'
+          message: 'API key is required',
         });
       }
 
@@ -115,7 +123,7 @@ class AnthropicClaudePlugin {
         return res.status(401).json({
           success: false,
           error: 'Unauthorized',
-          message: 'Invalid API key'
+          message: 'Invalid API key',
         });
       }
 
@@ -127,17 +135,24 @@ class AnthropicClaudePlugin {
     // Initialize controllers
     const healthController = new HealthController(this.metrics, this.logger);
     const completionController = new CompletionController(
-      this.ai, this.validation, this.metrics, this.logger
+      this.ai,
+      this.validation,
+      this.metrics,
+      this.logger
     );
     const reviewController = new ReviewController(
-      this.ai, this.validation, this.metrics, this.logger
+      this.ai,
+      this.validation,
+      this.metrics,
+      this.logger
     );
     const analysisController = new AnalysisController(
-      this.ai, this.validation, this.metrics, this.logger
+      this.ai,
+      this.validation,
+      this.metrics,
+      this.logger
     );
-    const chatController = new ChatController(
-      this.ai, this.validation, this.metrics, this.logger
-    );
+    const chatController = new ChatController(this.ai, this.validation, this.metrics, this.logger);
     const configController = new ConfigController(this.metrics, this.logger);
 
     // Health and status endpoints
@@ -147,19 +162,21 @@ class AnthropicClaudePlugin {
 
     // API endpoints
     this.app.post('/api/completion', (req, res) => completionController.complete(req, res));
-    this.app.post('/api/completion/stream', (req, res) => completionController.completeStream(req, res));
-    
+    this.app.post('/api/completion/stream', (req, res) =>
+      completionController.completeStream(req, res)
+    );
+
     this.app.post('/api/review', (req, res) => reviewController.review(req, res));
     this.app.post('/api/review/quick', (req, res) => reviewController.quickReview(req, res));
-    
+
     this.app.post('/api/analysis', (req, res) => analysisController.analyze(req, res));
     this.app.post('/api/analysis/bugs', (req, res) => analysisController.detectBugs(req, res));
     this.app.post('/api/analysis/tests', (req, res) => analysisController.generateTests(req, res));
     this.app.post('/api/analysis/docs', (req, res) => analysisController.generateDocs(req, res));
-    
+
     this.app.post('/api/chat', (req, res) => chatController.chat(req, res));
     this.app.post('/api/chat/stream', (req, res) => chatController.chatStream(req, res));
-    
+
     this.app.get('/api/config', (req, res) => configController.getConfig(req, res));
     this.app.post('/api/config', (req, res) => configController.updateConfig(req, res));
 
@@ -183,8 +200,8 @@ class AnthropicClaudePlugin {
           'POST /api/analysis/docs',
           'POST /api/chat',
           'POST /api/chat/stream',
-          'GET /api/config'
-        ]
+          'GET /api/config',
+        ],
       });
     });
   }
@@ -196,26 +213,28 @@ class AnthropicClaudePlugin {
       res.status(404).json({
         success: false,
         error: 'Not Found',
-        message: 'The requested endpoint does not exist'
+        message: 'The requested endpoint does not exist',
       });
     });
 
     // Global error handler
-    this.app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      this.logger.error('Unhandled error', error, {
-        path: req.path,
-        method: req.method,
-        ip: req.ip
-      });
+    this.app.use(
+      (error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        this.logger.error('Unhandled error', error, {
+          path: req.path,
+          method: req.method,
+          ip: req.ip,
+        });
 
-      this.metrics.recordError('unhandled_error', req.path, error.message || 'Unknown error');
+        this.metrics.recordError('unhandled_error', req.path, error.message || 'Unknown error');
 
-      res.status(500).json({
-        success: false,
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-      });
-    });
+        res.status(500).json({
+          success: false,
+          error: 'Internal Server Error',
+          message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
+        });
+      }
+    );
   }
 
   async start(): Promise<void> {
@@ -240,11 +259,11 @@ class AnthropicClaudePlugin {
 // Start the plugin if this file is run directly
 if (require.main === module) {
   const plugin = new AnthropicClaudePlugin();
-  
+
   // Handle graceful shutdown
   process.on('SIGTERM', () => plugin.stop());
   process.on('SIGINT', () => plugin.stop());
-  
+
   plugin.start();
 }
 

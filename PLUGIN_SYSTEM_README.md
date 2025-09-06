@@ -28,16 +28,18 @@ A comprehensive plugin system for extending the Smart File Manager with drag-and
 ### For Developers
 
 1. **Create a Plugin**:
+
    ```bash
    # Use the scaffolding tool
    npm run create-plugin hello-world
-   
+
    # Or manually create structure
    mkdir hello-world-plugin
    cd hello-world-plugin
    ```
 
 2. **Plugin Structure**:
+
    ```
    hello-world-plugin.zip
    ├── plugin.json
@@ -78,6 +80,7 @@ src/plugins/
 ### Core Classes
 
 #### PluginManager
+
 Manages plugin lifecycle and registry.
 
 ```typescript
@@ -90,6 +93,7 @@ await manager.disable('plugin-id');
 ```
 
 #### ZipPluginImporter
+
 Handles ZIP plugin imports with rollback support.
 
 ```typescript
@@ -124,10 +128,10 @@ class HelloWorldPlugin(Plugin):
         super().__init__()
         self.name = "Hello World"
         self.version = "1.0.0"
-    
+
     def activate(self):
         print("Hello World plugin activated!")
-    
+
     def deactivate(self):
         print("Hello World plugin deactivated!")
 ```
@@ -314,6 +318,7 @@ MIT License - see LICENSE file for details.
 ## Changelog
 
 ### v1.0.0
+
 - Initial release
 - Drag-and-drop ZIP import
 - Automatic dependency management

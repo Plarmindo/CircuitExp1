@@ -25,18 +25,20 @@ export class OpenAIGPTPlugin {
   private metrics: MetricsService;
   private security: SecurityService;
 
-  constructor(private config: {
-    port: number;
-    host: string;
-    openaiApiKey: string;
-    apiKeys: string[];
-    corsOrigins: string[];
-    rateLimitWindow: number;
-    rateLimitMax: number;
-  }) {
+  constructor(
+    private config: {
+      port: number;
+      host: string;
+      openaiApiKey: string;
+      apiKeys: string[];
+      corsOrigins: string[];
+      rateLimitWindow: number;
+      rateLimitMax: number;
+    }
+  ) {
     this.app = express();
     this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-    
+
     this.logger = new LoggerService();
     this.metrics = new MetricsService();
     this.security = new SecurityService(config.apiKeys);
@@ -53,11 +55,11 @@ export class OpenAIGPTPlugin {
     this.app.use(cors({ origin: this.config.corsOrigins }));
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
-    
+
     const limiter = rateLimit({
       windowMs: this.config.rateLimitWindow,
       max: this.config.rateLimitMax,
-      message: { error: 'Too many requests' }
+      message: { error: 'Too many requests' },
     });
     this.app.use(limiter);
 
@@ -70,9 +72,21 @@ export class OpenAIGPTPlugin {
 
   private setupRoutes(): void {
     const healthController = new HealthController(this.metrics);
-    const completionController = new CompletionController(this.aiService, this.validationService, this.logger);
-    const reviewController = new ReviewController(this.aiService, this.validationService, this.logger);
-    const analysisController = new AnalysisController(this.aiService, this.validationService, this.logger);
+    const completionController = new CompletionController(
+      this.aiService,
+      this.validationService,
+      this.logger
+    );
+    const reviewController = new ReviewController(
+      this.aiService,
+      this.validationService,
+      this.logger
+    );
+    const analysisController = new AnalysisController(
+      this.aiService,
+      this.validationService,
+      this.logger
+    );
     const chatController = new ChatController(this.aiService, this.validationService, this.logger);
     const configController = new ConfigController();
 
@@ -85,11 +99,13 @@ export class OpenAIGPTPlugin {
   }
 
   private setupErrorHandling(): void {
-    this.app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      this.logger.error('Unhandled error', err);
-      this.metrics.recordError();
-      res.status(500).json({ error: 'Internal server error' });
-    });
+    this.app.use(
+      (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+        this.logger.error('Unhandled error', err);
+        this.metrics.recordError();
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    );
 
     process.on('uncaughtException', (error) => {
       this.logger.error('Uncaught exception', error);
@@ -140,7 +156,7 @@ if (require.main === module) {
     apiKeys: (process.env.API_KEYS || '').split(',').filter(Boolean),
     corsOrigins: (process.env.CORS_ORIGINS || '*').split(','),
     rateLimitWindow: parseInt(process.env.RATE_LIMIT_WINDOW || '900000'), // 15 minutes
-    rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100')
+    rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100'),
   };
 
   if (!config.openaiApiKey) {
@@ -149,7 +165,7 @@ if (require.main === module) {
   }
 
   const plugin = new OpenAIGPTPlugin(config);
-  
+
   plugin.start().catch(console.error);
 
   process.on('SIGTERM', () => {

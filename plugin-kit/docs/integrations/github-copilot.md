@@ -4,7 +4,8 @@ Complete guide for integrating CircuitExp1 AI LLM Plugin Kit with GitHub Copilot
 
 ## Overview
 
-The CircuitExp1 AI LLM Plugin Kit provides advanced AI capabilities that extend GitHub Copilot's functionality through a dedicated extension and API integration.
+The CircuitExp1 AI LLM Plugin Kit provides advanced AI capabilities that extend GitHub Copilot's functionality through a
+dedicated extension and API integration.
 
 ## Installation
 
@@ -116,17 +117,17 @@ function processUserData(users: User[]) {
   // 2. Error handling
   // 3. Performance optimization
   // 4. Security considerations
-  
+
   if (!Array.isArray(users)) {
     throw new Error('Users must be an array');
   }
-  
+
   return users
-    .filter(user => user.isActive)
-    .map(user => ({
+    .filter((user) => user.isActive)
+    .map((user) => ({
       id: user.id,
       name: user.name.trim(),
-      email: user.email.toLowerCase()
+      email: user.email.toLowerCase(),
     }));
 }
 ```
@@ -139,10 +140,11 @@ function fibonacci(n: number): number {
   // CircuitExp1 suggests optimization:
   // "This recursive approach has O(2^n) complexity.
   // Consider iterative approach for O(n) complexity."
-  
+
   // Optimized version:
   if (n <= 1) return n;
-  let a = 0, b = 1;
+  let a = 0,
+    b = 1;
   for (let i = 2; i <= n; i++) {
     [a, b] = [b, a + b];
   }
@@ -156,11 +158,11 @@ function fibonacci(n: number): number {
 // Security vulnerability detection
 app.post('/api/users', (req, res) => {
   const { username, password } = req.body;
-  
+
   // CircuitExp1 security warning:
   // "Password appears to be stored in plain text.
   // Consider using bcrypt or similar hashing."
-  
+
   // Secure version:
   const hashedPassword = await bcrypt.hash(password, 12);
   await saveUser(username, hashedPassword);
@@ -169,11 +171,11 @@ app.post('/api/users', (req, res) => {
 
 ### 4. Advanced Documentation
 
-```typescript
+````typescript
 // AI-generated comprehensive documentation
 /**
  * Processes payment transactions with fraud detection
- * 
+ *
  * @param {PaymentRequest} payment - Payment details
  * @param {string} payment.amount - Transaction amount in cents
  * @param {string} payment.currency - ISO 4217 currency code
@@ -181,7 +183,7 @@ app.post('/api/users', (req, res) => {
  * @returns {Promise<PaymentResult>} Transaction result
  * @throws {PaymentError} When payment processing fails
  * @throws {FraudDetectedError} When suspicious activity is detected
- * 
+ *
  * @example
  * ```typescript
  * const result = await processPayment({
@@ -189,18 +191,18 @@ app.post('/api/users', (req, res) => {
  *   currency: 'USD',
  *   cardToken: 'tok_1234567890'
  * });
- * 
+ *
  * if (result.status === 'success') {
  *   console.log(`Payment processed: ${result.transactionId}`);
  * }
  * ```
- * 
+ *
  * @security
  * - All card data is tokenized
  * - PCI DSS compliant
  * - Rate limiting applied
  * - Fraud detection enabled
- * 
+ *
  * @performance
  * - Average response time: ~200ms
  * - Supports 1000+ concurrent transactions
@@ -209,7 +211,7 @@ app.post('/api/users', (req, res) => {
 async function processPayment(payment: PaymentRequest): Promise<PaymentResult> {
   // Implementation...
 }
-```
+````
 
 ### 5. Test Generation
 
@@ -217,42 +219,42 @@ async function processPayment(payment: PaymentRequest): Promise<PaymentResult> {
 // AI-generated comprehensive test suite
 describe('UserService', () => {
   let userService: UserService;
-  
+
   beforeEach(() => {
     userService = new UserService();
   });
-  
+
   // CircuitExp1 generates edge cases
   describe('createUser', () => {
     it('should create user with valid data', async () => {
       const userData = {
         email: 'test@example.com',
-        name: 'Test User'
+        name: 'Test User',
       };
-      
+
       const user = await userService.createUser(userData);
-      
+
       expect(user).toMatchObject(userData);
       expect(user.id).toBeDefined();
       expect(user.createdAt).toBeInstanceOf(Date);
     });
-    
+
     it('should reject invalid email format', async () => {
-      await expect(
-        userService.createUser({ email: 'invalid-email', name: 'Test' })
-      ).rejects.toThrow('Invalid email format');
+      await expect(userService.createUser({ email: 'invalid-email', name: 'Test' })).rejects.toThrow(
+        'Invalid email format'
+      );
     });
-    
+
     it('should handle duplicate email addresses', async () => {
       await userService.createUser({
         email: 'test@example.com',
-        name: 'Test User'
+        name: 'Test User',
       });
-      
+
       await expect(
         userService.createUser({
           email: 'test@example.com',
-          name: 'Another User'
+          name: 'Another User',
         })
       ).rejects.toThrow('Email already exists');
     });
@@ -301,7 +303,7 @@ interface UserListProps {
 const UserList: React.FC<UserListProps> = ({ users, onUserSelect }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredUsers, setFilteredUsers] = useState(users);
-  
+
   // CircuitExp1 suggests debouncing for performance
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -310,10 +312,10 @@ const UserList: React.FC<UserListProps> = ({ users, onUserSelect }) => {
       );
       setFilteredUsers(filtered);
     }, 300);
-    
+
     return () => clearTimeout(timer);
   }, [users, searchTerm]);
-  
+
   return (
     <div>
       <input
@@ -322,7 +324,7 @@ const UserList: React.FC<UserListProps> = ({ users, onUserSelect }) => {
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
-      
+
       {filteredUsers.map(user => (
         <div key={user.id} onClick={() => onUserSelect(user)}>
           {user.name}
@@ -343,29 +345,30 @@ import { body, validationResult } from 'express-validator';
 const router = express.Router();
 
 // CircuitExp1 suggests input validation and rate limiting
-router.post('/api/posts',
+router.post(
+  '/api/posts',
   [
     body('title').isLength({ min: 5 }).withMessage('Title must be at least 5 characters'),
-    body('content').isLength({ min: 10 }).withMessage('Content must be at least 10 characters')
+    body('content').isLength({ min: 10 }).withMessage('Content must be at least 10 characters'),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    
+
     try {
       const { title, content } = req.body;
-      
+
       // CircuitExp1 suggests sanitization
       const sanitizedContent = sanitizeHtml(content);
-      
+
       const post = await createPost({
         title: title.trim(),
         content: sanitizedContent,
-        authorId: req.user.id
+        authorId: req.user.id,
       });
-      
+
       res.status(201).json(post);
     } catch (error) {
       // CircuitExp1 suggests proper error handling
@@ -385,38 +388,36 @@ const prisma = new PrismaClient();
 
 class UserService {
   // CircuitExp1 suggests pagination and filtering
-  async getUsers(
-    page: number = 1,
-    limit: number = 10,
-    search?: string
-  ): Promise<PaginatedResult<User>> {
+  async getUsers(page: number = 1, limit: number = 10, search?: string): Promise<PaginatedResult<User>> {
     const skip = (page - 1) * limit;
-    
-    const where = search ? {
-      OR: [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } }
-      ]
-    } : {};
-    
+
+    const where = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({ where })
+      prisma.user.count({ where }),
     ]);
-    
+
     return {
       data: users,
       pagination: {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 }
@@ -467,41 +468,39 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 describe('Enhanced UserService', () => {
   let userService: UserService;
   let mockDatabase: jest.Mocked<Database>;
-  
+
   beforeEach(() => {
     mockDatabase = createMockDatabase();
     userService = new UserService(mockDatabase);
   });
-  
+
   // CircuitExp1 generates edge cases and security tests
   describe('createUser', () => {
     it('should create user with SQL injection prevention', async () => {
       const maliciousInput = {
         name: "'; DROP TABLE users; --",
-        email: 'test@example.com'
+        email: 'test@example.com',
       };
-      
+
       const user = await userService.createUser(maliciousInput);
-      
+
       expect(user.name).toBe("'; DROP TABLE users; --");
       expect(mockDatabase.createUser).toHaveBeenCalledWith({
         name: "'; DROP TABLE users; --",
-        email: 'test@example.com'
+        email: 'test@example.com',
       });
     });
-    
+
     it('should handle concurrent user creation', async () => {
       const users = Array.from({ length: 100 }, (_, i) => ({
         email: `user${i}@example.com`,
-        name: `User ${i}`
+        name: `User ${i}`,
       }));
-      
-      const results = await Promise.all(
-        users.map(user => userService.createUser(user))
-      );
-      
+
+      const results = await Promise.all(users.map((user) => userService.createUser(user)));
+
       expect(results).toHaveLength(100);
-      expect(new Set(results.map(u => u.email))).toHaveLength(100);
+      expect(new Set(results.map((u) => u.email))).toHaveLength(100);
     });
   });
 });
@@ -600,16 +599,19 @@ Enable debug logging in VS Code:
 ### Migration Steps
 
 1. **Backup Current Settings**
+
    ```bash
    cp ~/.vscode/settings.json ~/.vscode/settings.json.backup
    ```
 
 2. **Install CircuitExp1 Extension**
+
    ```bash
    code --install-extension circuitexp1.copilot-extension
    ```
 
 3. **Update Configuration**
+
    ```json
    {
      "github.copilot.enable": {

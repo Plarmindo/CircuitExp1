@@ -16,14 +16,7 @@
     "package": "plugin-package",
     "deploy": "plugin-deploy"
   },
-  "keywords": [
-    "circuitexp1",
-    "plugin",
-    "openai",
-    "gpt",
-    "ai",
-    "chat"
-  ],
+  "keywords": ["circuitexp1", "plugin", "openai", "gpt", "ai", "chat"],
   "author": "CircuitExp1 Team",
   "license": "MIT",
   "engines": {
@@ -55,14 +48,8 @@
       "id": "openai-gpt-plugin",
       "name": "OpenAI GPT Plugin",
       "category": "ai-integration",
-      "capabilities": [
-        "chat-completion",
-        "code-completion",
-        "text-analysis"
-      ],
-      "platforms": [
-        "openai"
-      ]
+      "capabilities": ["chat-completion", "code-completion", "text-analysis"],
+      "platforms": ["openai"]
     }
   }
 }

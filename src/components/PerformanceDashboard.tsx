@@ -4,7 +4,19 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 
 export interface PerformanceMetric {
   timestamp: number;
@@ -28,7 +40,10 @@ interface PerformanceDashboardProps {
   onClose: () => void;
 }
 
-export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVisible, onClose }) => {
+export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
+  isVisible,
+  onClose,
+}) => {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
   const [alerts, setAlerts] = useState<PerformanceAlert[]>([]);
   const [currentTab, setCurrentTab] = useState('overview');
@@ -57,7 +72,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
     try {
       // Get performance data from Electron main process
       const performanceData = await window.electronAPI?.getPerformanceMetrics?.();
-      
+
       if (performanceData) {
         const newMetric: PerformanceMetric = {
           timestamp: Date.now(),
@@ -65,10 +80,10 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
           cpuUsage: performanceData.cpuUsage || 0,
           fileCount: performanceData.fileCount || 0,
           scanSpeed: performanceData.scanSpeed || 0,
-          errorCount: performanceData.errorCount || 0
+          errorCount: performanceData.errorCount || 0,
         };
 
-        setMetrics(prev => {
+        setMetrics((prev) => {
           const updated = [...prev, newMetric];
           // Keep only last 100 data points
           return updated.slice(-100);
@@ -92,7 +107,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
         type: 'warning',
         message: `High memory usage: ${metric.memoryUsage.toFixed(1)}%`,
         timestamp: metric.timestamp,
-        severity: metric.memoryUsage > 90 ? 3 : 2
+        severity: metric.memoryUsage > 90 ? 3 : 2,
       });
     }
 
@@ -103,7 +118,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
         type: 'warning',
         message: `High CPU usage: ${metric.cpuUsage.toFixed(1)}%`,
         timestamp: metric.timestamp,
-        severity: metric.cpuUsage > 85 ? 3 : 2
+        severity: metric.cpuUsage > 85 ? 3 : 2,
       });
     }
 
@@ -114,7 +129,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
         type: 'error',
         message: `${metric.errorCount} errors detected during scan`,
         timestamp: metric.timestamp,
-        severity: 3
+        severity: 3,
       });
     }
 
@@ -125,33 +140,35 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
         type: 'info',
         message: `Slow scan speed: ${metric.scanSpeed.toFixed(1)} files/sec`,
         timestamp: metric.timestamp,
-        severity: 1
+        severity: 1,
       });
     }
 
-    setAlerts(prev => [...newAlerts, ...prev].slice(-10));
+    setAlerts((prev) => [...newAlerts, ...prev].slice(-10));
   };
 
   const getLatestMetric = () => {
-    return metrics[metrics.length - 1] || {
-      timestamp: Date.now(),
-      memoryUsage: 0,
-      cpuUsage: 0,
-      fileCount: 0,
-      scanSpeed: 0,
-      errorCount: 0
-    };
+    return (
+      metrics[metrics.length - 1] || {
+        timestamp: Date.now(),
+        memoryUsage: 0,
+        cpuUsage: 0,
+        fileCount: 0,
+        scanSpeed: 0,
+        errorCount: 0,
+      }
+    );
   };
 
   const getAverageMetrics = () => {
     if (metrics.length === 0) return { memoryUsage: 0, cpuUsage: 0, scanSpeed: 0 };
-    
+
     const avg = {
       memoryUsage: metrics.reduce((sum, m) => sum + m.memoryUsage, 0) / metrics.length,
       cpuUsage: metrics.reduce((sum, m) => sum + m.cpuUsage, 0) / metrics.length,
-      scanSpeed: metrics.reduce((sum, m) => sum + m.scanSpeed, 0) / metrics.length
+      scanSpeed: metrics.reduce((sum, m) => sum + m.scanSpeed, 0) / metrics.length,
     };
-    
+
     return avg;
   };
 
@@ -174,9 +191,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
               <button
                 onClick={() => setRealTimeMonitoring(!realTimeMonitoring)}
                 className={`px-3 py-1 rounded text-sm ${
-                  realTimeMonitoring 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-gray-200 text-gray-700'
+                  realTimeMonitoring ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'
                 }`}
               >
                 {realTimeMonitoring ? 'Live' : 'Paused'}
@@ -250,9 +265,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
                         {latest.errorCount}
                       </Badge>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Current scan
-                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Current scan</p>
                   </CardContent>
                 </Card>
               </div>
@@ -261,7 +274,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-2">Recent Alerts</h3>
                   <div className="space-y-2">
-                    {alerts.slice(0, 5).map(alert => (
+                    {alerts.slice(0, 5).map((alert) => (
                       <Alert key={alert.id} variant={alert.type}>
                         <AlertDescription>
                           {formatTimestamp(alert.timestamp)}: {alert.message}
@@ -276,30 +289,26 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={metrics}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="timestamp" 
-                      tickFormatter={formatTimestamp}
-                      fontSize={12}
-                    />
+                    <XAxis dataKey="timestamp" tickFormatter={formatTimestamp} fontSize={12} />
                     <YAxis fontSize={12} />
-                    <Tooltip 
+                    <Tooltip
                       labelFormatter={formatTimestamp}
                       formatter={(value: number, name: string) => [
-                        `${value.toFixed(1)}%`, 
-                        name.replace(/([A-Z])/g, ' $1').trim()
+                        `${value.toFixed(1)}%`,
+                        name.replace(/([A-Z])/g, ' $1').trim(),
                       ]}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="memoryUsage" 
-                      stroke="#8884d8" 
+                    <Line
+                      type="monotone"
+                      dataKey="memoryUsage"
+                      stroke="#8884d8"
                       strokeWidth={2}
                       dot={false}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="cpuUsage" 
-                      stroke="#82ca9d" 
+                    <Line
+                      type="monotone"
+                      dataKey="cpuUsage"
+                      stroke="#82ca9d"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -319,11 +328,11 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
                         <XAxis dataKey="timestamp" tickFormatter={formatTimestamp} />
                         <YAxis />
                         <Tooltip labelFormatter={formatTimestamp} />
-                        <Area 
-                          type="monotone" 
-                          dataKey="memoryUsage" 
-                          stroke="#8884d8" 
-                          fill="#8884d8" 
+                        <Area
+                          type="monotone"
+                          dataKey="memoryUsage"
+                          stroke="#8884d8"
+                          fill="#8884d8"
                           fillOpacity={0.6}
                         />
                       </AreaChart>
@@ -353,14 +362,19 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
                 {alerts.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No alerts to display</p>
                 ) : (
-                  alerts.map(alert => (
+                  alerts.map((alert) => (
                     <Card key={alert.id}>
                       <CardContent className="pt-6">
                         <div className="flex justify-between items-start">
                           <div>
-                            <Badge 
-                              variant={alert.type === 'error' ? 'destructive' : 
-                                       alert.type === 'warning' ? 'warning' : 'default'}
+                            <Badge
+                              variant={
+                                alert.type === 'error'
+                                  ? 'destructive'
+                                  : alert.type === 'warning'
+                                    ? 'warning'
+                                    : 'default'
+                              }
                             >
                               {alert.type.toUpperCase()}
                             </Badge>
@@ -389,14 +403,14 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({ isVi
                         <h4 className="font-semibold mb-2">Memory Efficiency</h4>
                         <p className="text-sm text-gray-600">
                           Average memory usage: {averages.memoryUsage.toFixed(1)}%
-                          {averages.memoryUsage > 70 && " - Consider optimizing memory usage"}
+                          {averages.memoryUsage > 70 && ' - Consider optimizing memory usage'}
                         </p>
                       </div>
                       <div>
                         <h4 className="font-semibold mb-2">Processing Speed</h4>
                         <p className="text-sm text-gray-600">
                           Average scan speed: {averages.scanSpeed.toFixed(1)} files/sec
-                          {averages.scanSpeed < 50 && " - Performance may be impacted"}
+                          {averages.scanSpeed < 50 && ' - Performance may be impacted'}
                         </p>
                       </div>
                     </div>

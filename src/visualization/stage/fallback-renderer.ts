@@ -18,15 +18,24 @@ export class FallbackRenderer {
   private textColor: string;
 
   constructor(config: FallbackRendererConfig) {
+    if (!config.canvas) {
+      throw new Error('Canvas element is required for FallbackRenderer');
+    }
+
     this.canvas = config.canvas;
     this.width = config.width;
     this.height = config.height;
     this.backgroundColor = config.backgroundColor || '#102030';
     this.textColor = config.textColor || '#ffffff';
-    
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.ctx = this.canvas.getContext('2d');
+
+    try {
+      this.canvas.width = this.width;
+      this.canvas.height = this.height;
+      this.ctx = this.canvas.getContext('2d');
+    } catch (error) {
+      console.error('Error initializing fallback renderer:', error);
+      this.ctx = null;
+    }
   }
 
   /**
@@ -92,14 +101,14 @@ export class FallbackRenderer {
     // Draw error details
     this.ctx.fillStyle = this.textColor;
     this.ctx.font = '14px sans-serif';
-    
+
     // Handle multi-line error messages
     const lines = error.split('\n');
     const lineHeight = 20;
     const startY = this.height / 2;
-    
+
     lines.forEach((line, index) => {
-      this.ctx.fillText(line, this.width / 2, startY + (index * lineHeight));
+      this.ctx.fillText(line, this.width / 2, startY + index * lineHeight);
     });
 
     // Draw border

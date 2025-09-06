@@ -22,7 +22,7 @@ describe('ZipPluginImporter', () => {
     tempDir = '/tmp/test';
     pluginsDir = '/home/user/plugins';
     importer = new ZipPluginImporter(pluginsDir);
-    
+
     // Setup mocks
     mockOs.homedir.mockReturnValue('/home/user');
     mockPath.join.mockImplementation((...args) => args.join('/'));
@@ -42,35 +42,29 @@ describe('ZipPluginImporter', () => {
       const validStructure = [
         'my-plugin/plugin.json',
         'my-plugin/__init__.py',
-        'my-plugin/main.py'
+        'my-plugin/main.py',
       ];
 
       const result = await importer['validateZipStructure'](validStructure);
-      
+
       expect(result.valid).toBe(true);
       expect(result.pluginName).toBe('my-plugin');
     });
 
     it('should reject invalid ZIP structure - missing plugin.json', async () => {
-      const invalidStructure = [
-        'my-plugin/__init__.py',
-        'my-plugin/main.py'
-      ];
+      const invalidStructure = ['my-plugin/__init__.py', 'my-plugin/main.py'];
 
       const result = await importer['validateZipStructure'](invalidStructure);
-      
+
       expect(result.valid).toBe(false);
       expect(result.error).toContain('plugin.json');
     });
 
     it('should reject invalid ZIP structure - missing plugin directory', async () => {
-      const invalidStructure = [
-        'plugin.json',
-        'some-file.txt'
-      ];
+      const invalidStructure = ['plugin.json', 'some-file.txt'];
 
       const result = await importer['validateZipStructure'](invalidStructure);
-      
+
       expect(result.valid).toBe(false);
       expect(result.error).toContain('plugin directory');
     });
@@ -86,11 +80,11 @@ describe('ZipPluginImporter', () => {
         author: 'Test Author',
         category: 'test',
         main: 'test-plugin/__init__.py',
-        permissions: {}
+        permissions: {},
       };
 
       const result = await importer['parsePluginJson'](JSON.stringify(validJson));
-      
+
       expect(result.success).toBe(true);
       expect(result.metadata?.id).toBe('test-plugin');
     });
@@ -98,18 +92,18 @@ describe('ZipPluginImporter', () => {
     it('should reject invalid plugin.json - missing required fields', async () => {
       const invalidJson = {
         name: 'Test Plugin',
-        version: '1.0.0'
+        version: '1.0.0',
       };
 
       const result = await importer['parsePluginJson'](JSON.stringify(invalidJson));
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('required');
     });
 
     it('should reject invalid JSON syntax', async () => {
       const result = await importer['parsePluginJson']('invalid json');
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('JSON');
     });
@@ -121,14 +115,14 @@ describe('ZipPluginImporter', () => {
       const pluginDir = '/home/user/plugins/test-plugin-1.0.0';
 
       const result = await importer['installDependencies'](requirements, pluginDir);
-      
+
       expect(result.success).toBe(true);
       expect(result.installed).toEqual(['requests>=2.25.0', 'pillow>=8.0.0']);
     });
 
     it('should handle empty requirements.txt', async () => {
       const result = await importer['installDependencies']('', '/test/path');
-      
+
       expect(result.success).toBe(true);
       expect(result.installed).toEqual([]);
     });
@@ -143,7 +137,7 @@ describe('ZipPluginImporter', () => {
       mockFs.existsSync.mockReturnValue(true);
 
       const result = await importer['createBackup'](pluginId, version);
-      
+
       expect(result.success).toBe(true);
       expect(result.backupPath).toContain('backup');
     });
@@ -155,7 +149,7 @@ describe('ZipPluginImporter', () => {
       mockFs.existsSync.mockReturnValue(false);
 
       const result = await importer['createBackup'](pluginId, version);
-      
+
       expect(result.success).toBe(true);
       expect(result.backupPath).toBeUndefined();
     });
@@ -166,13 +160,13 @@ describe('ZipPluginImporter', () => {
       const rollbackInfo = {
         pluginId: 'test-plugin',
         backupPath: '/home/user/plugins/test-plugin-1.0.0-backup',
-        originalPath: '/home/user/plugins/test-plugin-1.0.0'
+        originalPath: '/home/user/plugins/test-plugin-1.0.0',
       };
 
       mockFs.existsSync.mockReturnValue(true);
 
       const result = await importer.rollback(rollbackInfo);
-      
+
       expect(result.success).toBe(true);
     });
 
@@ -180,13 +174,13 @@ describe('ZipPluginImporter', () => {
       const rollbackInfo = {
         pluginId: 'test-plugin',
         backupPath: '/non-existing-backup',
-        originalPath: '/home/user/plugins/test-plugin-1.0.0'
+        originalPath: '/home/user/plugins/test-plugin-1.0.0',
       };
 
       mockFs.existsSync.mockReturnValue(false);
 
       const result = await importer.rollback(rollbackInfo);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('Backup not found');
     });
@@ -196,21 +190,18 @@ describe('ZipPluginImporter', () => {
     it('should successfully import valid plugin', async () => {
       // This would be a more complex test with actual ZIP file handling
       // For now, we'll test the validation flow
-      
+
       const mockZipFile = new Blob(['mock zip content'], { type: 'application/zip' });
-      
+
       // Mock the ZIP extraction and validation
       jest.spyOn(importer as any, 'extractZip').mockResolvedValue({
-        files: [
-          'my-plugin/plugin.json',
-          'my-plugin/__init__.py'
-        ],
-        tempDir: '/tmp/test'
+        files: ['my-plugin/plugin.json', 'my-plugin/__init__.py'],
+        tempDir: '/tmp/test',
       });
 
       jest.spyOn(importer as any, 'validateZipStructure').mockResolvedValue({
         valid: true,
-        pluginName: 'my-plugin'
+        pluginName: 'my-plugin',
       });
 
       jest.spyOn(importer as any, 'parsePluginJson').mockResolvedValue({
@@ -218,12 +209,12 @@ describe('ZipPluginImporter', () => {
         metadata: {
           id: 'my-plugin',
           name: 'My Plugin',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
 
       const result = await importer.importFromZip(mockZipFile as any);
-      
+
       expect(result.success).toBe(true);
       expect(result.plugin?.id).toBe('my-plugin');
     });

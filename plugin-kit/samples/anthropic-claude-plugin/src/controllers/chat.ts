@@ -14,18 +14,21 @@ export class ChatController {
 
   async chat(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const { message, context, conversationId, systemPrompt } = req.body;
 
       // Validate input
-      const validation = this.validationService.sanitizeAndValidate({
-        message,
-        context,
-        history: [],
-        maxTokens: 800,
-        temperature: 0.7
-      }, 'chat');
+      const validation = this.validationService.sanitizeAndValidate(
+        {
+          message,
+          context,
+          history: [],
+          maxTokens: 800,
+          temperature: 0.7,
+        },
+        'chat'
+      );
 
       if (!validation.valid) {
         this.metricsService.recordRequest('POST', '/api/chat', 400, Date.now() - startTime);
@@ -40,46 +43,55 @@ export class ChatController {
         context,
         history: [],
         maxTokens: 800,
-        temperature: 0.7
+        temperature: 0.7,
       });
 
       this.metricsService.recordRequest('POST', '/api/chat', 200, Date.now() - startTime);
-      this.metricsService.recordAIUsage('claude-3-5-sonnet-20241022', result.tokens?.prompt || 0, result.tokens?.completion || 0);
+      this.metricsService.recordAIUsage(
+        'claude-3-5-sonnet-20241022',
+        result.tokens?.prompt || 0,
+        result.tokens?.completion || 0
+      );
 
       res.json({
         response: result.content,
         conversationId: conversationId || this.generateConversationId(),
         tokens: result.tokens,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error('Chat failed', { error: errorMessage, conversationId: req.body.conversationId });
+      this.logger.error('Chat failed', {
+        error: errorMessage,
+        conversationId: req.body.conversationId,
+      });
       this.metricsService.recordRequest('POST', '/api/chat', 500, Date.now() - startTime);
       this.metricsService.recordError('chat', '/api/chat', errorMessage);
-      
+
       res.status(500).json({
         error: 'Chat failed',
-        message: error instanceof Error ? error.message : 'Internal server error'
+        message: error instanceof Error ? error.message : 'Internal server error',
       });
     }
   }
 
   async chatStream(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const { message, context, conversationId, systemPrompt } = req.body;
 
       // Validate input
-      const validation = this.validationService.sanitizeAndValidate({
-        message,
-        context,
-        history: [],
-        maxTokens: 800,
-        temperature: 0.7
-      }, 'chat');
+      const validation = this.validationService.sanitizeAndValidate(
+        {
+          message,
+          context,
+          history: [],
+          maxTokens: 800,
+          temperature: 0.7,
+        },
+        'chat'
+      );
 
       if (!validation.valid) {
         this.metricsService.recordRequest('POST', '/api/chat/stream', 400, Date.now() - startTime);
@@ -100,34 +112,43 @@ export class ChatController {
         context,
         history: [],
         maxTokens: 800,
-        temperature: 0.7
+        temperature: 0.7,
       });
 
       res.json({
         response: result.content,
         conversationId: conversationId || this.generateConversationId(),
         tokens: result.tokens,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       this.metricsService.recordRequest('POST', '/api/chat/stream', 200, Date.now() - startTime);
-      this.metricsService.recordAIUsage(result.model || 'claude-3-5-sonnet-20241022', result.tokens?.prompt || 0, result.tokens?.completion || 0);
-
+      this.metricsService.recordAIUsage(
+        result.model || 'claude-3-5-sonnet-20241022',
+        result.tokens?.prompt || 0,
+        result.tokens?.completion || 0
+      );
     } catch (error) {
-      this.logger.error('Chat stream failed', { error: error instanceof Error ? error.message : String(error) });
+      this.logger.error('Chat stream failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       this.metricsService.recordRequest('POST', '/api/chat/stream', 500, Date.now() - startTime);
-      this.metricsService.recordError('chat_stream', '/api/chat/stream', error instanceof Error ? error.message : String(error));
-      
+      this.metricsService.recordError(
+        'chat_stream',
+        '/api/chat/stream',
+        error instanceof Error ? error.message : String(error)
+      );
+
       res.status(500).json({
         error: 'Chat stream failed',
-        message: error instanceof Error ? error.message : 'Internal server error'
+        message: error instanceof Error ? error.message : 'Internal server error',
       });
     }
   }
 
   async clearConversation(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const { conversationId } = req.body;
 
@@ -146,25 +167,24 @@ export class ChatController {
       res.json({
         success: true,
         message: `Conversation ${conversationId} cleared`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Clear conversation failed', { error: errorMessage });
       this.metricsService.recordRequest('POST', '/api/chat/clear', 500, Date.now() - startTime);
       this.metricsService.recordError('clear_conversation', '/api/chat/clear', errorMessage);
-      
+
       res.status(500).json({
         error: 'Clear conversation failed',
-        message: error instanceof Error ? error.message : 'Internal server error'
+        message: error instanceof Error ? error.message : 'Internal server error',
       });
     }
   }
 
   async getConversationHistory(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const { conversationId } = req.query;
 
@@ -184,18 +204,21 @@ export class ChatController {
         conversationId,
         messages: [],
         totalMessages: 0,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error('Get conversation history failed', { error: errorMessage });
       this.metricsService.recordRequest('GET', '/api/chat/history', 500, Date.now() - startTime);
-      this.metricsService.recordError('get_conversation_history', '/api/chat/history', errorMessage);
-      
+      this.metricsService.recordError(
+        'get_conversation_history',
+        '/api/chat/history',
+        errorMessage
+      );
+
       res.status(500).json({
         error: 'Get conversation history failed',
-        message: error instanceof Error ? error.message : 'Internal server error'
+        message: error instanceof Error ? error.message : 'Internal server error',
       });
     }
   }

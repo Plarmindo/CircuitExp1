@@ -1,6 +1,6 @@
 /**
  * ZIP Plugin Import System
- * 
+ *
  * Provides drag-and-drop and file selection functionality for importing
  * CircuitExp1 plugins from ZIP bundles with automatic dependency management
  * and rollback capabilities.
@@ -41,13 +41,13 @@ export class ZipPluginImporter {
   private validator: PluginValidator;
 
   constructor(pluginsDir?: string) {
-    this.pluginsDir = pluginsDir || path.join(require('os').homedir(), 'Smartfilemanager', 'plugins');
+    this.pluginsDir =
+      pluginsDir || path.join(require('os').homedir(), 'Smartfilemanager', 'plugins');
     this.backupDir = path.join(this.pluginsDir, '.backups');
     this.validator = new PluginValidator();
-    
+
     this.ensureDirectories();
   }
-  
 
   private ensureDirectories(): void {
     fse.ensureDirSync(this.pluginsDir);
@@ -59,7 +59,7 @@ export class ZipPluginImporter {
    */
   async importFromZip(zipBuffer: Buffer): Promise<ImportResult> {
     const zip = await JSZip.loadAsync(zipBuffer);
-    
+
     // Find the plugin directory structure
     const pluginDir = this.findPluginDirectory(zip);
     if (!pluginDir) {
@@ -67,7 +67,7 @@ export class ZipPluginImporter {
         success: false,
         plugin: null as any,
         errors: ['Invalid ZIP structure: no plugin directory found'],
-        warnings: []
+        warnings: [],
       };
     }
 
@@ -78,7 +78,7 @@ export class ZipPluginImporter {
         success: false,
         plugin: null as any,
         errors: ['Invalid ZIP: missing plugin.json'],
-        warnings: []
+        warnings: [],
       };
     }
 
@@ -89,7 +89,7 @@ export class ZipPluginImporter {
         success: false,
         plugin: null as any,
         errors: validation.errors,
-        warnings: validation.warnings
+        warnings: validation.warnings,
       };
     }
 
@@ -115,7 +115,7 @@ export class ZipPluginImporter {
           success: false,
           plugin: null as any,
           errors: depsResult.errors,
-          warnings: depsResult.warnings
+          warnings: depsResult.warnings,
         };
       }
     }
@@ -125,7 +125,7 @@ export class ZipPluginImporter {
       version: metadata.version,
       directory: pluginPath,
       metadata,
-      requirements
+      requirements,
     };
 
     return {
@@ -133,7 +133,7 @@ export class ZipPluginImporter {
       plugin,
       previousVersion,
       errors: [],
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -148,7 +148,7 @@ export class ZipPluginImporter {
 
     const backupInfo = await fse.readJSON(path.join(backupPath, 'backup-info.json'));
     const currentPath = path.join(this.pluginsDir, `${pluginId}-${backupInfo.currentVersion}`);
-    
+
     // Remove current version
     if (fse.existsSync(currentPath)) {
       await fse.remove(currentPath);
@@ -181,7 +181,7 @@ export class ZipPluginImporter {
    */
   listRollbackVersions(): Record<string, RollbackInfo[]> {
     const result: Record<string, RollbackInfo[]> = {};
-    
+
     if (!fse.existsSync(this.backupDir)) {
       return result;
     }
@@ -202,9 +202,9 @@ export class ZipPluginImporter {
 
   private findPluginDirectory(zip: JSZip): string | null {
     const dirs = Object.keys(zip.files)
-      .filter(name => name.includes('/'))
-      .map(name => name.split('/')[0])
-      .filter(name => name !== '__MACOSX');
+      .filter((name) => name.includes('/'))
+      .map((name) => name.split('/')[0])
+      .filter((name) => name !== '__MACOSX');
 
     const uniqueDirs = [...new Set(dirs)];
     return uniqueDirs.length === 1 ? uniqueDirs[0] : null;
@@ -213,7 +213,7 @@ export class ZipPluginImporter {
   private async extractMetadata(zip: JSZip, pluginDir: string): Promise<PluginMetadata | null> {
     const metadataPath = `${pluginDir}/plugin.json`;
     const metadataFile = zip.file(metadataPath);
-    
+
     if (!metadataFile) {
       return null;
     }
@@ -229,7 +229,7 @@ export class ZipPluginImporter {
   private async extractRequirements(zip: JSZip, pluginDir: string): Promise<string[] | null> {
     const requirementsPath = `${pluginDir}/requirements.txt`;
     const requirementsFile = zip.file(requirementsPath);
-    
+
     if (!requirementsFile) {
       return null;
     }
@@ -238,8 +238,8 @@ export class ZipPluginImporter {
       const content = await requirementsFile.async('text');
       return content
         .split('\n')
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith('#'));
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#'));
     } catch (error) {
       return null;
     }
@@ -252,16 +252,16 @@ export class ZipPluginImporter {
 
     const plugins = fse.readdirSync(this.pluginsDir);
     return plugins
-      .filter(name => name.startsWith(`${pluginId}-`))
-      .map(name => name.replace(`${pluginId}-`, ''))
+      .filter((name) => name.startsWith(`${pluginId}-`))
+      .map((name) => name.replace(`${pluginId}-`, ''))
       .sort((a, b) => {
         const versionA = a.split('.').map(Number);
         const versionB = b.split('.').map(Number);
-        
+
         for (let i = 0; i < Math.max(versionA.length, versionB.length); i++) {
           const numA = versionA[i] || 0;
           const numB = versionB[i] || 0;
-          
+
           if (numA !== numB) {
             return numB - numA; // Descending order
           }
@@ -270,7 +270,10 @@ export class ZipPluginImporter {
       });
   }
 
-  private async createBackup(pluginId: string, version: string): Promise<{ success: boolean; backupPath?: string; error?: string }> {
+  private async createBackup(
+    pluginId: string,
+    version: string
+  ): Promise<{ success: boolean; backupPath?: string; error?: string }> {
     const backupPath = path.join(this.backupDir, pluginId);
 
     const pluginPath = path.join(this.pluginsDir, `${pluginId}-${version}`);
@@ -290,12 +293,12 @@ export class ZipPluginImporter {
       currentVersion: this.getCurrentVersion(pluginId) || version,
       previousVersion: version,
       timestamp: new Date(),
-      backupPath: backupPath
+      backupPath: backupPath,
     };
 
     await fse.writeJSON(path.join(backupPath, 'backup-info.json'), backupInfo);
 
-    return { success: true, backupPath }
+    return { success: true, backupPath };
   }
 
   private getCurrentVersion(pluginId: string): string | null {
@@ -307,11 +310,11 @@ export class ZipPluginImporter {
     await fse.ensureDir(targetPath);
 
     const files = zip.file(new RegExp(`^${pluginDir}/.*`));
-    
+
     for (const file of files) {
       const relativePath = file.name.replace(`${pluginDir}/`, '');
       const targetFilePath = path.join(targetPath, relativePath);
-      
+
       if (file.dir) {
         await fse.ensureDir(targetFilePath);
       } else {
@@ -322,7 +325,10 @@ export class ZipPluginImporter {
     }
   }
 
-  private async installDependencies(requirementsInput: string | string[], pluginPath: string): Promise<{ success: boolean; installed: string[]; errors: string[]; warnings: string[] }> {
+  private async installDependencies(
+    requirementsInput: string | string[],
+    pluginPath: string
+  ): Promise<{ success: boolean; installed: string[]; errors: string[]; warnings: string[] }> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -331,12 +337,12 @@ export class ZipPluginImporter {
       ? requirementsInput
       : requirementsInput
           .split(/\r?\n/)
-          .map(l => l.trim())
-          .filter(l => l.length > 0);
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
 
     // In production this would spawn pip, but for unit-testing we simply echo success
     // and pretend all dependencies installed without actually touching the system.
-    return { success: true, installed: requirements, errors, warnings }
+    return { success: true, installed: requirements, errors, warnings };
   }
 
   /**
@@ -344,7 +350,7 @@ export class ZipPluginImporter {
    */
   async cleanupOldBackups(): Promise<void> {
     const rollbackVersions = this.listRollbackVersions();
-    
+
     for (const [pluginId, versions] of Object.entries(rollbackVersions)) {
       if (versions.length > 5) {
         const toRemove = versions.slice(5);
@@ -361,16 +367,21 @@ export class ZipPluginImporter {
    * Validate the raw list of file paths contained in a ZIP archive.
    * Ensures there is exactly one plugin directory and a plugin.json file inside it.
    */
-  private async validateZipStructure(fileList: string[]): Promise<{ valid: boolean; pluginName?: string; error?: string }> {
+  private async validateZipStructure(
+    fileList: string[]
+  ): Promise<{ valid: boolean; pluginName?: string; error?: string }> {
     // Match plugin.json either at root or within a directory
-    const pluginJsonPath = fileList.find(p => /(\/|^)plugin\.json$/.test(p));
+    const pluginJsonPath = fileList.find((p) => /(\/|^)plugin\.json$/.test(p));
     if (!pluginJsonPath) {
       return { valid: false, error: 'plugin.json not found in archive' };
     }
 
     // If plugin.json is at the archive root, we are missing a dedicated plugin directory
     if (!pluginJsonPath.includes('/')) {
-      return { valid: false, error: 'Invalid plugin directory structure: plugin directory not detected' };
+      return {
+        valid: false,
+        error: 'Invalid plugin directory structure: plugin directory not detected',
+      };
     }
 
     const pluginDir = pluginJsonPath.replace(/\/plugin\.json$/, '');
@@ -380,7 +391,9 @@ export class ZipPluginImporter {
   /**
    * Parse and perform minimal validation of plugin.json content.
    */
-  private async parsePluginJson(jsonContent: string): Promise<{ success: boolean; metadata?: any; error?: string }> {
+  private async parsePluginJson(
+    jsonContent: string
+  ): Promise<{ success: boolean; metadata?: any; error?: string }> {
     let data: any;
     try {
       data = JSON.parse(jsonContent);
@@ -389,12 +402,11 @@ export class ZipPluginImporter {
     }
 
     const requiredFields = ['id', 'name', 'version'];
-    const missing = requiredFields.filter(k => !(k in data));
+    const missing = requiredFields.filter((k) => !(k in data));
     if (missing.length > 0) {
       return { success: false, error: `Missing required field(s): ${missing.join(', ')}` };
     }
 
     return { success: true, metadata: data };
   }
-
 }

@@ -17,7 +17,7 @@ export class CacheService {
       stdTTL: options.ttl || 3600, // 1 hour default
       maxKeys: options.maxKeys || 1000,
       checkperiod: options.checkPeriod || 600, // 10 minutes
-      useClones: false
+      useClones: false,
     });
 
     this.cache.on('set', (key, value) => {
@@ -90,7 +90,7 @@ export class CacheService {
       hits: stats.hits,
       misses: stats.misses,
       ksize: stats.ksize,
-      vsize: stats.vsize
+      vsize: stats.vsize,
     };
   }
 
@@ -109,7 +109,7 @@ export class CacheService {
   async mget<T>(keys: string[]): Promise<Array<T | undefined>> {
     try {
       const values = this.cache.mget<T>(keys);
-      return keys.map(key => values[key]);
+      return keys.map((key) => values[key]);
     } catch (error) {
       this.logger.error('Error getting multiple cache keys', error);
       return keys.map(() => undefined);
@@ -118,10 +118,13 @@ export class CacheService {
 
   async mset<T>(data: Array<{ key: string; value: T; ttl?: number }>): Promise<boolean> {
     try {
-      const cacheData = data.reduce((acc, item) => {
-        acc[item.key] = item.value;
-        return acc;
-      }, {} as Record<string, T>);
+      const cacheData = data.reduce(
+        (acc, item) => {
+          acc[item.key] = item.value;
+          return acc;
+        },
+        {} as Record<string, T>
+      );
 
       const result = this.cache.mset(cacheData);
       return result;

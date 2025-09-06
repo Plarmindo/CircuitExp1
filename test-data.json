@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "path": "root",
+      "kind": "directory",
+      "parentPath": null
+    },
+    {
+      "path": "root/Documents",
+      "kind": "directory",
+      "parentPath": "root"
+    },
+    {
+      "path": "root/Documents/file1.txt",
+      "kind": "file",
+      "parentPath": "root/Documents"
+    },
+    {
+      "path": "root/Documents/folder1",
+      "kind": "directory",
+      "parentPath": "root/Documents"
+    },
+    {
+      "path": "root/Documents/folder1/nested.txt",
+      "kind": "file",
+      "parentPath": "root/Documents/folder1"
+    },
+    {
+      "path": "root/Pictures",
+      "kind": "directory",
+      "parentPath": "root"
+    },
+    {
+      "path": "root/Pictures/photo.jpg",
+      "kind": "file",
+      "parentPath": "root/Pictures"
+    },
+    {
+      "path": "root/Projects",
+      "kind": "directory",
+      "parentPath": "root"
+    },
+    {
+      "path": "root/Projects/app.js",
+      "kind": "file",
+      "parentPath": "root/Projects"
+    },
+    {
+      "path": "root/Projects/lib",
+      "kind": "directory",
+      "parentPath": "root/Projects"
+    },
+    {
+      "path": "root/Projects/lib/utils.js",
+      "kind": "file",
+      "parentPath": "root/Projects/lib"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ describe('Plugin Integration Tests', () => {
       const metroPlugin = createTestPlugin({
         id: 'metro-theme',
         name: 'Metro Theme Plugin',
-        category: 'theme'
+        category: 'theme',
       });
 
       await pluginManager.register(metroPlugin);
@@ -30,7 +30,7 @@ describe('Plugin Integration Tests', () => {
       const metroPlugin = createTestPlugin({
         id: 'metro-theme',
         name: 'Metro Theme Plugin',
-        category: 'theme'
+        category: 'theme',
       });
 
       await pluginManager.register(metroPlugin);
@@ -45,7 +45,7 @@ describe('Plugin Integration Tests', () => {
       const svgPlugin = createTestPlugin({
         id: 'svg-export',
         name: 'SVG Export Plugin',
-        category: 'export'
+        category: 'export',
       });
 
       await pluginManager.register(svgPlugin);
@@ -58,7 +58,7 @@ describe('Plugin Integration Tests', () => {
       const svgPlugin = createTestPlugin({
         id: 'svg-export',
         name: 'SVG Export Plugin',
-        category: 'export'
+        category: 'export',
       });
 
       await pluginManager.register(svgPlugin);
@@ -73,7 +73,7 @@ describe('Plugin Integration Tests', () => {
       const dataPlugin = createTestPlugin({
         id: 'data-source',
         name: 'Data Source Plugin',
-        category: 'data'
+        category: 'data',
       });
 
       await pluginManager.register(dataPlugin);
@@ -86,7 +86,7 @@ describe('Plugin Integration Tests', () => {
       const dataPlugin = createTestPlugin({
         id: 'data-source',
         name: 'Data Source Plugin',
-        category: 'data'
+        category: 'data',
       });
 
       await pluginManager.register(dataPlugin);
@@ -101,7 +101,7 @@ describe('Plugin Integration Tests', () => {
       const searchPlugin = createTestPlugin({
         id: 'advanced-search',
         name: 'Advanced Search Plugin',
-        category: 'search'
+        category: 'search',
       });
 
       await pluginManager.register(searchPlugin);
@@ -115,7 +115,7 @@ describe('Plugin Integration Tests', () => {
     it('should handle plugin activation lifecycle', async () => {
       const plugin = createTestPlugin({
         id: 'test-plugin',
-        name: 'Test Plugin'
+        name: 'Test Plugin',
       });
 
       await pluginManager.register(plugin);
@@ -130,7 +130,7 @@ describe('Plugin Integration Tests', () => {
     it('should handle duplicate activation gracefully', async () => {
       const plugin = createTestPlugin({
         id: 'test-plugin',
-        name: 'Test Plugin'
+        name: 'Test Plugin',
       });
 
       await pluginManager.register(plugin);
@@ -147,14 +147,14 @@ describe('Plugin Integration Tests', () => {
       const plugins = [
         createTestPlugin({ id: 'plugin1', name: 'Plugin 1' }),
         createTestPlugin({ id: 'plugin2', name: 'Plugin 2' }),
-        createTestPlugin({ id: 'plugin3', name: 'Plugin 3' })
+        createTestPlugin({ id: 'plugin3', name: 'Plugin 3' }),
       ];
 
       for (const plugin of plugins) {
         await pluginManager.register(plugin);
       }
 
-      await Promise.all(plugins.map(p => pluginManager.enable(p.metadata.id)));
+      await Promise.all(plugins.map((p) => pluginManager.enable(p.metadata.id)));
 
       for (const plugin of plugins) {
         expect(plugin.activate).toHaveBeenCalled();
@@ -165,12 +165,12 @@ describe('Plugin Integration Tests', () => {
     it('should handle plugin dependencies', async () => {
       const dependencyPlugin = createTestPlugin({
         id: 'dependency-plugin',
-        name: 'Dependency Plugin'
+        name: 'Dependency Plugin',
       });
 
       const dependentPlugin = createTestPlugin({
         id: 'dependent-plugin',
-        name: 'Dependent Plugin'
+        name: 'Dependent Plugin',
       });
 
       await pluginManager.register(dependencyPlugin);
@@ -188,7 +188,7 @@ describe('Plugin Integration Tests', () => {
     it('should handle plugin activation failure gracefully', async () => {
       const failingPlugin = createTestPlugin({
         id: 'failing-plugin',
-        name: 'Failing Plugin'
+        name: 'Failing Plugin',
       });
 
       failingPlugin.activate.mockRejectedValue(new Error('Activation failed'));
@@ -202,7 +202,7 @@ describe('Plugin Integration Tests', () => {
     it('should handle plugin deactivation failure gracefully', async () => {
       const failingPlugin = createTestPlugin({
         id: 'failing-plugin',
-        name: 'Failing Plugin'
+        name: 'Failing Plugin',
       });
 
       failingPlugin.deactivate.mockRejectedValue(new Error('Deactivation failed'));
@@ -218,7 +218,7 @@ describe('Plugin Integration Tests', () => {
     it('should handle plugin events', async () => {
       const eventPlugin = createTestPlugin({
         id: 'event-plugin',
-        name: 'Event Plugin'
+        name: 'Event Plugin',
       });
 
       const mockListener = vi.fn();
@@ -233,7 +233,7 @@ describe('Plugin Integration Tests', () => {
 
       // Verify the plugin's activate method was called
       expect(eventPlugin.activate).toHaveBeenCalled();
-      
+
       // Test that the event system works by emitting an event
       pluginManager.emit('test-event', { data: 'test-data' });
       expect(mockListener).toHaveBeenCalledWith({ data: 'test-data' });

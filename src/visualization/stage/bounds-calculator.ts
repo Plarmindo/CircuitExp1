@@ -26,11 +26,28 @@ export function computeBounds(layoutIndex: Map<string, LayoutEntry>): Bounds | n
   let maxX = -Infinity;
   let maxY = -Infinity;
 
+  let hasValidCoordinates = false;
+
   for (const [, entry] of layoutIndex) {
-    if (entry.x < minX) minX = entry.x;
-    if (entry.y < minY) minY = entry.y;
-    if (entry.x > maxX) maxX = entry.x;
-    if (entry.y > maxY) maxY = entry.y;
+    // Only process entries with valid, finite coordinates
+    if (Number.isFinite(entry.x) && Number.isFinite(entry.y)) {
+      if (entry.x < minX) minX = entry.x;
+      if (entry.y < minY) minY = entry.y;
+      if (entry.x > maxX) maxX = entry.x;
+      if (entry.y > maxY) maxY = entry.y;
+      hasValidCoordinates = true;
+    }
+  }
+
+  // Return null if no valid coordinates found, preventing non-finite bounds
+  if (
+    !hasValidCoordinates ||
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return null;
   }
 
   return { minX, minY, maxX, maxY };

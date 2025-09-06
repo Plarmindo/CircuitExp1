@@ -19,7 +19,7 @@ interface StyleTokens {
   lineThickness: number;
 }
 
-const light: StyleTokens = {
+export const light: StyleTokens = {
   palette: {
     background: 0xffffff,
     line: 0x444444,
@@ -38,7 +38,7 @@ const light: StyleTokens = {
   lineThickness: 3,
 };
 
-const dark: StyleTokens = {
+export const dark: StyleTokens = {
   palette: {
     background: 0x121212,
     line: 0xbbbbbb,

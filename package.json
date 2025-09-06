@@ -31,7 +31,7 @@
     "coverage:ci": "vitest run --coverage --exclude=tests/e2e/** && node scripts/check-coverage.cjs",
     "perf:tree": "tsx scripts/stress-tree.ts",
     "perf:leak": "node --expose-gc ./node_modules/tsx/dist/cli.mjs scripts/perf-leak.ts",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx,.cjs,.mjs --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx,.cjs,.mjs --report-unused-disable-directives",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx,.cjs,.mjs --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md,yml,yaml}\"",

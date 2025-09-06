@@ -13,8 +13,8 @@ interface ElectronAPIExpose {
     p: string
   ) => Promise<{ success: boolean; favorites: string[]; error?: string }>;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const api: ElectronAPIExpose = (window as any).electronAPI || {};
+const api: ElectronAPIExpose =
+  (window as unknown as { electronAPI?: ElectronAPIExpose }).electronAPI || {};
 
 let cache: string[] | null = null;
 

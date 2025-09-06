@@ -1,20 +1,20 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import * as PIXI from 'pixi.js';
 import { createInteractionHandlers } from './interaction-handlers';
 import { setupEventListeners } from './event-listeners';
-import { ExportManager } from './export-manager';
 import { FallbackRenderer } from './fallback-renderer';
 import { initDebugAPI } from './debug-api';
-import type { 
-  LayoutNodeLite, 
-  RouteCommand, 
-  RenderOptions,
-  ThemeConfig
-} from './types';
+import { createGraphAdapter, type GraphAdapter } from '../graph-adapter';
+import { renderScene } from './render';
+import { tokens } from '../style-tokens';
+import type { LayoutNodeLite, RouteCommand, RenderOptions, ThemeConfig } from './types';
+import { ExportManager } from './export-manager';
 
 export interface MetroStageProps {
   layout?: LayoutNodeLite[];
   routes?: RouteCommand[];
   onNodeClick?: (path: string) => void;
+  onNodeHover?: (path: string | null) => void;
   onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
   theme?: ThemeConfig;
   debug?: boolean;
@@ -28,27 +28,43 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   layout = [],
   routes = [],
   onNodeClick,
+  onNodeHover,
   onLayoutUpdate,
   theme = {},
   debug = false,
   className,
   style,
   width,
-  height
+  height,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const appRef = useRef<Application | null>(null);
+  const appRef = useRef<PIXI.Application | null>(null);
   const interactionsApiRef = useRef<ReturnType<typeof createInteractionHandlers> | null>(null);
   const selectedKeyRef = useRef<string | null>(null);
   const scaleRef = useRef<number>(1);
-  
+
+  const [layoutNodes, setLayoutNodes] = useState<LayoutNodeLite[]>(layout);
+  // Internal copies used by debug/test helpers (e.g., metro:genTree)
   const [internalLayout, setInternalLayout] = useState<LayoutNodeLite[]>(layout);
   const [internalRoutes, setInternalRoutes] = useState<RouteCommand[]>(routes);
+  const [adapter, setAdapter] = useState<GraphAdapter | null>(null);
+  const [nodeIndex, setNodeIndex] = useState<Map<string, LayoutNodeLite>>(new Map());
+
+  const spriteNodes = useRef(new Map<string, any>());
+  const spriteLines = useRef(new Map<string, any>());
+  const spriteBadges = useRef(new Map<string, any>());
+  const spriteLabels = useRef(new Map<string, any>());
+  const hoveredKeyRef = useRef<string | null>(null);
+  // (Removed duplicate) const selectedKeyRef = useRef<string | null>(null);
+  const nodeColorRef = useRef(new Map<string, number>());
+  const reuseStatsRef = useRef({ totalAllocated: 0, reusedPct: 0 });
+  const lastCulledCountRef = useRef(0);
+  const disableCullingRef = useRef(false);
   const [pixiFailed, setPixiFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const fallbackRendererRef = useRef<FallbackRenderer | null>(null);
   const exportManagerRef = useRef<ExportManager | null>(null);
 
@@ -57,82 +73,101 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   const effectiveRoutes = routes.length > 0 ? routes : internalRoutes;
 
   // Create layout index for efficient lookups
-  const layoutIndex = React.useMemo(() => {
+  const layoutIndex = useMemo(() => {
     const index = new Map<string, { x: number; y: number }>();
-    effectiveLayout.forEach(node => {
+    effectiveLayout.forEach((node) => {
       index.set(node.path, { x: node.x, y: node.y });
     });
     return index;
   }, [effectiveLayout]);
 
   // Handle node click
-  const handleNodeClick = useCallback((path: string) => {
-    selectedKeyRef.current = path === selectedKeyRef.current ? null : path;
-    
-    if (onNodeClick) {
-      onNodeClick(path);
-    }
-    
-    redrawScene(false);
-  }, [onNodeClick]);
+  const handleNodeClick = useCallback(
+    (path: string) => {
+      selectedKeyRef.current = path === selectedKeyRef.current ? null : path;
+
+      if (onNodeClick) {
+        onNodeClick(path);
+      }
+
+      redrawScene(false);
+    },
+    [onNodeClick]
+  );
+
+  // Handle node hover
+  const handleNodeHover = useCallback(
+    (path: string | null) => {
+      hoveredKeyRef.current = path;
+
+      if (onNodeHover) {
+        onNodeHover(path);
+      }
+
+      redrawScene(false);
+    },
+    [onNodeHover]
+  );
 
   // Render layout function
-  const renderLayout = useCallback(async (
-    app: any,
-    layout: LayoutNodeLite[],
-    routes: RouteCommand[],
-    _options: RenderOptions
-  ) => {
-    const PIXI = await import('pixi.js');
-    
-    // This would contain the actual PixiJS rendering logic
-    // For now, we'll create a simple container
-    const container = new PIXI.Container();
-    
-    // Add stations
-    layout.forEach(node => {
-      const station = new PIXI.Graphics();
-      station.beginFill(0x00ff00);
-      station.drawCircle(0, 0, 5);
-      station.endFill();
-      station.position.set(node.x, node.y);
-      station.interactive = true;
-      station.buttonMode = true;
-      station.on('pointerdown', () => handleNodeClick(node.path));
-      container.addChild(station);
-    });
+  const renderLayout = useCallback(
+    async (app: any, layout: LayoutNodeLite[], routes: RouteCommand[], _options: RenderOptions) => {
+      const PIXI = await import('pixi.js');
 
-    // Add routes
-    routes.forEach(_route => {
-      // Route rendering logic would go here
-    });
+      // This would contain the actual PixiJS rendering logic
+      // For now, we'll create a simple container
+      const container = new PIXI.Container();
 
-    app.stage.addChild(container);
-  }, [handleNodeClick]);
+      // Add stations
+      layout.forEach((node) => {
+        const station = new PIXI.Graphics();
+        station.beginFill(0x00ff00);
+        station.drawCircle(0, 0, 5);
+        station.endFill();
+        station.position.set(node.x, node.y);
+        station.interactive = true;
+        station.buttonMode = true;
+        station.on('pointerdown', () => handleNodeClick(node.path));
+        container.addChild(station);
+      });
+
+      // Add routes
+      routes.forEach((_route) => {
+        // Route rendering logic would go here
+      });
+
+      app.stage.addChild(container);
+    },
+    [handleNodeClick]
+  );
 
   // Redraw the scene
-  const redrawScene = useCallback((_force = false) => {
-    if (!appRef.current || pixiFailed) return;
+  const redrawScene = useCallback(
+    (_force = false) => {
+      if (!appRef.current || pixiFailed || !adapter) return;
 
-    // Clear existing children
-    appRef.current.stage.removeChildren();
-
-    // Create render options
-    const renderOptions: RenderOptions = {
-      theme: {
-        background: theme.background || '#102030',
-        stations: theme.stations || {},
-        routes: theme.routes || {},
-        ...theme
-      },
-      debug,
-      selectedKey: selectedKeyRef.current,
-      scale: scaleRef.current
-    };
-
-    // Render layout
-    renderLayout(appRef.current, effectiveLayout, effectiveRoutes, renderOptions);
-  }, [effectiveLayout, effectiveRoutes, theme, debug, pixiFailed, renderLayout]);
+      renderScene({
+        app: appRef.current,
+        pixiFailed,
+        layoutNodes: effectiveLayout,
+        adapter,
+        nodeIndex,
+        style: tokens(),
+        scaleRef: { current: scaleRef.current },
+        disableCullingRef,
+        hoveredKeyRef,
+        selectedKeyRef,
+        nodeColorRef,
+        spriteNodes,
+        spriteLines,
+        spriteBadges,
+        spriteLabels,
+        reuseStatsRef,
+        lastCulledCountRef,
+      });
+    },
+    [effectiveLayout, adapter, nodeIndex, theme, pixiFailed]
+  );
 
   // Enhanced GPU detection and fallback
   const checkGPUSupport = async (): Promise<'webgpu' | 'webgl' | 'fallback'> => {
@@ -163,12 +198,12 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         // Check WebGL memory limits
         const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
         const maxViewportDims = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
-        
+
         if (maxTextureSize < 512 || maxViewportDims[0] < 512) {
           console.warn('WebGL capabilities too limited');
           return 'fallback';
         }
-        
+
         return 'webgl';
       }
 
@@ -182,12 +217,23 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   // Initialize PixiJS with enhanced GPU detection
   const initializePixi = useCallback(async () => {
     if (pixiFailed) return;
-    
+
     try {
       setIsLoading(true);
       setError(null);
 
       if (!containerRef.current) {
+        setTimeout(() => initializePixi(), 100);
+        return;
+      }
+
+      // Ensure container has valid dimensions before initializing PixiJS to avoid invalid viewport values
+      const { clientWidth: cw, clientHeight: ch } = containerRef.current;
+      if (!Number.isFinite(cw) || !Number.isFinite(ch) || cw < 2 || ch < 2) {
+        console.warn(
+          '[MetroStage][initializePixi] Invalid container dimensions for initialization:',
+          { cw, ch }
+        );
         setTimeout(() => initializePixi(), 100);
         return;
       }
@@ -200,14 +246,26 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         throw new Error('GPU acceleration not available');
       }
 
+      // Capture a stable reference to the container
+      const container = containerRef.current;
+      if (!container) {
+        console.warn('[MetroStage] Container became null during initialization.');
+        return;
+      }
+
+      // Initialize with explicit dimensions to prevent non-finite viewport values
+      const initialWidth = Math.max(2, Math.floor(container.clientWidth || 800));
+      const initialHeight = Math.max(2, Math.floor(container.clientHeight || 600));
+
       const app = new PIXI.Application();
-      
+
       // Configure based on GPU mode
       const appConfig = {
         background: theme.background || '#102030',
-        resizeTo: containerRef.current,
         antialias: true,
-        preference: gpuMode as 'webgpu' | 'webgl'
+        preference: gpuMode as 'webgpu' | 'webgl',
+        width: initialWidth,
+        height: initialHeight,
       };
 
       try {
@@ -223,7 +281,101 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       }
 
       appRef.current = app;
-      containerRef.current.appendChild(app.canvas);
+      container.appendChild(app.canvas);
+
+      // Validate canvas dimensions after initialization
+      const canvas = app.canvas as HTMLCanvasElement;
+      if (
+        !canvas ||
+        !Number.isFinite(canvas.width) ||
+        !Number.isFinite(canvas.height) ||
+        canvas.width <= 0 ||
+        canvas.height <= 0
+      ) {
+        console.error('[MetroStage] Invalid canvas dimensions after initialization:', {
+          width: canvas?.width,
+          height: canvas?.height,
+        });
+        throw new Error('Invalid canvas dimensions after initialization');
+      }
+
+      // Safe resize helper to avoid passing non-finite sizes to the renderer
+      const safeResize = () => {
+        if (!containerRef.current || !appRef.current) return;
+
+        // Get dimensions with fallback and validation
+        const cw = containerRef.current.clientWidth;
+        const ch = containerRef.current.clientHeight;
+
+        // Ensure container dimensions are valid and finite
+        if (!Number.isFinite(cw) || !Number.isFinite(ch) || cw <= 0 || ch <= 0) {
+          console.warn('[MetroStage][safeResize] Invalid container dimensions:', { cw, ch });
+
+          // Retry with fallback dimensions for fullscreen edge cases
+          const fallbackWidth = Math.max(2, Math.floor(window.innerWidth * 0.8) || 800);
+          const fallbackHeight = Math.max(2, Math.floor(window.innerHeight * 0.8) || 600);
+
+          if (
+            Number.isFinite(fallbackWidth) &&
+            Number.isFinite(fallbackHeight) &&
+            fallbackWidth > 0 &&
+            fallbackHeight > 0
+          ) {
+            console.log('[MetroStage][safeResize] Using fallback dimensions:', {
+              fallbackWidth,
+              fallbackHeight,
+            });
+
+            const r: any = appRef.current.renderer as any;
+            if (r.width !== fallbackWidth || r.height !== fallbackHeight) {
+              try {
+                appRef.current.renderer.resize({ width: fallbackWidth, height: fallbackHeight });
+                if (exportManagerRef.current) {
+                  exportManagerRef.current.updateCanvasSize(fallbackWidth, fallbackHeight);
+                }
+              } catch (resizeError) {
+                console.error(
+                  '[MetroStage][safeResize] Failed to resize with fallback:',
+                  resizeError
+                );
+              }
+            }
+          }
+          return;
+        }
+
+        const width = Math.max(2, Math.floor(cw));
+        const height = Math.max(2, Math.floor(ch));
+
+        // Ensure final dimensions are valid and finite
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+          console.warn('[MetroStage][safeResize] Invalid final dimensions:', { width, height });
+          return;
+        }
+
+        const r: any = appRef.current.renderer as any;
+        if (r.width !== width || r.height !== height) {
+          try {
+            appRef.current.renderer.resize({ width, height });
+            if (exportManagerRef.current) {
+              exportManagerRef.current.updateCanvasSize(width, height);
+            }
+          } catch (resizeError) {
+            console.error('[MetroStage][safeResize] Failed to resize renderer:', resizeError);
+          }
+        }
+      };
+
+      // Perform an initial resize after attaching the canvas
+      safeResize();
+
+      // Create container layers for rendering
+      const linesContainer = new PIXI.Container();
+      const stationsContainer = new PIXI.Container();
+      linesContainer.name = 'lines-layer';
+      stationsContainer.name = 'stations-layer';
+      app.stage.addChild(linesContainer);
+      app.stage.addChild(stationsContainer);
 
       // Initialize export manager
       exportManagerRef.current = new ExportManager(app);
@@ -231,10 +383,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       // Set up interaction handlers
       const interactionHandlers = createInteractionHandlers({
         app,
-        onNodeClick: handleNodeClick,
-        selectedKeyRef,
+        layoutIndex,
         scaleRef,
-        redrawScene
+        selectedKeyRef,
+        pixiFailed,
+        redraw: redrawScene,
       });
       interactionsApiRef.current = interactionHandlers;
 
@@ -246,29 +399,48 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       // Set up event listeners
       const cleanup = setupEventListeners({
         interactionHandlers,
-        interactionsApiRef
+        interactionsApiRef,
       });
 
-      // Handle window resize
-      const handleResize = () => {
-        if (!containerRef.current || !appRef.current) return;
-        
-        const width = containerRef.current.clientWidth;
-        const height = containerRef.current.clientHeight;
-        
-        app.renderer.resize({ width, height });
-        
-        if (exportManagerRef.current) {
-          exportManagerRef.current.updateCanvasSize(width, height);
-        }
+      // Handle window resize with rAF debounce and finite checks
+      let resizeRaf = 0 as number;
+      const onWindowResize = () => {
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+          safeResize();
+          resizeRaf = 0;
+        });
       };
 
-      window.addEventListener('resize', handleResize);
+      // Enhanced resize handler for fullscreen transitions
+      const onFullscreenChange = () => {
+        // Add a small delay to allow fullscreen dimensions to stabilize
+        setTimeout(() => {
+          if (resizeRaf) cancelAnimationFrame(resizeRaf);
+          resizeRaf = requestAnimationFrame(() => {
+            safeResize();
+            resizeRaf = 0;
+          });
+        }, 100);
+      };
+
+      window.addEventListener('resize', onWindowResize);
+
+      // Add fullscreen change event listeners for better fullscreen handling
+      window.addEventListener('fullscreenchange', onFullscreenChange);
+      window.addEventListener('webkitfullscreenchange', onFullscreenChange);
+      window.addEventListener('mozfullscreenchange', onFullscreenChange);
+      window.addEventListener('MSFullscreenChange', onFullscreenChange);
 
       setIsLoading(false);
       return () => {
         cleanup();
-        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('resize', onWindowResize);
+        window.removeEventListener('fullscreenchange', onFullscreenChange);
+        window.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+        window.removeEventListener('mozfullscreenchange', onFullscreenChange);
+        window.removeEventListener('MSFullscreenChange', onFullscreenChange);
+        if (resizeRaf) cancelAnimationFrame(resizeRaf);
         if (appRef.current) {
           appRef.current.destroy(true);
           appRef.current = null;
@@ -277,15 +449,17 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       console.error('Failed to initialize PixiJS:', err);
-      
+
       // Detect specific GPU memory errors
       let userFriendlyError = errorMessage;
       if (errorMessage.includes('D3D12') || errorMessage.includes('E_OUTOFMEMORY')) {
-        userFriendlyError = 'GPU memory allocation failed. This may be due to insufficient graphics memory or other applications using GPU resources.';
+        userFriendlyError =
+          'GPU memory allocation failed. This may be due to insufficient graphics memory or other applications using GPU resources.';
       } else if (errorMessage.includes('WebGPU') || errorMessage.includes('WebGL')) {
-        userFriendlyError = 'Graphics acceleration is not available or has been disabled. The application will use software rendering.';
+        userFriendlyError =
+          'Graphics acceleration is not available or has been disabled. The application will use software rendering.';
       }
-      
+
       setPixiFailed(true);
       setIsLoading(false);
       setError(userFriendlyError);
@@ -297,13 +471,13 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     setPixiFailed(false);
     setError(null);
     setIsLoading(true);
-    
+
     // Clean up any existing fallback
     if (fallbackRendererRef.current) {
       fallbackRendererRef.current.clear();
       fallbackRendererRef.current = null;
     }
-    
+
     // Attempt reinitialization
     await initializePixi();
   }, [initializePixi]);
@@ -321,14 +495,16 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       width: Math.max(containerRef.current.clientWidth || 800, 100),
       height: Math.max(containerRef.current.clientHeight || 600, 100),
       backgroundColor: theme.background || '#102030',
-      textColor: theme.text || '#ffffff'
+      textColor: theme.text || '#ffffff',
     });
 
     if (isLoading) {
       fallbackRendererRef.current.renderLoading();
     } else if (error) {
       // Provide enhanced error message with troubleshooting tips and retry option
-      const enhancedError = error + '\n\nTroubleshooting:\n• Close other applications using GPU\n• Update graphics drivers\n• Try refreshing the page\n• Use software rendering mode\n\nClick "Retry" to attempt GPU initialization again.';
+      const enhancedError =
+        error +
+        '\n\nTroubleshooting:\n• Close other applications using GPU\n• Update graphics drivers\n• Try refreshing the page\n• Use software rendering mode\n\nClick "Retry" to attempt GPU initialization again.';
       fallbackRendererRef.current.renderError(enhancedError);
     } else {
       fallbackRendererRef.current.renderFallback('Metro Map', 'Interactive metro visualization');
@@ -363,13 +539,13 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
   // Handle layout changes
   useEffect(() => {
-    if (appRef.current && !pixiFailed) {
+    if (!isLoading && !error && adapter) {
       redrawScene(true);
     }
     if (onLayoutUpdate) {
       onLayoutUpdate(layout);
     }
-  }, [layout, pixiFailed, redrawScene, onLayoutUpdate]);
+  }, [layout, isLoading, error, adapter, effectiveLayout, redrawScene, onLayoutUpdate]); // fixed syntax
 
   // Initialize components
   useEffect(() => {
@@ -382,17 +558,33 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
   // Handle genTree event for test data generation
   useEffect(() => {
-    const handleGenTree = (event: CustomEvent<{
-      breadth?: number;
-      depth?: number;
-      files?: number;
-    }>): void => {
+    const handleGenTree = (
+      event: CustomEvent<{
+        breadth?: number;
+        depth?: number;
+        files?: number;
+      }>
+    ): void => {
       const { breadth = 2, depth = 1 } = event.detail;
-      
+
+      // Handle node hover
+      const handleNodeHover = useCallback(
+        (path: string | null) => {
+          hoveredKeyRef.current = path;
+
+          if (onNodeHover) {
+            onNodeHover(path);
+          }
+
+          redrawScene(false);
+        },
+        [onNodeHover]
+      );
+
       // Generate mock layout data for testing
       const mockLayout: LayoutNodeLite[] = [];
       const mockRoutes: RouteCommand[] = [];
-      
+
       // Simple tree generation with non-aggregated nodes
       let id = 0;
       for (let d = 0; d < depth; d++) {
@@ -408,11 +600,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({
             aggregated: false,
             children: [],
             parent: null,
-            color: '#00ff00'
+            color: '#00ff00',
           });
         }
       }
-      
+
       // Ensure we have at least one non-aggregated node
       if (mockLayout.length === 0) {
         mockLayout.push({
@@ -425,19 +617,24 @@ export const MetroStage: React.FC<MetroStageProps> = ({
           aggregated: false,
           children: [],
           parent: null,
-          color: '#00ff00'
+          color: '#00ff00',
         });
       }
-      
+
       // Update internal layout and routes
       setInternalLayout(mockLayout);
       setInternalRoutes(mockRoutes);
-      
+
       // Notify parent if callback provided
       if (onLayoutUpdate) {
         onLayoutUpdate(mockLayout);
       }
-      
+
+      // Force redraw with new test data
+      setTimeout(() => {
+        redrawScene(true);
+      }, 100);
+
       // Dispatch completion event for tests
       window.dispatchEvent(new CustomEvent('metro:genTree:done'));
     };
@@ -447,18 +644,18 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   }, [onLayoutUpdate]);
 
   // Debug API for testing
+  const fastPathUsesRef = useRef(0);
+  const layoutRef = useRef(internalLayout);
+
+  useEffect(() => {
+    layoutRef.current = internalLayout;
+  }, [internalLayout]);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     // Create a debug API that matches test expectations
     const partitionStats = { applied: 0, skipped: 0, lastAttempt: null };
-    // Track fast-path usage for test assertions
-    const fastPathUsesRef = React.useRef(0);
-    // Mirror latest layout for stable debug getters
-    const layoutRef = React.useRef(internalLayout);
-    React.useEffect(() => {
-      layoutRef.current = internalLayout;
-    }, [internalLayout]);
     let disablePartition = false;
     let aggregationThreshold = 50;
     let benchResult = null;
@@ -470,22 +667,27 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       getLastFastPathAttempt: () => null,
       getLastPartitionAttempt: () => partitionStats.lastAttempt,
       getPartitionStats: () => partitionStats,
-      setDisablePartition: (v: boolean) => { disablePartition = v; },
+      setDisablePartition: (v: boolean) => {
+        disablePartition = v;
+      },
       getAggregationThreshold: () => aggregationThreshold,
-      setAggregationThreshold: (n: number) => { aggregationThreshold = n; },
+      setAggregationThreshold: (n: number) => {
+        aggregationThreshold = n;
+      },
       getReusePct: () => 0,
       getBenchResult: () => benchResult,
-      getNodes: () => effectiveLayout.map(node => ({ 
-        path: node.path, 
-        x: node.x || 0, 
-        y: node.y || 0, 
-        aggregated: false 
-      })),
+      getNodes: () =>
+        effectiveLayout.map((node) => ({
+          path: node.path,
+          x: node.x || 0,
+          y: node.y || 0,
+          aggregated: false,
+        })),
       // Return dummy sprite reference; in Pixi mode would be actual Sprite
       getNodeSprite: (p: string) => ({ id: p }),
       // Return current color for node if available
       getNodeColor: (p: string) => {
-        const n = layoutRef.current.find(n => n.path === p);
+        const n = layoutRef.current.find((n) => n.path === p);
         return n?.color ?? null;
       },
       fastAppend: (nodes: any[]) => {
@@ -495,26 +697,26 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         }
         return { usedFastPath: true, reason: 'success', appended: nodes.length };
       },
-      appendNodesTest: (nodes: any[]) => ({ 
-        usedFastPath: true, 
-        lastAttempt: null 
+      appendNodesTest: (nodes: any[]) => ({
+        usedFastPath: true,
+        lastAttempt: null,
       }),
       runLayoutCycle: (opts?: any) => {
         if (appRef.current && !pixiFailed) {
           redrawScene(true);
         }
-        return { 
-          scale: scaleRef.current, 
-          pan: { x: 0, y: 0 }, 
-          spriteTotal: effectiveLayout.length 
+        return {
+          scale: scaleRef.current,
+          pan: { x: 0, y: 0 },
+          spriteTotal: effectiveLayout.length,
         };
       },
-      getSpriteCounts: () => ({ 
-        nodes: effectiveLayout.length, 
-        lines: 0, 
-        badges: 0, 
-        labels: effectiveLayout.length, 
-        total: effectiveLayout.length * 2 
+      getSpriteCounts: () => ({
+        nodes: effectiveLayout.length,
+        lines: 0,
+        badges: 0,
+        labels: effectiveLayout.length,
+        total: effectiveLayout.length * 2,
       }),
       getViewport: () => ({ x: 0, y: 0, scale: scaleRef.current }),
       panViewport: () => true,
@@ -524,22 +726,22 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         const loops = opts?.loops || 4;
         const baselineAvg = 100 + Math.random() * 50;
         const partialAvg = disablePartition ? baselineAvg : baselineAvg * 0.7;
-        
+
         benchResult = {
           baselineAvg,
           culledAvg: partialAvg,
           improvementPct: ((baselineAvg - partialAvg) / baselineAvg) * 100,
-          reusePct: 75 + Math.random() * 20
+          reusePct: 75 + Math.random() * 20,
         };
-        
+
         return {
           fullAvg: baselineAvg,
-          partialAvg: partialAvg
+          partialAvg: partialAvg,
         };
       },
       genTree: (breadth: number, depth: number) => {
         return Math.max(breadth * depth, 1);
-      }
+      },
     };
 
     window.__metroDebug = debugApi;
@@ -551,6 +753,18 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     };
   }, [effectiveLayout, redrawScene, pixiFailed]);
 
+  // Handle layout prop changes - always update when layout changes, even if empty
+  useEffect(() => {
+    console.log('[MetroStage] Layout prop changed:', layout?.length || 0, 'nodes');
+    setInternalLayout(layout);
+    setInternalRoutes(routes);
+
+    // Force redraw after a brief delay to ensure canvas is ready
+    setTimeout(() => {
+      redrawScene(true);
+    }, 100);
+  }, [layout, routes, redrawScene]);
+
   return (
     <div
       ref={containerRef}
@@ -560,7 +774,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         height: height || '100%',
         position: 'relative',
         overflow: 'hidden',
-        ...style
+        ...style,
       }}
     >
       {pixiFailed ? (
@@ -570,17 +784,19 @@ export const MetroStage: React.FC<MetroStageProps> = ({
             style={{
               width: '100%',
               height: '100%',
-              display: 'block'
+              display: 'block',
             }}
           />
-          <div style={{
-            position: 'absolute',
-            top: '20px',
-            right: '20px',
-            display: 'flex',
-            gap: '10px',
-            flexDirection: 'column'
-          }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              display: 'flex',
+              gap: '10px',
+              flexDirection: 'column',
+            }}
+          >
             <button
               onClick={retryInitialization}
               style={{
@@ -590,7 +806,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
-                fontSize: '14px'
+                fontSize: '14px',
               }}
             >
               Retry GPU
@@ -604,7 +820,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
-                fontSize: '14px'
+                fontSize: '14px',
               }}
             >
               Refresh Page
@@ -614,6 +830,73 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       ) : null}
     </div>
   );
+};
+
+// Export utility functions for testing
+export const checkGPUSupport = async (): Promise<'webgpu' | 'webgl' | 'fallback'> => {
+  try {
+    // Check for WebGPU support
+    if ('gpu' in navigator) {
+      try {
+        const adapter = await (navigator as any).gpu.requestAdapter();
+        if (adapter) {
+          return 'webgpu';
+        }
+      } catch (e) {
+        console.warn('WebGPU adapter request failed:', e);
+      }
+    }
+
+    // Check for WebGL2 support
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2');
+    if (gl) {
+      return 'webgl';
+    }
+
+    // Check for WebGL support
+    const webgl = canvas.getContext('webgl');
+    if (webgl) {
+      return 'webgl';
+    }
+
+    return 'fallback';
+  } catch (error) {
+    console.warn('GPU support check failed:', error);
+    return 'fallback';
+  }
+};
+
+export const safeResize = (
+  container: HTMLElement | null,
+  app: Application | null,
+  fallbackWidth = 800,
+  fallbackHeight = 600
+): { width: number; height: number } | null => {
+  if (!container || !app) {
+    return null;
+  }
+
+  try {
+    const { clientWidth: cw, clientHeight: ch } = container;
+
+    // Skip resize for invalid dimensions
+    if (cw <= 0 || ch <= 0 || isNaN(cw) || isNaN(ch)) {
+      console.warn('[safeResize] Invalid container dimensions:', { cw, ch });
+      return null;
+    }
+
+    // Skip resize if dimensions are the same
+    if (cw === app.renderer.width && ch === app.renderer.height) {
+      return { width: cw, height: ch };
+    }
+
+    app.renderer.resize(cw, ch);
+    return { width: cw, height: ch };
+  } catch (error) {
+    console.error('[safeResize] Failed to resize renderer:', error);
+    return null;
+  }
 };
 
 export default MetroStage;

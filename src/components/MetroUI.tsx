@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MetroStage } from '../visualization/metro-stage';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import ResponsiveMetroStage from './ResponsiveMetroStage';
 import { MiniMap } from './MiniMap';
-import { setTheme } from '../visualization/style-tokens';
+import { setTheme, light, dark } from '../visualization/style-tokens';
 import {
   getUserSettings,
   onUserSettingsLoaded,
@@ -18,6 +17,9 @@ import { auditLogger } from '../services/audit-logger';
 
 import { PIIDetector, defaultPIIConfig } from '../services/pii-detector';
 import { RateLimiter, defaultRateLimitConfig } from '../services/rate-limiter';
+import { createGraphAdapter } from '../visualization/graph-adapter';
+import { layoutHierarchicalV2 } from '../visualization/layout-v2';
+import type { LayoutPointV2 } from '../visualization/layout-v2';
 
 interface ScanProgress {
   dirsProcessed: number;
@@ -111,7 +113,48 @@ export const MetroUI: React.FC<MetroUIProps> = ({
 
   const fpsCounterRef = useRef<number[]>([]);
 
-  // Ensure focus-visible outline for stage container even when external CSS isn’t loaded (e.g., JSDOM tests)
+  // Memoized layout generation from nodes
+  const { layoutNodes, routes } = useMemo(() => {
+    if (!nodes || nodes.length === 0) {
+      return { layoutNodes: [], routes: [] };
+    }
+
+    try {
+      const adapter = createGraphAdapter();
+
+      // Convert NodeEntry to ScanNode format
+      const scanNodes = nodes.map((node) => ({
+        path: node.path,
+        name: node.name,
+        kind: node.kind,
+        depth: node.path.split(/[/\\]/).length - 1,
+        ...(node.size && { sizeBytes: node.size }),
+      }));
+
+      adapter.applyDelta(scanNodes);
+
+      // Generate layout using hierarchical layout
+      const layoutResult = layoutHierarchicalV2(adapter, {
+        horizontalSpacing: 140,
+        verticalSpacing: 90,
+        aggregationThreshold: 200,
+        expandedAggregations: new Set(),
+      });
+
+      // Extract routes from the layout
+      const layoutRoutes = layoutResult.nodes.map((node) => node.path);
+
+      return {
+        layoutNodes: layoutResult.nodes,
+        routes: layoutRoutes,
+      };
+    } catch (error) {
+      console.error('Error generating layout:', error);
+      return { layoutNodes: [], routes: [] };
+    }
+  }, [nodes]);
+
+  // Ensure focus-visible outline for stage container even when external CSS isn't loaded (e.g., JSDOM tests)
   useEffect(() => {
     const styleId = 'metroui-focus-visible-style';
     if (!document.getElementById(styleId)) {
@@ -122,9 +165,117 @@ export const MetroUI: React.FC<MetroUIProps> = ({
     }
   }, []);
 
-
   // Live region ref for announcements (A11Y)
   const liveRegionRef = useRef<HTMLDivElement | null>(null);
+
+  // Handle node click events from the visualization
+  const handleNodeClick = useCallback(
+    (nodePath: string) => {
+      const node = nodes.find((n) => n.path === nodePath);
+      if (node) {
+        setSelectedNode({
+          path: node.path,
+          type: 'node',
+          name: node.name,
+          size: node.size,
+        });
+      }
+    },
+    [nodes]
+  );
+
+  // Handle node hover events from the visualization
+  const handleNodeHover = useCallback(
+    (nodePath: string | null) => {
+      if (nodePath === null) {
+        setHoveredNode(null);
+        return;
+      }
+
+      const node = nodes.find((n) => n.path === nodePath);
+      if (node) {
+        setHoveredNode({
+          path: node.path,
+          type: 'node',
+          name: node.name,
+          size: node.size,
+        });
+      }
+    },
+    [nodes]
+  );
+
+  // Handle node select events from the visualization
+  const handleNodeSelect = useCallback(
+    (nodePath: string | null) => {
+      if (nodePath === null) {
+        setSelectedNode(null);
+        return;
+      }
+
+      const node = nodes.find((n) => n.path === nodePath);
+      if (node) {
+        setSelectedNode({
+          path: node.path,
+          type: 'node',
+          name: node.name,
+          size: node.size,
+        });
+      }
+    },
+    [nodes]
+  );
+
+  // Handle node double-click events from the visualization
+  const handleNodeDoubleClick = useCallback(
+    (nodePath: string) => {
+      if (!nodePath) {
+        return;
+      }
+      const node = nodes.find((n) => n.path === nodePath);
+      if (node) {
+        // For now, treat a double-click similar to a single click (selection) and
+        // emit an auxiliary event so other components can react if needed.
+        setSelectedNode({
+          path: node.path,
+          type: 'node',
+          name: node.name,
+          size: node.size,
+        });
+        window.dispatchEvent(
+          new CustomEvent('metro:nodeDoubleClick', { detail: { path: node.path } })
+        );
+      }
+    },
+    [nodes]
+  );
+
+  // Handle node context-menu (right-click) events from the visualization
+  const handleNodeContextMenu = useCallback((nodePath: string, x: number, y: number) => {
+    if (!nodePath) return;
+    setCtxMenu({ visible: true, x, y, path: nodePath });
+  }, []);
+
+  // Handle clicks on the background of the visualization (deselect any selection)
+  const handleBackgroundClick = useCallback(() => {
+    setSelectedNode(null);
+    setCtxMenu(null);
+    window.dispatchEvent(new Event('metro:backgroundClick'));
+  }, []);
+
+  // Handle context-menu on the background (could show a generic menu)
+  const handleBackgroundContextMenu = useCallback((x: number, y: number) => {
+    // For now, just close any existing context menu; future: open generic menu
+    setCtxMenu(null);
+    window.dispatchEvent(new CustomEvent('metro:backgroundContextMenu', { detail: { x, y } }));
+  }, []);
+
+  // Handle layout update events from the visualization
+  const handleLayoutUpdate = useCallback((layoutInfo: any) => {
+    if (layoutInfo && layoutInfo.stats) {
+      setLodStats(layoutInfo.stats);
+    }
+  }, []);
 
   // CORE-3: load persisted user settings (theme, defaults) and react to updates from main process
   useEffect(() => {
@@ -181,7 +332,6 @@ export const MetroUI: React.FC<MetroUIProps> = ({
       offUpdated();
       offScanError();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanId]);
 
   // Theme switcher
@@ -355,12 +505,13 @@ export const MetroUI: React.FC<MetroUIProps> = ({
     window.dispatchEvent(new Event('metro:exportPNG'));
   };
 
-  const filteredNodes = nodes?.filter(
-    (node) =>
-      searchQuery === '' ||
-      node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      node.path.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredNodes =
+    nodes?.filter(
+      (node) =>
+        searchQuery === '' ||
+        node.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        node.path.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
 
   // Favorites load on mount
   useEffect(() => {
@@ -690,7 +841,6 @@ export const MetroUI: React.FC<MetroUIProps> = ({
               title="Debug: log adapter nodes"
               onClick={() => {
                 try {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const dbg: any = (window as unknown as { __metroDebug?: unknown }).__metroDebug;
                   if (dbg?.getNodes) {
                     const nodes = dbg.getNodes();
@@ -730,18 +880,18 @@ export const MetroUI: React.FC<MetroUIProps> = ({
         <aside className={`metro-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
           <div className="sidebar-header">
             <button
-            className="collapse-btn"
-            onClick={() => {
-              const newCollapsed = !sidebarCollapsed;
-              setSidebarCollapsed(newCollapsed);
-              window.dispatchEvent(
-                new CustomEvent(newCollapsed ? 'panel:minimized' : 'panel:maximized')
-              );
-            }}
-            title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-          >
-            {sidebarCollapsed ? '▶️' : '◀️'}
-          </button>
+              className="collapse-btn"
+              onClick={() => {
+                const newCollapsed = !sidebarCollapsed;
+                setSidebarCollapsed(newCollapsed);
+                window.dispatchEvent(
+                  new CustomEvent(newCollapsed ? 'panel:minimized' : 'panel:maximized')
+                );
+              }}
+              title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            >
+              {sidebarCollapsed ? '▶️' : '◀️'}
+            </button>
             {!sidebarCollapsed && <h3>Project Explorer</h3>}
           </div>
 
@@ -759,7 +909,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
                 <div className="search-results">
                   {searchQuery && (
                     <div className="results-header">
-                      {(filteredNodes?.length || 0)} results for "{searchQuery}"
+                      {filteredNodes?.length || 0} results for "{searchQuery}"
                     </div>
                   )}
                   {searchQuery &&
@@ -1158,7 +1308,17 @@ export const MetroUI: React.FC<MetroUIProps> = ({
             aria-label="Visualization Stage (focus to enable keyboard navigation)"
             style={{ width: '100%', height: '100%', position: 'relative' }}
           >
-            <ResponsiveMetroStage />
+            <ResponsiveMetroStage
+              theme={currentTheme === 'dark' ? dark : light}
+              layoutNodes={layoutNodes}
+              routes={routes}
+              onNodeHover={handleNodeHover}
+              onNodeSelect={handleNodeSelect}
+              onNodeDoubleClick={handleNodeDoubleClick}
+              onNodeContextMenu={handleNodeContextMenu}
+              onBackgroundClick={handleBackgroundClick}
+              onBackgroundContextMenu={handleBackgroundContextMenu}
+            />
           </div>
 
           {/* Minimap */}
@@ -1283,7 +1443,6 @@ export const MetroUI: React.FC<MetroUIProps> = ({
           </div>
         </div>
       )}
-      
 
       {ctxMenu?.visible && (
         <div

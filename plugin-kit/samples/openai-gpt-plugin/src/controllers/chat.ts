@@ -14,7 +14,7 @@ export class ChatController {
 
   async chat(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Validate input
       const validationResult = this.validation.validate('chat', req.body);
@@ -23,19 +23,19 @@ export class ChatController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { message, context, model, temperature, maxTokens } = validationResult.data!;
 
-      this.logger.info('Chat requested', { 
+      this.logger.info('Chat requested', {
         messageLength: message.length,
         contextLength: context?.length || 0,
         model,
         temperature,
-        maxTokens
+        maxTokens,
       });
 
       // Generate response
@@ -44,7 +44,7 @@ export class ChatController {
         context,
         model,
         temperature,
-        maxTokens
+        maxTokens,
       });
 
       // Record metrics
@@ -56,8 +56,8 @@ export class ChatController {
         data: {
           response: result.response,
           tokens: result.tokens,
-          model: result.model
-        }
+          model: result.model,
+        },
       });
     } catch (error) {
       this.logger.error('Chat failed', error);
@@ -67,14 +67,14 @@ export class ChatController {
       res.status(500).json({
         success: false,
         error: 'Failed to generate chat response',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   async chatStream(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Validate input
       const validationResult = this.validation.validate('chat', req.body);
@@ -83,19 +83,19 @@ export class ChatController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { message, context, model, temperature, maxTokens } = validationResult.data!;
 
-      this.logger.info('Streaming chat requested', { 
+      this.logger.info('Streaming chat requested', {
         messageLength: message.length,
         contextLength: context?.length || 0,
         model,
         temperature,
-        maxTokens
+        maxTokens,
       });
 
       // Set up streaming response
@@ -111,14 +111,14 @@ export class ChatController {
         context,
         model,
         temperature,
-        maxTokens
+        maxTokens,
       });
 
       // Simulate streaming chunks
       const chunks = result.response.split('\n');
       for (const chunk of chunks) {
         res.write(chunk + '\n');
-        await new Promise(resolve => setTimeout(resolve, 50)); // Simulate delay
+        await new Promise((resolve) => setTimeout(resolve, 50)); // Simulate delay
       }
 
       this.metrics.recordAIUsage(result.model, result.tokens.prompt, result.tokens.completion);
@@ -134,7 +134,7 @@ export class ChatController {
         res.status(500).json({
           success: false,
           error: 'Failed to generate streaming chat response',
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : 'Unknown error',
         });
       } else {
         res.end();

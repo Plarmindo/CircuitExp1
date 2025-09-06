@@ -16,7 +16,7 @@ class PerformanceTestPlugin implements Plugin {
     license: 'MIT',
     category: 'performance',
     engines: { circuitexp1: '^1.0.0' },
-    main: 'index.js'
+    main: 'index.js',
   };
 
   async activate(): Promise<void> {
@@ -51,7 +51,7 @@ class MemoryLeakPlugin implements Plugin {
     license: 'MIT',
     category: 'performance',
     engines: { circuitexp1: '^1.0.0' },
-    main: 'index.js'
+    main: 'index.js',
   };
 
   private largeObjects: any[] = [];
@@ -105,14 +105,14 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {},
-        async deactivate() {}
+        async deactivate() {},
       }));
 
       const start = performance.now();
-      
+
       for (const plugin of plugins) {
         await pluginManager.register(plugin);
       }
@@ -135,16 +135,16 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {},
-        async deactivate() {}
+        async deactivate() {},
       };
 
       const start = performance.now();
-      
+
       await pluginManager.register(plugin);
-      
+
       // Attempt duplicate registration
       await expect(pluginManager.register(plugin)).rejects.toThrow();
 
@@ -180,13 +180,13 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {
           // Simulate some work
-          await new Promise(resolve => setTimeout(resolve, 10));
+          await new Promise((resolve) => setTimeout(resolve, 10));
         },
-        async deactivate() {}
+        async deactivate() {},
       }));
 
       // Register all plugins
@@ -195,18 +195,18 @@ describe('Plugin Performance Tests', () => {
       }
 
       const start = performance.now();
-      
+
       // Activate all concurrently
-      await Promise.all(
-        plugins.map(plugin => pluginManager.enable(plugin.metadata.id))
-      );
+      await Promise.all(plugins.map((plugin) => pluginManager.enable(plugin.metadata.id)));
 
       const end = performance.now();
       const duration = end - start;
 
       expect(duration).toBeLessThan(1000); // Should complete within 1 second
-      
-      const enabledCount = pluginManager.list().filter(p => pluginManager.isEnabled(p.metadata.id)).length;
+
+      const enabledCount = pluginManager
+        .list()
+        .filter((p) => pluginManager.isEnabled(p.metadata.id)).length;
       expect(enabledCount).toBe(20);
     });
   });
@@ -220,9 +220,9 @@ describe('Plugin Performance Tests', () => {
       const initialMemory = process.memoryUsage().heapUsed;
 
       await pluginManager.enable(plugin.metadata.id);
-      
+
       // Let memory leak accumulate
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       await pluginManager.disable(plugin.metadata.id);
 
@@ -232,10 +232,10 @@ describe('Plugin Performance Tests', () => {
       }
 
       const finalMemory = process.memoryUsage().heapUsed;
-      
+
       // Verify plugin was properly deactivated
       expect(pluginManager.isEnabled(plugin.metadata.id)).toBe(false);
-      
+
       // In test environments, we focus on the cleanup behavior rather than exact memory reduction
       // since Node.js garbage collection is non-deterministic
     });
@@ -251,7 +251,7 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {
           // Simulate creating objects
@@ -262,7 +262,7 @@ describe('Plugin Performance Tests', () => {
           // Ensure cleanup
           this.tempData = null;
         },
-        tempData: null as any
+        tempData: null as any,
       }));
 
       // Register all plugins
@@ -281,7 +281,9 @@ describe('Plugin Performance Tests', () => {
       }
 
       // Verify all are properly deactivated
-      const activePlugins = pluginManager.list().filter(p => pluginManager.isEnabled(p.metadata.id));
+      const activePlugins = pluginManager
+        .list()
+        .filter((p) => pluginManager.isEnabled(p.metadata.id));
       expect(activePlugins).toHaveLength(0);
     });
   });
@@ -298,7 +300,7 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {
           // Create some data
@@ -307,7 +309,7 @@ describe('Plugin Performance Tests', () => {
         async deactivate() {
           this.data = null;
         },
-        data: null as any
+        data: null as any,
       }));
 
       // Register and activate all
@@ -338,14 +340,14 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {},
-        async deactivate() {}
+        async deactivate() {},
       }));
 
       const start = performance.now();
-      
+
       // Register all plugins
       for (const plugin of plugins) {
         await pluginManager.register(plugin);
@@ -369,16 +371,16 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {
           // Simulate some work
-          await new Promise(resolve => setTimeout(resolve, 1));
+          await new Promise((resolve) => setTimeout(resolve, 1));
         },
         async deactivate() {
           // Simulate cleanup
-          await new Promise(resolve => setTimeout(resolve, 1));
-        }
+          await new Promise((resolve) => setTimeout(resolve, 1));
+        },
       };
 
       await pluginManager.register(plugin);
@@ -409,7 +411,7 @@ describe('Plugin Performance Tests', () => {
           license: 'MIT',
           category: 'test',
           engines: { circuitexp1: '^1.0.0' },
-          main: 'index.js'
+          main: 'index.js',
         },
         async activate() {
           // Simulate work
@@ -419,7 +421,7 @@ describe('Plugin Performance Tests', () => {
         async deactivate() {
           this.tempData = null;
         },
-        tempData: null as any
+        tempData: null as any,
       }));
 
       const start = performance.now();
@@ -434,7 +436,7 @@ describe('Plugin Performance Tests', () => {
         for (const plugin of plugins) {
           await pluginManager.enable(plugin.metadata.id);
         }
-        
+
         for (const plugin of plugins) {
           await pluginManager.disable(plugin.metadata.id);
         }

@@ -7,7 +7,7 @@ if (typeof global !== 'undefined') {
     log: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
-    debug: vi.fn()
+    debug: vi.fn(),
   };
 }
 
@@ -16,24 +16,24 @@ const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
-  clear: vi.fn()
+  clear: vi.fn(),
 };
 
 const sessionStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
-  clear: vi.fn()
+  clear: vi.fn(),
 };
 
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
-  writable: true
+  writable: true,
 });
 
 Object.defineProperty(window, 'sessionStorage', {
   value: sessionStorageMock,
-  writable: true
+  writable: true,
 });
 
 // Mock ResizeObserver
@@ -45,7 +45,7 @@ class ResizeObserverMock {
 
 Object.defineProperty(window, 'ResizeObserver', {
   value: ResizeObserverMock,
-  writable: true
+  writable: true,
 });
 
 // Mock IntersectionObserver
@@ -58,7 +58,7 @@ class IntersectionObserverMock {
 
 Object.defineProperty(window, 'IntersectionObserver', {
   value: IntersectionObserverMock,
-  writable: true
+  writable: true,
 });
 
 // Mock fetch
@@ -72,7 +72,7 @@ global.performance = {
   getEntriesByName: vi.fn(() => []),
   getEntriesByType: vi.fn(() => []),
   clearMarks: vi.fn(),
-  clearMeasures: vi.fn()
+  clearMeasures: vi.fn(),
 };
 
 // Mock process for Node.js environment
@@ -83,8 +83,8 @@ if (typeof process === 'undefined') {
       heapUsed: 1000000,
       heapTotal: 2000000,
       external: 100000,
-      rss: 5000000
-    }))
+      rss: 5000000,
+    })),
   };
 }
 

@@ -19,7 +19,7 @@ export class HealthController {
 
   private getHealth(req: any, res: any): void {
     const metrics = this.metricsService.getMetrics();
-    
+
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -29,8 +29,8 @@ export class HealthController {
       metrics: {
         requests: metrics.requests,
         errors: metrics.errors,
-        performance: metrics.performance
-      }
+        performance: metrics.performance,
+      },
     };
 
     res.json(health);
@@ -38,17 +38,17 @@ export class HealthController {
 
   private getReadiness(req: any, res: any): void {
     const isReady = true; // Add actual readiness checks
-    
+
     res.status(isReady ? 200 : 503).json({
       status: isReady ? 'ready' : 'not ready',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
   private getLiveness(req: any, res: any): void {
     res.json({
       status: 'alive',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

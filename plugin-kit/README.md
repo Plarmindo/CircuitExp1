@@ -2,7 +2,10 @@
 
 **⚡ Standalone Plugin Development Kit for Third-Party AI Integration**
 
-**🔒 COMPLETELY EXTERNAL & STANDALONE** - This kit is designed as a **separate, independent component** that operates **entirely outside** the main CircuitExp1 codebase. It provides **zero-coupling integration** capabilities for external applications like **TRAE**, **GitHub Copilot**, **VS Code**, **JetBrains IDEs**, and any custom development environments.
+**🔒 COMPLETELY EXTERNAL & STANDALONE** - This kit is designed as a **separate, independent component** that operates
+**entirely outside** the main CircuitExp1 codebase. It provides **zero-coupling integration** capabilities for external
+applications like **TRAE**, **GitHub Copilot**, **VS Code**, **JetBrains IDEs**, and any custom development
+environments.
 
 ## 🎯 Architecture Philosophy
 
@@ -17,16 +20,19 @@
 ### Installation Options
 
 #### As NPM Package (Recommended)
+
 ```bash
 npm install @circuitexp1/plugin-kit-external
 ```
 
 #### As Docker Container
+
 ```bash
 docker run -p 3000:3000 circuitexp1/plugin-kit-external:latest
 ```
 
 #### As CDN Script
+
 ```html
 <script src="https://cdn.circuitexp1.com/plugin-kit/v1/plugin-kit.min.js"></script>
 ```

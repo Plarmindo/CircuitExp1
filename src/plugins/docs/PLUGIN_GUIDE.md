@@ -1,6 +1,7 @@
 # CircuitExp1 Plugin System - Complete Guide
 
 ## Table of Contents
+
 1. [Quick Start](#quick-start)
 2. [Architecture Overview](#architecture-overview)
 3. [Plugin Development](#plugin-development)
@@ -28,25 +29,25 @@ const metadata: PluginMetadata = {
   main: './dist/index.js',
   engines: {
     circuitexp1: '^0.0.0',
-    node: '>=18.0.0'
+    node: '>=18.0.0',
   },
   dependencies: {
-    'lodash': '^4.17.21'
-  }
+    lodash: '^4.17.21',
+  },
 };
 
 export class MyFirstPlugin implements Plugin {
   metadata = metadata;
-  
+
   async activate(api: PluginAPI): Promise<void> {
     console.log('MyFirstPlugin activated!');
-    
+
     // Register a simple component
     api.registerComponent('my-component', {
-      render: () => '<div>Hello from MyFirstPlugin!</div>'
+      render: () => '<div>Hello from MyFirstPlugin!</div>',
     });
   }
-  
+
   async deactivate(): Promise<void> {
     console.log('MyFirstPlugin deactivated!');
   }
@@ -149,6 +150,7 @@ my-plugin/
 ### Development Workflow
 
 1. **Setup Development Environment**
+
    ```bash
    npm install -g @circuitexp1/cli
    circuitexp1 init-plugin my-plugin
@@ -157,12 +159,14 @@ my-plugin/
    ```
 
 2. **Development Mode**
+
    ```bash
    npm run dev
    # Plugin will be automatically reloaded on changes
    ```
 
 3. **Testing**
+
    ```bash
    npm test
    npm run test:e2e
@@ -180,6 +184,7 @@ my-plugin/
 ### PluginAPI Methods
 
 #### Configuration Management
+
 ```typescript
 // Get configuration
 const config = api.getConfig();
@@ -194,6 +199,7 @@ api.on('config:change', (newConfig) => {
 ```
 
 #### Event System
+
 ```typescript
 // Emit events
 api.emit('plugin:loaded', { plugin: 'my-plugin' });
@@ -208,6 +214,7 @@ api.off('theme:change', handler);
 ```
 
 #### File System Access
+
 ```typescript
 // Read file
 const content = await api.readFile('/path/to/file.txt');
@@ -220,6 +227,7 @@ const exists = await api.exists('/path/to/file.txt');
 ```
 
 #### Network Requests
+
 ```typescript
 // Make HTTP requests
 const response = await api.fetch('https://api.example.com/data');
@@ -227,6 +235,7 @@ const data = await response.json();
 ```
 
 #### UI Integration
+
 ```typescript
 // Register UI components
 api.registerComponent('my-widget', {
@@ -242,6 +251,7 @@ api.addMenuItem('My Plugin', '/my-plugin', {
 ```
 
 #### Data Storage
+
 ```typescript
 // Store plugin data
 await api.setData('my-key', { value: 42 });
@@ -260,14 +270,10 @@ await api.deleteData('my-key');
 const metadata: PluginMetadata = {
   // ... other fields
   security: {
-    permissions: [
-      'read:filesystem',
-      'write:plugin-data',
-      'network:api.example.com'
-    ],
+    permissions: ['read:filesystem', 'write:plugin-data', 'network:api.example.com'],
     sandbox: true,
-    csp: "default-src 'self'"
-  }
+    csp: "default-src 'self'",
+  },
 };
 ```
 
@@ -276,16 +282,19 @@ const metadata: PluginMetadata = {
 ### Deployment Targets
 
 #### Local Development
+
 ```bash
 npm run deploy-plugin ./my-plugin local
 ```
 
 #### Staging Environment
+
 ```bash
 npm run deploy-plugin ./my-plugin staging
 ```
 
 #### Production
+
 ```bash
 npm run deploy-plugin ./my-plugin production -- --verify --backup
 ```
@@ -320,7 +329,7 @@ const result = await validator.validatePlugin(myPlugin, {
   strict: true,
   checkSecurity: true,
   checkDependencies: true,
-  checkCompatibility: true
+  checkCompatibility: true,
 });
 
 if (!result.overall) {
@@ -333,8 +342,9 @@ if (!result.overall) {
 ### Common Issues
 
 #### Plugin Not Loading
-**Symptoms**: Plugin doesn't appear in the plugin list
-**Solutions**:
+
+**Symptoms**: Plugin doesn't appear in the plugin list **Solutions**:
+
 1. Check plugin ID format (must be kebab-case)
 2. Verify metadata completeness
 3. Check engine compatibility
@@ -346,8 +356,9 @@ DEBUG=plugins:* npm start
 ```
 
 #### Security Errors
-**Symptoms**: Plugin fails security validation
-**Solutions**:
+
+**Symptoms**: Plugin fails security validation **Solutions**:
+
 1. Remove use of `eval()` or `new Function()`
 2. Use safe DOM manipulation methods
 3. Validate all user inputs
@@ -360,8 +371,9 @@ const safeFunction = JSON.parse(userCode); // ✅
 ```
 
 #### Performance Issues
-**Symptoms**: Plugin causes slowdowns
-**Solutions**:
+
+**Symptoms**: Plugin causes slowdowns **Solutions**:
+
 1. Use lazy loading for heavy components
 2. Implement proper cleanup in deactivate()
 3. Debounce expensive operations
@@ -379,8 +391,9 @@ async deactivate() {
 ```
 
 #### Memory Leaks
-**Symptoms**: Memory usage increases over time
-**Solutions**:
+
+**Symptoms**: Memory usage increases over time **Solutions**:
+
 1. Remove all event listeners in deactivate()
 2. Clear intervals and timeouts
 3. Disconnect observers
@@ -393,11 +406,11 @@ class MyPlugin implements Plugin {
 
   async deactivate() {
     // Clean up observers
-    this.observers.forEach(observer => observer.disconnect());
+    this.observers.forEach((observer) => observer.disconnect());
     this.observers = [];
 
     // Clean up intervals
-    this.intervals.forEach(interval => clearInterval(interval));
+    this.intervals.forEach((interval) => clearInterval(interval));
     this.intervals = [];
   }
 }
@@ -406,6 +419,7 @@ class MyPlugin implements Plugin {
 ## Best Practices
 
 ### Security
+
 - Never use `eval()` or `new Function()`
 - Always validate user inputs
 - Use Content Security Policy (CSP)
@@ -413,6 +427,7 @@ class MyPlugin implements Plugin {
 - Implement proper authentication
 
 ### Performance
+
 - Use lazy loading for non-critical components
 - Implement proper cleanup
 - Cache expensive computations
@@ -420,6 +435,7 @@ class MyPlugin implements Plugin {
 - Monitor memory usage
 
 ### Maintainability
+
 - Follow semantic versioning
 - Write comprehensive tests
 - Document all public APIs
@@ -427,6 +443,7 @@ class MyPlugin implements Plugin {
 - Implement error boundaries
 
 ### User Experience
+
 - Provide clear error messages
 - Implement loading states
 - Add accessibility features
@@ -436,6 +453,7 @@ class MyPlugin implements Plugin {
 ## Examples
 
 ### Theme Plugin
+
 ```typescript
 // Theme switching plugin
 export class ThemePlugin implements Plugin {
@@ -443,13 +461,13 @@ export class ThemePlugin implements Plugin {
     id: 'theme-switcher',
     name: 'Theme Switcher',
     version: '1.0.0',
-    description: 'Dynamic theme switching plugin'
+    description: 'Dynamic theme switching plugin',
   };
 
   async activate(api: PluginAPI): Promise<void> {
     // Register theme components
     api.registerComponent('theme-toggle', ThemeToggle);
-    
+
     // Listen for theme changes
     api.on('theme:change', (theme) => {
       document.documentElement.setAttribute('data-theme', theme);
@@ -458,13 +476,14 @@ export class ThemePlugin implements Plugin {
     // Add theme menu
     api.addMenuItem('Themes', '/themes', {
       icon: 'palette',
-      description: 'Manage application themes'
+      description: 'Manage application themes',
     });
   }
 }
 ```
 
 ### Data Export Plugin
+
 ```typescript
 // Export functionality plugin
 export class ExportPlugin implements Plugin {
@@ -472,15 +491,15 @@ export class ExportPlugin implements Plugin {
     id: 'data-exporter',
     name: 'Data Exporter',
     version: '1.0.0',
-    description: 'Export circuit data to various formats'
+    description: 'Export circuit data to various formats',
   };
 
   async activate(api: PluginAPI): Promise<void> {
     api.registerComponent('export-panel', ExportPanel);
-    
+
     api.addMenuItem('Export', '/export', {
       icon: 'download',
-      description: 'Export circuit data'
+      description: 'Export circuit data',
     });
 
     // Register export formats
@@ -488,14 +507,14 @@ export class ExportPlugin implements Plugin {
       name: 'JSON',
       extension: '.json',
       mimeType: 'application/json',
-      export: async (data) => JSON.stringify(data, null, 2)
+      export: async (data) => JSON.stringify(data, null, 2),
     });
 
     api.registerExportFormat('csv', {
       name: 'CSV',
       extension: '.csv',
       mimeType: 'text/csv',
-      export: async (data) => this.convertToCSV(data)
+      export: async (data) => this.convertToCSV(data),
     });
   }
 
@@ -507,6 +526,7 @@ export class ExportPlugin implements Plugin {
 ```
 
 ### Real-time Collaboration Plugin
+
 ```typescript
 // Collaboration features plugin
 export class CollaborationPlugin implements Plugin {
@@ -514,7 +534,7 @@ export class CollaborationPlugin implements Plugin {
     id: 'realtime-collab',
     name: 'Real-time Collaboration',
     version: '1.0.0',
-    description: 'Multi-user real-time editing'
+    description: 'Multi-user real-time editing',
   };
 
   private socket?: WebSocket;
@@ -522,7 +542,7 @@ export class CollaborationPlugin implements Plugin {
   async activate(api: PluginAPI): Promise<void> {
     // Initialize WebSocket connection
     this.socket = new WebSocket('wss://collab.example.com');
-    
+
     // Handle incoming changes
     this.socket.onmessage = (event) => {
       const change = JSON.parse(event.data);
@@ -549,6 +569,7 @@ export class CollaborationPlugin implements Plugin {
 ### From v0.x to v1.0
 
 1. **Update metadata format**
+
    ```typescript
    // Old
    {
@@ -566,6 +587,7 @@ export class CollaborationPlugin implements Plugin {
    ```
 
 2. **Update API usage**
+
    ```typescript
    // Old
    PluginManager.register(myPlugin);
@@ -598,6 +620,7 @@ export class CollaborationPlugin implements Plugin {
 5. Submit a pull request
 
 ### Development Setup
+
 ```bash
 git clone https://github.com/CircuitExp1/CircuitExp1.git
 cd CircuitExp1

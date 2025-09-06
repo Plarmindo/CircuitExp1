@@ -14,7 +14,7 @@ export class AnalysisController {
 
   async analyze(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Validate input
       const validationResult = this.validation.validate('codeAnalysis', req.body);
@@ -23,17 +23,17 @@ export class AnalysisController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { code, language, analysisType, context } = validationResult.data!;
 
-      this.logger.info('Code analysis requested', { 
-        language, 
+      this.logger.info('Code analysis requested', {
+        language,
         analysisType,
-        codeLength: code.length
+        codeLength: code.length,
       });
 
       // Perform analysis based on type
@@ -61,7 +61,7 @@ export class AnalysisController {
 
       res.json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
       this.logger.error('Code analysis failed', error);
@@ -71,14 +71,14 @@ export class AnalysisController {
       res.status(500).json({
         success: false,
         error: 'Failed to analyze code',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   async detectBugs(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const validationResult = this.validation.validate('bugDetection', req.body);
       if (!validationResult.valid) {
@@ -86,16 +86,16 @@ export class AnalysisController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { code, language, context } = validationResult.data!;
 
-      this.logger.info('Bug detection requested', { 
-        language, 
-        codeLength: code.length
+      this.logger.info('Bug detection requested', {
+        language,
+        codeLength: code.length,
       });
 
       const result = await this.ai.detectBugs({ code, language, context });
@@ -104,7 +104,7 @@ export class AnalysisController {
 
       res.json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
       this.logger.error('Bug detection failed', error);
@@ -114,14 +114,14 @@ export class AnalysisController {
       res.status(500).json({
         success: false,
         error: 'Failed to detect bugs',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   async generateTests(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const validationResult = this.validation.validate('testGeneration', req.body);
       if (!validationResult.valid) {
@@ -129,17 +129,17 @@ export class AnalysisController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { code, language, framework, coverage, context } = validationResult.data!;
 
-      this.logger.info('Test generation requested', { 
-        language, 
+      this.logger.info('Test generation requested', {
+        language,
         framework,
-        codeLength: code.length
+        codeLength: code.length,
       });
 
       const result = await this.ai.generateTests({
@@ -147,14 +147,14 @@ export class AnalysisController {
         language,
         framework,
         coverage,
-        context
+        context,
       });
 
       this.metrics.recordRequest('/api/analysis/tests', 200, Date.now() - startTime);
 
       res.json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
       this.logger.error('Test generation failed', error);
@@ -164,14 +164,14 @@ export class AnalysisController {
       res.status(500).json({
         success: false,
         error: 'Failed to generate tests',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   async generateDocs(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       const validationResult = this.validation.validate('docGeneration', req.body);
       if (!validationResult.valid) {
@@ -179,31 +179,31 @@ export class AnalysisController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { code, language, docType, context } = validationResult.data!;
 
-      this.logger.info('Documentation generation requested', { 
-        language, 
+      this.logger.info('Documentation generation requested', {
+        language,
         docType,
-        codeLength: code.length
+        codeLength: code.length,
       });
 
       const result = await this.ai.generateDocumentation({
         code,
         language,
         docType,
-        context
+        context,
       });
 
       this.metrics.recordRequest('/api/analysis/docs', 200, Date.now() - startTime);
 
       res.json({
         success: true,
-        data: result
+        data: result,
       });
     } catch (error) {
       this.logger.error('Documentation generation failed', error);
@@ -213,7 +213,7 @@ export class AnalysisController {
       res.status(500).json({
         success: false,
         error: 'Failed to generate documentation',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

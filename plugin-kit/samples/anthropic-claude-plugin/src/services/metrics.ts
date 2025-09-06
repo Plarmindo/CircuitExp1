@@ -43,11 +43,11 @@ export class MetricsService {
       method,
       statusCode,
       duration,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     this.requests.push(metric);
-    
+
     // Update counters
     const key = `${method} ${endpoint}`;
     this.requestCounts.set(key, (this.requestCounts.get(key) || 0) + 1);
@@ -64,7 +64,7 @@ export class MetricsService {
       type,
       endpoint,
       message,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     this.errors.push(error);
@@ -86,7 +86,7 @@ export class MetricsService {
       completionTokens,
       totalTokens,
       cost,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     this.aiUsage.push(metric);
@@ -101,19 +101,20 @@ export class MetricsService {
     const pricing = {
       'claude-3-5-sonnet-20241022': {
         prompt: 0.003, // per 1K tokens
-        completion: 0.015 // per 1K tokens
+        completion: 0.015, // per 1K tokens
       },
       'claude-3-5-haiku-20241022': {
         prompt: 0.0008, // per 1K tokens
-        completion: 0.004 // per 1K tokens
-      }
+        completion: 0.004, // per 1K tokens
+      },
     };
 
-    const modelPricing = pricing[model as keyof typeof pricing] || pricing['claude-3-5-sonnet-20241022'];
-    
+    const modelPricing =
+      pricing[model as keyof typeof pricing] || pricing['claude-3-5-sonnet-20241022'];
+
     const promptCost = (promptTokens / 1000) * modelPricing.prompt;
     const completionCost = (completionTokens / 1000) * modelPricing.completion;
-    
+
     return parseFloat((promptCost + completionCost).toFixed(6));
   }
 
@@ -129,13 +130,14 @@ export class MetricsService {
     const requestsPerEndpoint = Object.fromEntries(this.requestCounts);
     const statusCodeDistribution = Object.fromEntries(this.statusCounts);
 
-    const responseTimes = this.requests.map(r => r.duration);
-    const averageResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length || 0;
-    
+    const responseTimes = this.requests.map((r) => r.duration);
+    const averageResponseTime =
+      responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length || 0;
+
     const sortedTimes = [...responseTimes].sort((a, b) => a - b);
     const p95Index = Math.ceil(sortedTimes.length * 0.95) - 1;
     const p99Index = Math.ceil(sortedTimes.length * 0.99) - 1;
-    
+
     const p95ResponseTime = sortedTimes[p95Index] || 0;
     const p99ResponseTime = sortedTimes[p99Index] || 0;
 
@@ -145,7 +147,7 @@ export class MetricsService {
       statusCodeDistribution,
       averageResponseTime: parseFloat(averageResponseTime.toFixed(2)),
       p95ResponseTime: parseFloat(p95ResponseTime.toFixed(2)),
-      p99ResponseTime: parseFloat(p99ResponseTime.toFixed(2))
+      p99ResponseTime: parseFloat(p99ResponseTime.toFixed(2)),
     };
   }
 
@@ -156,7 +158,7 @@ export class MetricsService {
     recentErrors: ErrorMetrics[];
   } {
     const errorsByEndpoint: Record<string, number> = {};
-    this.errors.forEach(error => {
+    this.errors.forEach((error) => {
       errorsByEndpoint[error.endpoint] = (errorsByEndpoint[error.endpoint] || 0) + 1;
     });
 
@@ -164,7 +166,7 @@ export class MetricsService {
       totalErrors: this.errors.length,
       errorsByType: Object.fromEntries(this.errorCounts),
       errorsByEndpoint,
-      recentErrors: this.errors.slice(-10)
+      recentErrors: this.errors.slice(-10),
     };
   }
 
@@ -183,12 +185,12 @@ export class MetricsService {
     const tokensByModel: Record<string, { prompt: number; completion: number; total: number }> = {};
     const costByModel: Record<string, number> = {};
 
-    this.aiUsage.forEach(usage => {
+    this.aiUsage.forEach((usage) => {
       if (!tokensByModel[usage.model]) {
         tokensByModel[usage.model] = { prompt: 0, completion: 0, total: 0 };
         costByModel[usage.model] = 0;
       }
-      
+
       tokensByModel[usage.model].prompt += usage.promptTokens;
       tokensByModel[usage.model].completion += usage.completionTokens;
       tokensByModel[usage.model].total += usage.totalTokens;
@@ -197,7 +199,7 @@ export class MetricsService {
 
     // Group by day for daily usage
     const dailyUsageMap = new Map<string, { tokens: number; cost: number }>();
-    this.aiUsage.forEach(usage => {
+    this.aiUsage.forEach((usage) => {
       const date = usage.timestamp.toISOString().split('T')[0];
       const existing = dailyUsageMap.get(date) || { tokens: 0, cost: 0 };
       existing.tokens += usage.totalTokens;
@@ -218,7 +220,7 @@ export class MetricsService {
       costByModel: Object.fromEntries(
         Object.entries(costByModel).map(([model, cost]) => [model, parseFloat(cost.toFixed(6))])
       ),
-      dailyUsage
+      dailyUsage,
     };
   }
 
@@ -251,9 +253,9 @@ export class MetricsService {
         rss: Math.round(memoryUsage.rss / 1024 / 1024), // MB
         heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024), // MB
         heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024), // MB
-        external: Math.round(memoryUsage.external / 1024 / 1024) // MB
+        external: Math.round(memoryUsage.external / 1024 / 1024), // MB
       },
-      cpuUsage
+      cpuUsage,
     };
   }
 
@@ -269,7 +271,7 @@ export class MetricsService {
       errors: this.getErrorMetrics(),
       ai: this.getAIMetrics(),
       system: this.getSystemMetrics(),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
 

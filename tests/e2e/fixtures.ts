@@ -13,7 +13,6 @@ import path from 'path';
 
 type Fixtures = { electronApp: ElectronApplication; page: Page };
 
-/* eslint-disable react-hooks/rules-of-hooks */
 export const test = base.extend<Fixtures>({
   // Playwright expects destructuring; pass unused config object
   electronApp: async (_config, use) => {

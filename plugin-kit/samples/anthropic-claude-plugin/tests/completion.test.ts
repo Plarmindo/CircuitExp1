@@ -18,25 +18,25 @@ describe('CompletionController', () => {
   beforeEach(() => {
     mockAiService = {
       generateCompletion: jest.fn(),
-      generateStreamingCompletion: jest.fn()
+      generateStreamingCompletion: jest.fn(),
     } as any;
 
     mockValidationService = {
       validate: jest.fn(),
-      validateCode: jest.fn()
+      validateCode: jest.fn(),
     } as any;
 
     mockMetricsService = {
       increment: jest.fn(),
       timing: jest.fn(),
-      gauge: jest.fn()
+      gauge: jest.fn(),
     } as any;
 
     mockLoggerService = {
       info: jest.fn(),
       error: jest.fn(),
       debug: jest.fn(),
-      warn: jest.fn()
+      warn: jest.fn(),
     } as any;
 
     controller = new CompletionController(
@@ -52,12 +52,13 @@ describe('CompletionController', () => {
       const mockRequest = {
         prompt: 'Create a function to calculate fibonacci',
         language: 'typescript',
-        maxTokens: 100
+        maxTokens: 100,
       };
 
       const mockResponse = {
-        completion: 'function fibonacci(n: number): number {\n  if (n <= 1) return n;\n  return fibonacci(n - 1) + fibonacci(n - 2);\n}',
-        usage: { prompt_tokens: 10, completion_tokens: 25, total_tokens: 35 }
+        completion:
+          'function fibonacci(n: number): number {\n  if (n <= 1) return n;\n  return fibonacci(n - 1) + fibonacci(n - 2);\n}',
+        usage: { prompt_tokens: 10, completion_tokens: 25, total_tokens: 35 },
       };
 
       mockValidationService.validate.mockReturnValue({ isValid: true });
@@ -74,31 +75,33 @@ describe('CompletionController', () => {
     it('should handle validation errors', async () => {
       const mockRequest = {
         prompt: '',
-        language: 'typescript'
+        language: 'typescript',
       };
 
       mockValidationService.validate.mockReturnValue({
         isValid: false,
-        errors: ['Prompt is required']
+        errors: ['Prompt is required'],
       });
 
-      await expect(controller.generateCompletion(mockRequest))
-        .rejects.toThrow('Validation failed');
+      await expect(controller.generateCompletion(mockRequest)).rejects.toThrow('Validation failed');
 
-      expect(mockMetricsService.increment).toHaveBeenCalledWith('completion.requests.validation_errors');
+      expect(mockMetricsService.increment).toHaveBeenCalledWith(
+        'completion.requests.validation_errors'
+      );
     });
 
     it('should handle AI service errors', async () => {
       const mockRequest = {
         prompt: 'test prompt',
-        language: 'typescript'
+        language: 'typescript',
       };
 
       mockValidationService.validate.mockReturnValue({ isValid: true });
       mockAiService.generateCompletion.mockRejectedValue(new Error('AI service error'));
 
-      await expect(controller.generateCompletion(mockRequest))
-        .rejects.toThrow('Failed to generate completion');
+      await expect(controller.generateCompletion(mockRequest)).rejects.toThrow(
+        'Failed to generate completion'
+      );
 
       expect(mockMetricsService.increment).toHaveBeenCalledWith('completion.requests.errors');
       expect(mockLoggerService.error).toHaveBeenCalled();
@@ -109,12 +112,12 @@ describe('CompletionController', () => {
     it('should stream completion chunks', async () => {
       const mockRequest = {
         prompt: 'test prompt',
-        language: 'typescript'
+        language: 'typescript',
       };
 
       const mockChunks = [
         { content: 'function test() {', isComplete: false },
-        { content: '\n  return true;\n}', isComplete: true }
+        { content: '\n  return true;\n}', isComplete: true },
       ];
 
       mockValidationService.validate.mockReturnValue({ isValid: true });
@@ -130,7 +133,9 @@ describe('CompletionController', () => {
       }
 
       expect(chunks).toEqual(mockChunks);
-      expect(mockMetricsService.increment).toHaveBeenCalledWith('completion.streaming_requests.total');
+      expect(mockMetricsService.increment).toHaveBeenCalledWith(
+        'completion.streaming_requests.total'
+      );
     });
   });
 
@@ -139,18 +144,18 @@ describe('CompletionController', () => {
       const mockRequest = {
         code: 'const x = 5',
         language: 'javascript',
-        cursorPosition: 10
+        cursorPosition: 10,
       };
 
       const mockSuggestions = [
         { text: 'const x = 5;', score: 0.9 },
-        { text: 'const x = 5;\nconsole.log(x);', score: 0.8 }
+        { text: 'const x = 5;\nconsole.log(x);', score: 0.8 },
       ];
 
       mockValidationService.validateCode.mockReturnValue({ isValid: true });
       mockAiService.generateCompletion.mockResolvedValue({
         completion: JSON.stringify(mockSuggestions),
-        usage: { prompt_tokens: 5, completion_tokens: 15, total_tokens: 20 }
+        usage: { prompt_tokens: 5, completion_tokens: 15, total_tokens: 20 },
       });
 
       const result = await controller.generateSuggestions(mockRequest);

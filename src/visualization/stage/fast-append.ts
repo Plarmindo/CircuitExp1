@@ -57,12 +57,10 @@ export function makeFastAppend(deps: FastAppendDeps) {
       const path = `${parentPath}/zfast-${stamp}-${i}`; // 'z' keeps lexical tail ordering
       newNodes.push({ path, name: `zfast-${i}`, kind: 'dir', depth });
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    adapter.applyDelta(newNodes as any);
+    adapter.applyDelta(newNodes as ScanNode[]);
 
     // Explicit loose typing to avoid TS 'never' narrowing after conditional branches.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let attempt: any = null;
+    let attempt: { stage: string; ctx?: Record<string, unknown> } | null = null;
     const fast = tryIncrementalAppend({
       adapter,
       addedPaths: newNodes.map((n) => n.path),

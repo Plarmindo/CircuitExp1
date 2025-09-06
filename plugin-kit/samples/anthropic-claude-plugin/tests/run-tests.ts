@@ -22,11 +22,11 @@ const testSuites: TestSuite[] = [
             { getMetrics: () => ({ uptime: 1000 }) } as any,
             { info: () => {}, error: () => {} } as any
           );
-          
+
           const result = await controller.healthCheck();
           context.assert.equal(result.status, 'healthy');
           return { success: true };
-        }
+        },
       },
       {
         name: 'completion-controller-tests',
@@ -39,17 +39,17 @@ const testSuites: TestSuite[] = [
             { increment: () => {} } as any,
             { info: () => {} } as any
           );
-          
+
           const result = await controller.generateCompletion({
             prompt: 'test',
-            language: 'typescript'
+            language: 'typescript',
           });
-          
+
           context.assert.equal(result.completion, 'test');
           return { success: true };
-        }
-      }
-    ]
+        },
+      },
+    ],
   },
   {
     name: 'integration-tests',
@@ -66,13 +66,13 @@ const testSuites: TestSuite[] = [
           // Test API endpoints
           context.assert.equal(true, true); // Placeholder
           return { success: true };
-        }
-      }
+        },
+      },
     ],
     teardown: async (context) => {
       context.log('Cleaning up integration test environment');
       // Cleanup
-    }
+    },
   },
   {
     name: 'performance-tests',
@@ -84,15 +84,15 @@ const testSuites: TestSuite[] = [
         testFunction: async (context) => {
           const start = Date.now();
           // Simulate load
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise((resolve) => setTimeout(resolve, 100));
           const duration = Date.now() - start;
-          
+
           context.assert.lessThan(duration, 200);
           return { success: true, metrics: { responseTime: duration } };
-        }
-      }
-    ]
-  }
+        },
+      },
+    ],
+  },
 ];
 
 // Main test runner
@@ -103,11 +103,11 @@ async function runTests() {
     pluginPath: path.join(__dirname, '..'),
     testDataDir: path.join(__dirname, 'test-data'),
     verbose: process.argv.includes('--verbose'),
-    mockResponses: true
+    mockResponses: true,
   };
 
   const testRunner = new PluginTestRunner(testConfig);
-  
+
   // Event listeners for detailed output
   testRunner.on('test:start', (data) => {
     console.log(`📋 Starting ${data.suite || 'test'}: ${data.tests || 1} tests`);
@@ -117,9 +117,9 @@ async function runTests() {
     const status = data.result.success ? '✅' : '❌';
     const duration = data.result.duration;
     console.log(`  ${status} ${data.name} (${duration}ms)`);
-    
+
     if (data.result.errors.length > 0) {
-      data.result.errors.forEach(error => {
+      data.result.errors.forEach((error) => {
         console.log(`    Error: ${error}`);
       });
     }
@@ -137,13 +137,13 @@ async function runTests() {
   // Run all test suites
   for (const suite of testSuites) {
     console.log(`\n🎯 Running ${suite.name}...`);
-    
+
     const results = await testRunner.runTestSuite(suite);
-    
+
     results.forEach((result, testName) => {
       totalTests++;
       totalDuration += result.duration;
-      
+
       if (result.success) {
         passedTests++;
       } else {
@@ -177,11 +177,11 @@ async function runBenchmark() {
     pluginPath: path.join(__dirname, '..'),
     testDataDir: path.join(__dirname, 'benchmark-data'),
     verbose: true,
-    mockResponses: true
+    mockResponses: true,
   };
 
   const testRunner = new PluginTestRunner(benchmarkConfig);
-  
+
   const benchmarkSuite: TestSuite = {
     name: 'performance-benchmark',
     description: 'Performance benchmarks for plugin',
@@ -192,58 +192,58 @@ async function runBenchmark() {
         testFunction: async (context) => {
           const iterations = 100;
           const start = Date.now();
-          
+
           for (let i = 0; i < iterations; i++) {
             // Simulate completion request
-            await new Promise(resolve => setTimeout(resolve, 5));
+            await new Promise((resolve) => setTimeout(resolve, 5));
           }
-          
+
           const duration = Date.now() - start;
           const avgTime = duration / iterations;
-          
+
           context.log(`Average response time: ${avgTime}ms`);
           context.assert.lessThan(avgTime, 10);
-          
-          return { 
-            success: true, 
-            metrics: { 
-              iterations, 
-              totalTime: duration, 
-              avgTime 
-            } 
+
+          return {
+            success: true,
+            metrics: {
+              iterations,
+              totalTime: duration,
+              avgTime,
+            },
           };
-        }
+        },
       },
       {
         name: 'memory-benchmark',
         description: 'Memory usage benchmark',
         testFunction: async (context) => {
           const initialMemory = process.memoryUsage().heapUsed;
-          
+
           // Simulate memory usage
           const largeArray = new Array(1000).fill('test');
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
           const finalMemory = process.memoryUsage().heapUsed;
           const memoryDelta = finalMemory - initialMemory;
-          
+
           context.log(`Memory delta: ${memoryDelta} bytes`);
           context.assert.lessThan(memoryDelta, 1024 * 1024); // 1MB limit
-          
-          return { 
-            success: true, 
-            metrics: { memoryDelta } 
+
+          return {
+            success: true,
+            metrics: { memoryDelta },
           };
-        }
-      }
-    ]
+        },
+      },
+    ],
   };
 
   const results = await testRunner.runTestSuite(benchmarkSuite);
-  
+
   console.log('\n📈 Benchmark Results');
   console.log('====================');
-  
+
   for (const [name, result] of results) {
     console.log(`${name}: ${result.success ? 'PASS' : 'FAIL'}`);
     if (result.metrics) {
@@ -260,11 +260,11 @@ async function runLoadTest() {
     pluginPath: path.join(__dirname, '..'),
     testDataDir: path.join(__dirname, 'load-test-data'),
     verbose: true,
-    mockResponses: true
+    mockResponses: true,
   };
 
   const testRunner = new PluginTestRunner(loadTestConfig);
-  
+
   const loadTestSuite: TestSuite = {
     name: 'load-tests',
     description: 'Load testing for concurrent requests',
@@ -275,43 +275,43 @@ async function runLoadTest() {
         testFunction: async (context) => {
           const concurrentRequests = 50;
           const promises = [];
-          
+
           const start = Date.now();
-          
+
           for (let i = 0; i < concurrentRequests; i++) {
             promises.push(
-              new Promise(resolve => {
+              new Promise((resolve) => {
                 setTimeout(() => resolve({ success: true }), Math.random() * 100);
               })
             );
           }
-          
+
           await Promise.all(promises);
-          
+
           const duration = Date.now() - start;
           const throughput = concurrentRequests / (duration / 1000);
-          
+
           context.log(`Throughput: ${throughput.toFixed(2)} requests/second`);
           context.assert.greaterThan(throughput, 10);
-          
-          return { 
-            success: true, 
-            metrics: { 
-              concurrentRequests, 
-              duration, 
-              throughput 
-            } 
+
+          return {
+            success: true,
+            metrics: {
+              concurrentRequests,
+              duration,
+              throughput,
+            },
           };
-        }
-      }
-    ]
+        },
+      },
+    ],
   };
 
   const results = await testRunner.runTestSuite(loadTestSuite);
-  
+
   console.log('\n🔥 Load Test Results');
   console.log('====================');
-  
+
   for (const [name, result] of results) {
     console.log(`${name}: ${result.success ? 'PASS' : 'FAIL'}`);
     if (result.metrics) {
@@ -323,7 +323,7 @@ async function runLoadTest() {
 // Main execution
 async function main() {
   const command = process.argv[2];
-  
+
   try {
     switch (command) {
       case 'benchmark':

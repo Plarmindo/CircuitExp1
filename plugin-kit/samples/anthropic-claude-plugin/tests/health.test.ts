@@ -16,14 +16,14 @@ describe('HealthController', () => {
       getMetrics: jest.fn(),
       increment: jest.fn(),
       timing: jest.fn(),
-      gauge: jest.fn()
+      gauge: jest.fn(),
     } as any;
 
     mockLoggerService = {
       info: jest.fn(),
       error: jest.fn(),
       debug: jest.fn(),
-      warn: jest.fn()
+      warn: jest.fn(),
     } as any;
 
     controller = new HealthController(mockMetricsService, mockLoggerService);
@@ -34,7 +34,7 @@ describe('HealthController', () => {
       const mockMetrics = {
         uptime: 1000,
         memory: { used: 100, total: 1000 },
-        requests: { total: 10, errors: 0 }
+        requests: { total: 10, errors: 0 },
       };
 
       mockMetricsService.getMetrics.mockReturnValue(mockMetrics);
@@ -45,7 +45,7 @@ describe('HealthController', () => {
         status: 'healthy',
         timestamp: expect.any(String),
         uptime: expect.any(Number),
-        version: expect.any(String)
+        version: expect.any(String),
       });
 
       expect(mockLoggerService.info).toHaveBeenCalledWith('Health check performed');
@@ -57,8 +57,8 @@ describe('HealthController', () => {
       const mockMetrics = {
         services: {
           ai: { status: 'ready', responseTime: 100 },
-          cache: { status: 'ready', hitRate: 0.8 }
-        }
+          cache: { status: 'ready', hitRate: 0.8 },
+        },
       };
 
       mockMetricsService.getMetrics.mockReturnValue(mockMetrics);
@@ -68,7 +68,7 @@ describe('HealthController', () => {
       expect(result).toEqual({
         status: 'ready',
         services: mockMetrics.services,
-        timestamp: expect.any(String)
+        timestamp: expect.any(String),
       });
     });
 
@@ -76,8 +76,8 @@ describe('HealthController', () => {
       const mockMetrics = {
         services: {
           ai: { status: 'error', error: 'Connection failed' },
-          cache: { status: 'ready', hitRate: 0.8 }
-        }
+          cache: { status: 'ready', hitRate: 0.8 },
+        },
       };
 
       mockMetricsService.getMetrics.mockReturnValue(mockMetrics);
@@ -96,7 +96,7 @@ describe('HealthController', () => {
       expect(result).toEqual({
         status: 'alive',
         timestamp: expect.any(String),
-        pid: expect.any(Number)
+        pid: expect.any(Number),
       });
     });
   });
@@ -110,8 +110,8 @@ describe('HealthController', () => {
         responseTime: { avg: 150, p95: 300, p99: 500 },
         services: {
           ai: { status: 'ready', responseTime: 100 },
-          cache: { status: 'ready', hitRate: 0.8 }
-        }
+          cache: { status: 'ready', hitRate: 0.8 },
+        },
       };
 
       mockMetricsService.getMetrics.mockReturnValue(mockMetrics);
@@ -133,13 +133,13 @@ describe('HealthController', () => {
         responseTime: { avg: 150, p95: 300, p99: 500 },
         services: {
           ai: { status: 'ready', responseTime: 100, lastCheck: Date.now() },
-          cache: { status: 'ready', hitRate: 0.8, size: 1000 }
+          cache: { status: 'ready', hitRate: 0.8, size: 1000 },
         },
         environment: {
           nodeVersion: process.version,
           platform: process.platform,
-          arch: process.arch
-        }
+          arch: process.arch,
+        },
       };
 
       mockMetricsService.getMetrics.mockReturnValue(mockMetrics);
@@ -152,7 +152,7 @@ describe('HealthController', () => {
         memory: mockMetrics.memory,
         cpu: mockMetrics.cpu,
         services: mockMetrics.services,
-        environment: mockMetrics.environment
+        environment: mockMetrics.environment,
       });
 
       expect(result.timestamp).toBeDefined();
@@ -165,7 +165,7 @@ describe('HealthController', () => {
 
       expect(result).toEqual({
         message: 'pong',
-        timestamp: expect.any(String)
+        timestamp: expect.any(String),
       });
     });
   });

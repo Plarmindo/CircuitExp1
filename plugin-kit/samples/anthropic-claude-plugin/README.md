@@ -1,6 +1,7 @@
 # Anthropic Claude Plugin
 
-A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging Anthropic's Claude models for advanced code assistance including completion, review, analysis, and chat capabilities.
+A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging Anthropic's Claude models for advanced
+code assistance including completion, review, analysis, and chat capabilities.
 
 ## 🚀 Features
 
@@ -20,29 +21,33 @@ A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging 
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Anthropic API key
 
 ### Installation
 
 1. **Clone and navigate to the plugin directory:**
+
    ```bash
    cd plugin-kit/samples/anthropic-claude-plugin
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 4. **Configure your Anthropic API key:**
+
    ```bash
    # In .env file
    ANTHROPIC_API_KEY=your_actual_api_key_here
@@ -56,6 +61,7 @@ A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging 
 ### Docker Setup
 
 1. **Using Docker Compose:**
+
    ```bash
    docker-compose up --build
    ```
@@ -69,6 +75,7 @@ A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging 
 ## 📡 API Endpoints
 
 ### Health & Configuration
+
 - `GET /health` - Health check
 - `GET /health/ready` - Readiness probe
 - `GET /health/live` - Liveness probe
@@ -76,15 +83,18 @@ A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging 
 - `GET /config/health` - Health configuration
 
 ### Code Completion
+
 - `POST /completion` - Standard code completion
 - `POST /completion/stream` - Streaming code completion
 
 ### Code Review
+
 - `POST /review` - Standard code review
 - `POST /review/quick` - Quick code review
 - `POST /review/detailed` - Detailed code review
 
 ### Code Analysis
+
 - `POST /analysis` - General code analysis
 - `POST /analysis/complexity` - Complexity analysis
 - `POST /analysis/performance` - Performance analysis
@@ -93,15 +103,19 @@ A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging 
 - `POST /analysis/maintainability` - Maintainability analysis
 
 ### Bug Detection
+
 - `POST /bugs/detect` - Detect bugs in code
 
 ### Test Generation
+
 - `POST /tests/generate` - Generate unit tests
 
 ### Documentation
+
 - `POST /docs/generate` - Generate documentation
 
 ### AI Chat
+
 - `POST /chat` - Standard chat
 - `POST /chat/stream` - Streaming chat
 - `POST /chat/clear` - Clear conversation
@@ -109,23 +123,24 @@ A comprehensive AI-powered plugin built on the Plugin Kit framework, leveraging 
 
 ## 🔧 Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3000` |
-| `HOST` | Server host | `localhost` |
-| `NODE_ENV` | Environment | `development` |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
-| `ANTHROPIC_API_URL` | Anthropic API URL | `https://api.anthropic.com/v1/messages` |
-| `ANTHROPIC_MODEL` | Default AI model | `claude-3-5-sonnet-20241022` |
-| `ANTHROPIC_MAX_TOKENS` | Max tokens per request | `4000` |
-| `ANTHROPIC_TEMPERATURE` | Model temperature | `0.1` |
-| `API_SECRET_KEY` | Plugin API secret | Generate secure key |
-| `RATE_LIMIT_WINDOW_MS` | Rate limit window | `60000` |
-| `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `100` |
+| Variable                  | Description             | Default                                 |
+| ------------------------- | ----------------------- | --------------------------------------- |
+| `PORT`                    | Server port             | `3000`                                  |
+| `HOST`                    | Server host             | `localhost`                             |
+| `NODE_ENV`                | Environment             | `development`                           |
+| `ANTHROPIC_API_KEY`       | Your Anthropic API key  | Required                                |
+| `ANTHROPIC_API_URL`       | Anthropic API URL       | `https://api.anthropic.com/v1/messages` |
+| `ANTHROPIC_MODEL`         | Default AI model        | `claude-3-5-sonnet-20241022`            |
+| `ANTHROPIC_MAX_TOKENS`    | Max tokens per request  | `4000`                                  |
+| `ANTHROPIC_TEMPERATURE`   | Model temperature       | `0.1`                                   |
+| `API_SECRET_KEY`          | Plugin API secret       | Generate secure key                     |
+| `RATE_LIMIT_WINDOW_MS`    | Rate limit window       | `60000`                                 |
+| `RATE_LIMIT_MAX_REQUESTS` | Max requests per window | `100`                                   |
 
 ## 📖 Usage Examples
 
 ### Code Completion
+
 ```bash
 curl -X POST http://localhost:3000/completion \
   -H "Content-Type: application/json" \
@@ -138,6 +153,7 @@ curl -X POST http://localhost:3000/completion \
 ```
 
 ### Code Review
+
 ```bash
 curl -X POST http://localhost:3000/review \
   -H "Content-Type: application/json" \
@@ -150,6 +166,7 @@ curl -X POST http://localhost:3000/review \
 ```
 
 ### Code Analysis
+
 ```bash
 curl -X POST http://localhost:3000/analysis \
   -H "Content-Type: application/json" \
@@ -162,6 +179,7 @@ curl -X POST http://localhost:3000/analysis \
 ```
 
 ### AI Chat
+
 ```bash
 curl -X POST http://localhost:3000/chat \
   -H "Content-Type: application/json" \
@@ -173,6 +191,7 @@ curl -X POST http://localhost:3000/chat \
 ```
 
 ### Streaming Chat
+
 ```bash
 curl -X POST http://localhost:3000/chat/stream \
   -H "Content-Type: application/json" \
@@ -280,6 +299,7 @@ The plugin provides comprehensive metrics:
 - **Error Tracking**: Error types, frequency, stack traces
 
 Access metrics at:
+
 - `GET /health/metrics` - Basic metrics
 - `GET /health/detailed` - Detailed system health
 
@@ -288,19 +308,21 @@ Access metrics at:
 ### Common Issues
 
 1. **API Key Issues**
+
    ```bash
    # Check if API key is set
    echo $ANTHROPIC_API_KEY
-   
+
    # Verify API key is valid
    curl -H "x-api-key: YOUR_KEY" https://api.anthropic.com/v1/messages
    ```
 
 2. **Port Already in Use**
+
    ```bash
    # Find process using port 3000
    lsof -i :3000
-   
+
    # Kill process or use different port
    PORT=3001 npm run dev
    ```
@@ -314,6 +336,7 @@ Access metrics at:
 ### Debug Mode
 
 Enable debug logging:
+
 ```bash
 LOG_LEVEL=debug npm run dev
 ```
@@ -321,6 +344,7 @@ LOG_LEVEL=debug npm run dev
 ### Health Checks
 
 Check if the service is running:
+
 ```bash
 curl http://localhost:3000/health
 curl http://localhost:3000/health/ready

@@ -1,6 +1,6 @@
 /**
  * PII (Personally Identifiable Information) Detection Service
- * 
+ *
  * Provides automated detection and redaction of sensitive information
  * in file names, paths, and potentially file content.
  */
@@ -34,26 +34,32 @@ export class PIIDetector {
   private initializePatterns(): void {
     // Email patterns
     this.patterns.set('email', /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g);
-    
+
     // Phone patterns
-    this.patterns.set('phone_us', /\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b/g);
+    this.patterns.set(
+      'phone_us',
+      /\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b/g
+    );
     this.patterns.set('phone_intl', /\+(?:[0-9] ?){6,14}[0-9]/g);
-    
+
     // Social Security patterns
     this.patterns.set('ssn', /\b\d{3}-?\d{2}-?\d{4}\b/g);
-    
+
     // Credit card patterns
     this.patterns.set('credit_card', /\b(?:\d{4}[\s-]?){3}\d{4}\b/g);
-    
+
     // IP address patterns
     this.patterns.set('ip_address', /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/g);
-    
+
     // Date patterns (potential DOB)
-    this.patterns.set('date', /\b(?:0?[1-9]|1[0-2])[\/\-](?:0?[1-9]|[12]\d|3[01])[\/\-](?:19|20)\d{2}\b/g);
-    
+    this.patterns.set(
+      'date',
+      /\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-](?:19|20)\d{2}\b/g
+    );
+
     // Name patterns (simple heuristic)
     this.patterns.set('name', /\b[A-Z][a-z]+\s[A-Z][a-z]+\b/g);
-    
+
     // Custom patterns from config
     this.config.customPatterns.forEach((pattern, index) => {
       try {
@@ -68,7 +74,7 @@ export class PIIDetector {
     if (!this.config.enabled) return [];
 
     const results: PIIDetectionResult[] = [];
-    const pathParts = filePath.split(/[/\\]/);
+    const pathParts = filePath.split(/[\\/]/);
 
     pathParts.forEach((part, index) => {
       const detections = this.scanText(part, `path_part_${index}`);
@@ -86,7 +92,7 @@ export class PIIDetector {
     for (const [type, pattern] of this.patterns) {
       const matches = text.match(pattern);
       if (matches) {
-        matches.forEach(match => {
+        matches.forEach((match) => {
           const confidence = this.calculateConfidence(match, type);
           if (confidence >= this.config.confidenceThreshold) {
             results.push({
@@ -95,7 +101,7 @@ export class PIIDetector {
               confidence,
               original: match,
               redacted: this.redactText(match, type),
-              location
+              location,
             });
           }
         });
@@ -141,7 +147,7 @@ export class PIIDetector {
   private validateCreditCard(card: string): boolean {
     const digits = card.replace(/\D/g, '');
     if (digits.length < 13 || digits.length > 19) return false;
-    
+
     // Luhn algorithm
     let sum = 0;
     let isEven = false;
@@ -160,8 +166,8 @@ export class PIIDetector {
   private validateIPAddress(ip: string): boolean {
     const octets = ip.split('.');
     if (octets.length !== 4) return false;
-    
-    return octets.every(octet => {
+
+    return octets.every((octet) => {
       const num = parseInt(octet);
       return num >= 0 && num <= 255;
     });
@@ -204,5 +210,5 @@ export const defaultPIIConfig: PIIConfig = {
   redactionEnabled: true,
   patterns: ['email', 'phone_us', 'ssn', 'credit_card', 'ip_address'],
   customPatterns: [],
-  confidenceThreshold: 0.8
+  confidenceThreshold: 0.8,
 };

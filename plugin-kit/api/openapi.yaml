@@ -258,7 +258,7 @@ components:
           properties:
             status:
               type: string
-              example: "healthy"
+              example: 'healthy'
             uptime:
               type: number
               example: 12345.67

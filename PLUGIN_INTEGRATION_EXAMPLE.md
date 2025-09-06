@@ -121,7 +121,7 @@ import { message } from 'antd';
 
 export const FileDropZone: React.FC = () => {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const zipFiles = acceptedFiles.filter(file => 
+    const zipFiles = acceptedFiles.filter(file =>
       file.type === 'application/zip' || file.name.endsWith('.zip')
     );
 
@@ -214,28 +214,28 @@ export const usePlugins = () => {
 export const pluginConfig = {
   // Plugin directory
   pluginsDirectory: './plugins',
-  
+
   // Allowed file extensions
   allowedExtensions: ['.zip'],
-  
+
   // Maximum file size (10MB)
   maxFileSize: 10 * 1024 * 1024,
-  
+
   // Security settings
   security: {
     enableSandbox: true,
     maxPermissions: {
       fileSystem: ['read', 'write'],
       network: ['fetch'],
-      system: []
-    }
+      system: [],
+    },
   },
-  
+
   // Auto-update settings
   autoUpdate: {
     enabled: false,
-    checkInterval: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    checkInterval: 24 * 60 * 60 * 1000, // 24 hours
+  },
 };
 ```
 
@@ -332,10 +332,10 @@ describe('Plugin Integration', () => {
   it('should install plugin from ZIP', async () => {
     const zipFile = new File(['mock content'], 'test-plugin.zip');
     const importer = new ZipPluginImporter();
-    
+
     const result = await importer.importFromZip(zipFile);
     expect(result.success).toBe(true);
-    
+
     const plugins = pluginManager.list();
     expect(plugins).toHaveLength(1);
   });
@@ -368,6 +368,7 @@ test('renders plugin manager', () => {
 ## Support
 
 For issues or questions:
+
 - Check the troubleshooting section in PLUGIN_IMPORT_GUIDE.md
 - Review the sample plugins in the samples/ directory
 - Submit issues to the project repository

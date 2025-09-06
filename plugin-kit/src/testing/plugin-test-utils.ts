@@ -54,16 +54,16 @@ export class PluginTestRunner extends EventEmitter {
 
   async runTestSuite(testSuite: TestSuite): Promise<Map<string, TestResult>> {
     this.emit('test:start', { suite: testSuite.name, tests: testSuite.tests.length });
-    
+
     const startTime = Date.now();
-    
+
     for (const test of testSuite.tests) {
       await this.runSingleTest(test);
     }
-    
+
     const duration = Date.now() - startTime;
     this.emit('test:complete', { suite: testSuite.name, duration, results: this.testResults });
-    
+
     return this.testResults;
   }
 
@@ -74,18 +74,18 @@ export class PluginTestRunner extends EventEmitter {
     try {
       const result = await this.executeTest(test);
       const duration = Date.now() - startTime;
-      
+
       const testResult: TestResult = {
         success: result.success,
         duration,
         errors: result.errors || [],
         warnings: result.warnings || [],
-        metrics: result.metrics || {}
+        metrics: result.metrics || {},
       };
 
       this.testResults.set(test.name, testResult);
       this.emit('test:result', { name: test.name, result: testResult });
-      
+
       return testResult;
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -94,25 +94,25 @@ export class PluginTestRunner extends EventEmitter {
         duration,
         errors: [error.message || 'Test execution failed'],
         warnings: [],
-        metrics: {}
+        metrics: {},
       };
 
       this.testResults.set(test.name, testResult);
       this.emit('test:error', { name: test.name, error, result: testResult });
-      
+
       return testResult;
     }
   }
 
   private async executeTest(test: PluginTest): Promise<any> {
     const testFunction = test.testFunction;
-    
+
     if (typeof testFunction === 'function') {
       return await testFunction(this.createTestContext());
     } else if (typeof testFunction === 'string') {
       return await this.executeScriptTest(testFunction);
     }
-    
+
     throw new Error('Invalid test function');
   }
 
@@ -125,7 +125,7 @@ export class PluginTestRunner extends EventEmitter {
         }
       },
       assert: this.createAssertionHelpers(),
-      data: this.createDataHelpers()
+      data: this.createDataHelpers(),
     };
   }
 
@@ -153,7 +153,7 @@ export class PluginTestRunner extends EventEmitter {
         } catch (error) {
           // Expected
         }
-      }
+      },
     };
   }
 
@@ -168,10 +168,8 @@ export class PluginTestRunner extends EventEmitter {
         fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
       },
       generate: (template: string, count: number) => {
-        return Array.from({ length: count }, (_, i) => 
-          template.replace(/\$\{i\}/g, i.toString())
-        );
-      }
+        return Array.from({ length: count }, (_, i) => template.replace(/\$\{i\}/g, i.toString()));
+      },
     };
   }
 
@@ -179,40 +177,43 @@ export class PluginTestRunner extends EventEmitter {
     if (a === b) return true;
     if (a == null || b == null) return false;
     if (typeof a !== typeof b) return false;
-    
+
     if (typeof a === 'object') {
       const keysA = Object.keys(a);
       const keysB = Object.keys(b);
-      
+
       if (keysA.length !== keysB.length) return false;
-      
+
       for (const key of keysA) {
         if (!keysB.includes(key)) return false;
         if (!this.deepEqual(a[key], b[key])) return false;
       }
-      
+
       return true;
     }
-    
+
     return false;
   }
 
   private async executeScriptTest(scriptPath: string): Promise<any> {
     const fullPath = path.resolve(this.config.pluginPath, scriptPath);
     const script = require(fullPath);
-    
+
     if (typeof script.run === 'function') {
       return await script.run(this.createTestContext());
     }
-    
+
     throw new Error('Script must export a run function');
   }
 
   generateReport(): string {
     const totalTests = this.testResults.size;
-    const passedTests = Array.from(this.testResults.values()).filter(r => r.success).length;
+    const passedTests = Array.from(this.testResults.values()).filter((r) => r.success).length;
     const failedTests = totalTests - passedTests;
-    const totalDuration = Array.from(this.testResults.values()).reduce((sum, r) => sum + r.duration, 0);
+    const totalDuration = Array.from(this.testResults.values()).reduce(
+      (sum, r) => sum + r.duration,
+      0
+    );
 
     let report = `
 Plugin Test Report
@@ -260,18 +261,18 @@ export class MockServer {
   async mockRequest(endpoint: string, method: string): Promise<any> {
     const key = `${method.toUpperCase()}:${endpoint}`;
     const mock = this.mocks.get(key);
-    
+
     if (!mock) {
       throw new Error(`No mock found for ${method} ${endpoint}`);
     }
 
     if (mock.delay) {
-      await new Promise(resolve => setTimeout(resolve, mock.delay));
+      await new Promise((resolve) => setTimeout(resolve, mock.delay));
     }
 
     return {
       status: mock.status,
-      data: mock.data
+      data: mock.data,
     };
   }
 
@@ -316,7 +317,7 @@ export class PluginDebugger {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
     this.logs.push(logEntry);
-    
+
     if (level === 'error') {
       console.error(logEntry);
     } else if (level === 'warn') {
@@ -344,24 +345,26 @@ export class PerformanceProfiler {
 
   start(name: string): () => void {
     const startTime = process.hrtime.bigint();
-    
+
     return () => {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1000000; // Convert to milliseconds
-      
+
       if (!this.metrics.has(name)) {
         this.metrics.set(name, []);
       }
-      
+
       this.metrics.get(name)!.push(duration);
     };
   }
 
-  getMetrics(name?: string): Record<string, { avg: number; min: number; max: number; count: number }> {
+  getMetrics(
+    name?: string
+  ): Record<string, { avg: number; min: number; max: number; count: number }> {
     const result: Record<string, { avg: number; min: number; max: number; count: number }> = {};
-    
+
     const metricsToProcess = name ? [name] : Array.from(this.metrics.keys());
-    
+
     for (const metricName of metricsToProcess) {
       const values = this.metrics.get(metricName) || [];
       if (values.length > 0) {
@@ -369,11 +372,11 @@ export class PerformanceProfiler {
           avg: values.reduce((sum, val) => sum + val, 0) / values.length,
           min: Math.min(...values),
           max: Math.max(...values),
-          count: values.length
+          count: values.length,
         };
       }
     }
-    
+
     return result;
   }
 
@@ -392,20 +395,23 @@ export const TestUtils = {
   createDebugger: () => new PluginDebugger(),
   createProfiler: () => new PerformanceProfiler(),
   createMockServer: () => new MockServer(),
-  
+
   // Common test helpers
-  sleep: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
-  randomString: (length: number) => Math.random().toString(36).substring(2, length + 2),
+  sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+  randomString: (length: number) =>
+    Math.random()
+      .toString(36)
+      .substring(2, length + 2),
   randomInt: (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min,
-  
+
   // File helpers
   readTestData: (filename: string, testDataDir: string) => {
     const filePath = path.join(testDataDir, filename);
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   },
-  
+
   writeTestData: (filename: string, data: any, testDataDir: string) => {
     const filePath = path.join(testDataDir, filename);
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-  }
+  },
 };

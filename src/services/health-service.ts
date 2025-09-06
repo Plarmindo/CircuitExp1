@@ -170,7 +170,7 @@ class HealthService {
             lastChecked: new Date().toISOString(),
           };
         }
-        
+
         return {
           status: 'pass',
           message: 'Disk space check skipped in renderer',

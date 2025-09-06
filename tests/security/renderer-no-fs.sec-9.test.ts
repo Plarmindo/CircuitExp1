@@ -23,7 +23,7 @@ describe('Security ▸ Renderer sandbox forbids Node fs usage', () => {
     const excludedFiles = [
       'src/plugins/development/scaffolding.js',
       'src/plugins/tests/edge-cases/PluginEdgeCases.test.ts',
-      'src/plugins/import/__tests__/ZipPluginImporter.test.ts'
+      'src/plugins/import/__tests__/ZipPluginImporter.test.ts',
     ];
 
     for (const file of rendererFiles) {

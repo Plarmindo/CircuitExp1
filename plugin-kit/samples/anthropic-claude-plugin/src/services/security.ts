@@ -31,8 +31,8 @@ export class SecurityService {
 
   private initializeApiKeys(): void {
     const apiKeysEnv = process.env.API_KEYS || '';
-    const keys = apiKeysEnv.split(',').filter(key => key.trim());
-    
+    const keys = apiKeysEnv.split(',').filter((key) => key.trim());
+
     keys.forEach((key, index) => {
       const trimmedKey = key.trim();
       if (trimmedKey) {
@@ -42,7 +42,7 @@ export class SecurityService {
           createdAt: new Date(),
           usageCount: 0,
           isActive: true,
-          permissions: ['read', 'write']
+          permissions: ['read', 'write'],
         });
       }
     });
@@ -56,7 +56,7 @@ export class SecurityService {
         createdAt: new Date(),
         usageCount: 0,
         isActive: true,
-        permissions: ['read', 'write']
+        permissions: ['read', 'write'],
       });
     }
   }
@@ -67,7 +67,7 @@ export class SecurityService {
 
   validateApiKey(apiKey: string): boolean {
     const keyInfo = this.apiKeys.get(apiKey);
-    
+
     if (!keyInfo || !keyInfo.isActive) {
       this.logger.warn('Invalid API key attempt', { apiKey: this.maskApiKey(apiKey) });
       return false;
@@ -76,12 +76,12 @@ export class SecurityService {
     // Update usage
     keyInfo.lastUsed = new Date();
     keyInfo.usageCount++;
-    
-    this.logger.info('API key validated', { 
-      keyName: keyInfo.name, 
-      key: this.maskApiKey(apiKey) 
+
+    this.logger.info('API key validated', {
+      keyName: keyInfo.name,
+      key: this.maskApiKey(apiKey),
     });
-    
+
     return true;
   }
 
@@ -93,12 +93,12 @@ export class SecurityService {
       createdAt: new Date(),
       usageCount: 0,
       isActive: true,
-      permissions
+      permissions,
     };
 
     this.apiKeys.set(key, keyInfo);
     this.logger.info('New API key created', { name, key: this.maskApiKey(key) });
-    
+
     return key;
   }
 
@@ -110,16 +110,15 @@ export class SecurityService {
 
     keyInfo.isActive = false;
     this.logger.info('API key revoked', { keyName: keyInfo.name, key: this.maskApiKey(apiKey) });
-    
+
     return true;
   }
 
   listApiKeys(): Omit<ApiKeyInfo, 'key'>[] {
-    return Array.from(this.apiKeys.values())
-      .map(({ key, ...keyInfo }) => ({
-        ...keyInfo,
-        key: this.maskApiKey(key)
-      }));
+    return Array.from(this.apiKeys.values()).map(({ key, ...keyInfo }) => ({
+      ...keyInfo,
+      key: this.maskApiKey(key),
+    }));
   }
 
   getApiKeyInfo(apiKey: string): ApiKeyInfo | undefined {
@@ -133,7 +132,10 @@ export class SecurityService {
     return apiKey.substring(0, 4) + '***' + apiKey.substring(apiKey.length - 4);
   }
 
-  checkRateLimit(identifier: string, config: RateLimitConfig = { windowMs: 900000, maxRequests: 100 }): {
+  checkRateLimit(
+    identifier: string,
+    config: RateLimitConfig = { windowMs: 900000, maxRequests: 100 }
+  ): {
     allowed: boolean;
     resetTime: Date;
     remaining: number;
@@ -144,25 +146,25 @@ export class SecurityService {
 
     // Get current requests from cache
     const requests = this.cache.get<number[]>(key) || [];
-    
+
     // Filter out old requests
-    const validRequests = requests.filter(timestamp => timestamp > windowStart);
-    
+    const validRequests = requests.filter((timestamp) => timestamp > windowStart);
+
     if (validRequests.length >= config.maxRequests) {
       const oldestRequest = Math.min(...validRequests);
       const resetTime = new Date(oldestRequest + config.windowMs);
-      
+
       this.logger.warn('Rate limit exceeded', {
         identifier,
         current: validRequests.length,
         max: config.maxRequests,
-        resetTime
+        resetTime,
       });
 
       return {
         allowed: false,
         resetTime,
-        remaining: 0
+        remaining: 0,
       };
     }
 
@@ -173,7 +175,7 @@ export class SecurityService {
     return {
       allowed: true,
       resetTime: new Date(now + config.windowMs),
-      remaining: config.maxRequests - validRequests.length
+      remaining: config.maxRequests - validRequests.length,
     };
   }
 
@@ -200,7 +202,7 @@ export class SecurityService {
 
   validateOrigin(origin: string): boolean {
     const allowedOrigins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'];
-    return allowedOrigins.some(allowed => {
+    return allowedOrigins.some((allowed) => {
       const regex = new RegExp(allowed.replace(/\*/g, '.*'));
       return regex.test(origin);
     });
@@ -222,14 +224,22 @@ export class SecurityService {
 
     if (typeof data === 'object' && data !== null) {
       const masked = { ...data };
-      const sensitiveKeys = ['password', 'token', 'key', 'secret', 'api_key', 'apikey', 'private_key'];
-      
+      const sensitiveKeys = [
+        'password',
+        'token',
+        'key',
+        'secret',
+        'api_key',
+        'apikey',
+        'private_key',
+      ];
+
       for (const key of sensitiveKeys) {
         if (key in masked) {
           masked[key] = '[REDACTED]';
         }
       }
-      
+
       return masked;
     }
 
@@ -256,14 +266,15 @@ export class SecurityService {
       'X-XSS-Protection': '1; mode=block',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+      'Content-Security-Policy':
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
     };
   }
 
   cleanup(): void {
     // Clean up expired rate limit keys
-    const rateLimitKeys = this.cache.keys().filter(key => key.startsWith('rate_limit:'));
-    rateLimitKeys.forEach(key => {
+    const rateLimitKeys = this.cache.keys().filter((key) => key.startsWith('rate_limit:'));
+    rateLimitKeys.forEach((key) => {
       const requests = this.cache.get<number[]>(key);
       if (requests && requests.length === 0) {
         this.cache.del(key);
@@ -280,7 +291,7 @@ export class SecurityService {
       userId: userId || 'system',
       details: this.maskSensitiveData(details),
       ip: details.ip || 'unknown',
-      userAgent: details.userAgent || 'unknown'
+      userAgent: details.userAgent || 'unknown',
     };
 
     this.logger.info('AUDIT', auditEntry);

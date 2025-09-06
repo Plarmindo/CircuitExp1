@@ -25,11 +25,23 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Audit dependencies (fail on high severity)
+        run: npm audit --audit-level=high
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
       - name: Build app
         run: npm run build
+
+      - name: Build assets and check size
+        run: |
+          npm run build -- --json > dist/stats.json
+          MAX=524288
+          SIZE=$(node -e "console.log(require('fs').statSync('dist/assets/index-*.js').size)")
+          echo "Main bundle size: $SIZE bytes (limit $MAX)"
+          if [ $SIZE -gt $MAX ]; then echo "::error::Bundle too large"; exit 1; fi
+        shell: bash
 
       - name: Run unit tests
         run: npm run test:unit

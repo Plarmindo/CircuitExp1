@@ -19,17 +19,14 @@ export class LoggerService {
       transports: [
         // Console transport
         new winston.transports.Console({
-          format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple()
-          )
+          format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
         }),
         // File transport for all logs
         new winston.transports.File({
           filename: path.join(logDir, 'combined.log'),
           maxsize: 10 * 1024 * 1024, // 10MB
           maxFiles: 5,
-          tailable: true
+          tailable: true,
         }),
         // File transport for errors only
         new winston.transports.File({
@@ -37,19 +34,19 @@ export class LoggerService {
           level: 'error',
           maxsize: 10 * 1024 * 1024, // 10MB
           maxFiles: 5,
-          tailable: true
-        })
+          tailable: true,
+        }),
       ],
       exceptionHandlers: [
         new winston.transports.File({
-          filename: path.join(logDir, 'exceptions.log')
-        })
+          filename: path.join(logDir, 'exceptions.log'),
+        }),
       ],
       rejectionHandlers: [
         new winston.transports.File({
-          filename: path.join(logDir, 'rejections.log')
-        })
-      ]
+          filename: path.join(logDir, 'rejections.log'),
+        }),
+      ],
     });
   }
 

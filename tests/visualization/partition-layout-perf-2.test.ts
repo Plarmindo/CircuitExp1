@@ -16,8 +16,8 @@ describe('PERF-2 partitioned layout instrumentation', () => {
     // Create mock debug API directly for testing partition layout performance
     let layoutCallCount = 0;
     let disablePartition = false;
-    let partitionStats = { total: 0, partitioned: 0, cacheHits: 0 };
-    
+    const partitionStats = { total: 0, partitioned: 0, cacheHits: 0 };
+
     // Mock the debug API that the test expects
     window.__metroDebug = {
       genTree: (depth: number, width: number) => {
@@ -32,50 +32,52 @@ describe('PERF-2 partitioned layout instrumentation', () => {
               width: 40,
               height: 30,
               label: `Node ${i}-${j}`,
-              type: j % 2 === 0 ? 'file' : 'folder'
+              type: j % 2 === 0 ? 'file' : 'folder',
             });
           }
         }
         return tree;
       },
-      
+
       getLayoutCallCount: () => layoutCallCount,
       getPartitionStats: () => partitionStats,
-      setDisablePartition: (disabled: boolean) => { disablePartition = disabled; },
-      
+      setDisablePartition: (disabled: boolean) => {
+        disablePartition = disabled;
+      },
+
       benchPartition: async (layout: any[], updates: any[]) => {
         // Simulate layout computation time
         const baseTime = 50 + Math.random() * 20;
         const partitionFactor = disablePartition ? 1.0 : 0.3 + Math.random() * 0.2;
-        
+
         const totalTime = baseTime * partitionFactor * updates.length;
-        
+
         // Update stats
         partitionStats.total += updates.length;
         if (!disablePartition) {
           partitionStats.partitioned += updates.length;
           partitionStats.cacheHits += Math.floor(updates.length * 0.4);
         }
-        
+
         return {
           avg: totalTime / updates.length,
           total: totalTime,
           partitionEnabled: !disablePartition,
-          cacheRatio: partitionStats.cacheHits / Math.max(partitionStats.partitioned, 1)
+          cacheRatio: partitionStats.cacheHits / Math.max(partitionStats.partitioned, 1),
         };
       },
-      
+
       fastAppend: (path: string) => {
         layoutCallCount++;
         return { success: true, path };
       },
-      
+
       runLayoutCycle: () => {
         layoutCallCount++;
         return { success: true };
-      }
+      },
     };
-    
+
     // Generate initial medium tree
     const initialTree = window.__metroDebug.genTree(4, 6);
     expect(initialTree).toBeInstanceOf(Array);
@@ -96,10 +98,10 @@ describe('PERF-2 partitioned layout instrumentation', () => {
 
     expect(partBench.avg).toBeGreaterThan(0);
     expect(fullBench.avg).toBeGreaterThan(0);
-    
+
     // Partition should provide some performance improvement (at least 20% faster)
     expect(partBench.avg).toBeLessThan(fullBench.avg * 0.8);
-    
+
     // Partition should not be dramatically slower (>1.5x)
     expect(partBench.avg).toBeLessThan(fullBench.avg * 1.5);
   });

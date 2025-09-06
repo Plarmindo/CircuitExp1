@@ -1,6 +1,6 @@
 /**
  * CircuitExp1 Plugin Validator
- * 
+ *
  * Provides automated testing, validation, and compatibility checking
  * for plugin deployment and updates.
  */
@@ -63,35 +63,35 @@ export interface PerformanceMetrics {
 export class PluginValidator {
   private readonly supportedEngines = {
     circuitexp1: '^0.0.0',
-    node: '>=18.0.0'
+    node: '>=18.0.0',
   };
 
   private readonly securityPatterns = [
     {
       pattern: /eval\s*\(/gi,
       message: 'Use of eval is prohibited for security reasons',
-      severity: 'critical' as const
+      severity: 'critical' as const,
     },
     {
       pattern: /new\s+Function\s*\(/gi,
       message: 'Dynamic code execution via new Function is not allowed',
-      severity: 'critical' as const
+      severity: 'critical' as const,
     },
     {
       pattern: /document\.write\s*\(/gi,
       message: 'document.write() can lead to XSS vulnerabilities',
-      severity: 'high' as const
+      severity: 'high' as const,
     },
     {
       pattern: /innerHTML\s*=.*?<script/gi,
       message: 'Potential XSS vulnerability with innerHTML',
-      severity: 'high' as const
+      severity: 'high' as const,
     },
     {
       pattern: /window\.location\s*=?/gi,
       message: 'Direct location manipulation should be avoided',
-      severity: 'medium' as const
-    }
+      severity: 'medium' as const,
+    },
   ];
 
   /**
@@ -116,7 +116,10 @@ export class PluginValidator {
     }
 
     // Version validation
-    if (metadata.version && !/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$/.test(metadata.version)) {
+    if (
+      metadata.version &&
+      !/^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$/.test(metadata.version)
+    ) {
       warnings.push('Version should follow semantic versioning (e.g., 1.0.0, 1.0.0-beta.1)');
     }
 
@@ -133,8 +136,13 @@ export class PluginValidator {
     // Engine compatibility
     if (metadata.engines) {
       const circuitexp1Version = metadata.engines.circuitexp1;
-      if (circuitexp1Version && !this.isVersionCompatible(circuitexp1Version, this.supportedEngines.circuitexp1)) {
-        warnings.push(`CircuitExp1 engine version ${circuitexp1Version} may not be compatible with current system`);
+      if (
+        circuitexp1Version &&
+        !this.isVersionCompatible(circuitexp1Version, this.supportedEngines.circuitexp1)
+      ) {
+        warnings.push(
+          `CircuitExp1 engine version ${circuitexp1Version} may not be compatible with current system`
+        );
       }
 
       const nodeVersion = metadata.engines.node;
@@ -167,7 +175,7 @@ export class PluginValidator {
           severity,
           code: `SECURITY_${severity.toUpperCase()}`,
           message,
-          line: this.getLineNumber(pluginCode, matches.index || 0)
+          line: this.getLineNumber(pluginCode, matches.index || 0),
         });
 
         // Adjust score based on severity
@@ -175,7 +183,7 @@ export class PluginValidator {
           critical: 30,
           high: 20,
           medium: 10,
-          low: 5
+          low: 5,
         };
         score -= deductions[severity];
       }
@@ -183,7 +191,8 @@ export class PluginValidator {
 
     // Check for unsafe imports
     const unsafeImports = ['fs', 'child_process', 'vm', 'eval'];
-    const importRegex = /import\s+.*?\s+from\s+['"`]([^'"`]+)['"`]|require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
+    const importRegex =
+      /import\s+.*?\s+from\s+['"`]([^'"`]+)['"`]|require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
     let match;
     while ((match = importRegex.exec(pluginCode)) !== null) {
       const module = match[1] || match[2];
@@ -192,16 +201,16 @@ export class PluginValidator {
           severity: 'critical',
           code: 'UNSAFE_IMPORT',
           message: `Unsafe module import: ${module}`,
-          line: this.getLineNumber(pluginCode, match.index)
+          line: this.getLineNumber(pluginCode, match.index),
         });
         score -= 30;
       }
     }
 
     return {
-      passed: score >= 70 && issues.filter(i => i.severity === 'critical').length === 0,
+      passed: score >= 70 && issues.filter((i) => i.severity === 'critical').length === 0,
       issues,
-      score: Math.max(0, score)
+      score: Math.max(0, score),
     };
   }
 
@@ -222,7 +231,7 @@ export class PluginValidator {
             severity: 'error',
             code: 'INCOMPATIBLE_ENGINE',
             message: `Plugin requires ${engine} ${version}, but system supports ${supported}`,
-            details: { engine, required: version, supported }
+            details: { engine, required: version, supported },
           });
         }
       }
@@ -230,9 +239,9 @@ export class PluginValidator {
 
     // Check for deprecated APIs
     const deprecatedPatterns = [
-      { pattern: /PluginAPI\.deprecatedMethod/g, message: 'Uses deprecated API method' }
+      { pattern: /PluginAPI\.deprecatedMethod/g, message: 'Uses deprecated API method' },
     ];
-    
+
     // This would need actual plugin code analysis
     // For now, we'll add recommendations
     recommendations.push('Use latest PluginAPI methods');
@@ -242,14 +251,14 @@ export class PluginValidator {
     warnings.push({
       code: 'BUNDLE_SIZE',
       message: 'Consider minifying and optimizing plugin bundle',
-      suggestion: 'Use webpack or rollup for bundling'
+      suggestion: 'Use webpack or rollup for bundling',
     });
 
     return {
-      compatible: issues.filter(i => i.severity === 'error').length === 0,
+      compatible: issues.filter((i) => i.severity === 'error').length === 0,
       issues,
       warnings,
-      recommendations
+      recommendations,
     };
   }
 
@@ -263,7 +272,9 @@ export class PluginValidator {
       // Check for known vulnerable packages
       const vulnerablePackages = ['lodash', 'moment', 'request'];
       if (vulnerablePackages.includes(name)) {
-        warnings.push(`Package '${name}' has known security vulnerabilities. Consider alternatives.`);
+        warnings.push(
+          `Package '${name}' has known security vulnerabilities. Consider alternatives.`
+        );
       }
 
       // Check for outdated packages
@@ -290,10 +301,12 @@ export class PluginValidator {
   }> {
     const [metadata, security, compatibility] = await Promise.all([
       this.validateMetadata(plugin.metadata),
-      options.checkSecurity !== false ? this.securityScan(JSON.stringify(plugin)) : 
-        Promise.resolve({ passed: true, issues: [], score: 100 }),
-      options.checkCompatibility !== false ? this.checkCompatibility(plugin.metadata) :
-        Promise.resolve({ compatible: true, issues: [], warnings: [], recommendations: [] })
+      options.checkSecurity !== false
+        ? this.securityScan(JSON.stringify(plugin))
+        : Promise.resolve({ passed: true, issues: [], score: 100 }),
+      options.checkCompatibility !== false
+        ? this.checkCompatibility(plugin.metadata)
+        : Promise.resolve({ compatible: true, issues: [], warnings: [], recommendations: [] }),
     ]);
 
     // Calculate performance metrics (mock data for now)
@@ -301,7 +314,7 @@ export class PluginValidator {
       loadTime: 150, // ms
       memoryUsage: 1024 * 1024, // 1MB
       bundleSize: 500 * 1024, // 500KB
-      dependencies: Object.keys(plugin.metadata.dependencies || {}).length
+      dependencies: Object.keys(plugin.metadata.dependencies || {}).length,
     };
 
     const overall = metadata.valid && security.passed && compatibility.compatible;
@@ -311,7 +324,7 @@ export class PluginValidator {
       security,
       compatibility,
       performance,
-      overall
+      overall,
     };
   }
 
@@ -332,7 +345,7 @@ export class PluginValidator {
     return {
       package: mockPackage,
       checksum: 'mock-checksum',
-      size: mockPackage.length
+      size: mockPackage.length,
     };
   }
 
@@ -343,15 +356,15 @@ export class PluginValidator {
     // Simplified semver check - in production, use proper semver library
     const requiredParts = required.replace(/[^\d.]/g, '').split('.');
     const supportedParts = supported.replace(/[^\d.]/g, '').split('.');
-    
+
     for (let i = 0; i < Math.min(requiredParts.length, supportedParts.length); i++) {
       const req = parseInt(requiredParts[i]) || 0;
       const sup = parseInt(supportedParts[i]) || 0;
-      
+
       if (sup >= req) return true;
       if (sup < req) return false;
     }
-    
+
     return true;
   }
 
@@ -373,22 +386,22 @@ export class PluginTestSuite {
     coverage: number;
   }> {
     const tests: TestResult[] = [];
-    
+
     // Test 1: Activation/Deactivation cycle
     tests.push(await this.testActivationCycle(plugin));
-    
+
     // Test 2: Configuration handling
     tests.push(await this.testConfiguration(plugin));
-    
+
     // Test 3: Event handling
     tests.push(await this.testEventHandling(plugin));
-    
+
     // Test 4: Memory management
     tests.push(await this.testMemoryManagement(plugin));
-    
-    const passed = tests.every(t => t.passed);
+
+    const passed = tests.every((t) => t.passed);
     const coverage = 85; // Mock coverage percentage
-    
+
     return { passed, tests, coverage };
   }
 
@@ -432,27 +445,28 @@ export class PluginTestSuite {
     try {
       // Test for memory leaks
       const initialMemory = process.memoryUsage?.().heapUsed || 0;
-      
+
       const mockAPI = createMockPluginAPI();
       await plugin.activate(mockAPI);
       await plugin.deactivate();
-      
+
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
-      
+
       const finalMemory = process.memoryUsage?.().heapUsed || 0;
       const memoryIncrease = finalMemory - initialMemory;
-      
-      if (memoryIncrease > 1024 * 1024) { // 1MB threshold
-        return { 
-          name: 'Memory Management', 
-          passed: false, 
-          error: `Memory increased by ${memoryIncrease} bytes` 
+
+      if (memoryIncrease > 1024 * 1024) {
+        // 1MB threshold
+        return {
+          name: 'Memory Management',
+          passed: false,
+          error: `Memory increased by ${memoryIncrease} bytes`,
         };
       }
-      
+
       return { name: 'Memory Management', passed: true };
     } catch (error) {
       return { name: 'Memory Management', passed: false, error: error.message };

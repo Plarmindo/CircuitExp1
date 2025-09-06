@@ -21,14 +21,15 @@ export class OpenAIGPTPlugin implements Plugin {
     id: 'openai-gpt-plugin',
     name: 'OpenAI GPT Plugin',
     version: '1.0.0',
-    description: 'Advanced OpenAI GPT integration with chat, code completion, and analysis capabilities',
+    description:
+      'Advanced OpenAI GPT integration with chat, code completion, and analysis capabilities',
     author: 'CircuitExp1 Team',
     license: 'MIT',
     category: 'ai-integration' as const,
     ai: {
       platforms: ['openai'] as const,
-      capabilities: ['chat-completion', 'code-completion', 'text-analysis'] as const
-    }
+      capabilities: ['chat-completion', 'code-completion', 'text-analysis'] as const,
+    },
   };
 
   private api: PluginAPI | null = null;
@@ -43,13 +44,13 @@ export class OpenAIGPTPlugin implements Plugin {
 
   async activate(api: PluginAPI): Promise<void> {
     this.api = api;
-    
+
     try {
       await this.initializeServices();
       this.registerUIComponents();
       this.registerEventHandlers();
       this.setupCommands();
-      
+
       api.logger.info('OpenAI GPT Plugin activated successfully');
     } catch (error) {
       api.logger.error('Failed to activate OpenAI GPT Plugin', error);
@@ -75,11 +76,11 @@ export class OpenAIGPTPlugin implements Plugin {
 
   async onConfigChange(newConfig: Partial<OpenAIGPTPluginConfig>): Promise<void> {
     this.config = { ...this.config, ...newConfig };
-    
+
     if (this.openaiService) {
       this.openaiService.updateConfig(this.config);
     }
-    
+
     if (this.api) {
       this.api.logger.info('OpenAI GPT Plugin configuration updated');
     }
@@ -115,7 +116,7 @@ export class OpenAIGPTPlugin implements Plugin {
       position: 'right',
       size: { width: 400 },
       resizable: true,
-      closable: true
+      closable: true,
     });
 
     // Register settings panel
@@ -126,7 +127,7 @@ export class OpenAIGPTPlugin implements Plugin {
       icon: '⚙️',
       position: 'center',
       size: { width: 600, height: 500 },
-      closable: true
+      closable: true,
     });
 
     // Add menu items
@@ -134,13 +135,13 @@ export class OpenAIGPTPlugin implements Plugin {
       id: 'openai-chat-toggle',
       label: 'Toggle OpenAI Chat',
       action: () => this.toggleChatPanel(),
-      accelerator: 'CmdOrCtrl+Shift+C'
+      accelerator: 'CmdOrCtrl+Shift+C',
     });
 
     this.api.ui.registerMenuItem({
       id: 'openai-settings',
       label: 'OpenAI Settings',
-      action: () => this.openSettingsPanel()
+      action: () => this.openSettingsPanel(),
     });
   }
 
@@ -175,25 +176,25 @@ export class OpenAIGPTPlugin implements Plugin {
     this.api.commands.register({
       id: 'openai:chat',
       title: 'OpenAI Chat',
-      handler: () => this.openChatPanel()
+      handler: () => this.openChatPanel(),
     });
 
     this.api.commands.register({
       id: 'openai:complete-code',
       title: 'Complete Code with OpenAI',
-      handler: () => this.completeCode()
+      handler: () => this.completeCode(),
     });
 
     this.api.commands.register({
       id: 'openai:explain-code',
       title: 'Explain Selected Code',
-      handler: () => this.explainCode()
+      handler: () => this.explainCode(),
     });
 
     this.api.commands.register({
       id: 'openai:generate-tests',
       title: 'Generate Unit Tests',
-      handler: () => this.generateTests()
+      handler: () => this.generateTests(),
     });
   }
 
@@ -205,7 +206,8 @@ export class OpenAIGPTPlugin implements Plugin {
       temperature: 0.7,
       autoSave: true,
       showTokenCount: true,
-      systemPrompt: 'You are a helpful AI assistant integrated into CircuitExp1. You can help with coding, analysis, and answering questions about the current project.'
+      systemPrompt:
+        'You are a helpful AI assistant integrated into CircuitExp1. You can help with coding, analysis, and answering questions about the current project.',
     };
   }
 
@@ -233,7 +235,7 @@ export class OpenAIGPTPlugin implements Plugin {
         this.api.ui.showNotification({
           title: 'Code Completion',
           message: 'Please select some code to complete',
-          type: 'warning'
+          type: 'warning',
         });
         return;
       }
@@ -245,7 +247,7 @@ export class OpenAIGPTPlugin implements Plugin {
       this.api.ui.showNotification({
         title: 'Code Completion Failed',
         message: error instanceof Error ? error.message : 'Unknown error',
-        type: 'error'
+        type: 'error',
       });
     }
   }
@@ -259,7 +261,7 @@ export class OpenAIGPTPlugin implements Plugin {
         this.api.ui.showNotification({
           title: 'Code Explanation',
           message: 'Please select code to explain',
-          type: 'warning'
+          type: 'warning',
         });
         return;
       }
@@ -271,7 +273,7 @@ export class OpenAIGPTPlugin implements Plugin {
       this.api.ui.showNotification({
         title: 'Code Explanation Failed',
         message: error instanceof Error ? error.message : 'Unknown error',
-        type: 'error'
+        type: 'error',
       });
     }
   }
@@ -282,35 +284,35 @@ export class OpenAIGPTPlugin implements Plugin {
     try {
       const selection = await this.api.ui.getSelection();
       const file = await this.api.ui.getCurrentFile();
-      
+
       if (!file) {
         this.api.ui.showNotification({
           title: 'Test Generation',
           message: 'Please open a file to generate tests for',
-          type: 'warning'
+          type: 'warning',
         });
         return;
       }
 
       const tests = await this.openaiService.generateTests(
-        selection || await this.api.ui.getFileContent(),
+        selection || (await this.api.ui.getFileContent()),
         file.name
       );
 
       const testFileName = file.name.replace(/\..+$/, '.test.$&');
       await this.api.ui.createFile(testFileName, tests);
-      
+
       this.api.ui.showNotification({
         title: 'Tests Generated',
         message: `Tests generated in ${testFileName}`,
-        type: 'success'
+        type: 'success',
       });
     } catch (error) {
       this.api.logger.error('Failed to generate tests', error);
       this.api.ui.showNotification({
         title: 'Test Generation Failed',
         message: error instanceof Error ? error.message : 'Unknown error',
-        type: 'error'
+        type: 'error',
       });
     }
   }
@@ -319,7 +321,7 @@ export class OpenAIGPTPlugin implements Plugin {
     if (this.conversationManager) {
       await this.conversationManager.cleanup();
     }
-    
+
     if (this.openaiService) {
       await this.openaiService.cleanup();
     }

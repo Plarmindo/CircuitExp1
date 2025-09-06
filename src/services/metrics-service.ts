@@ -18,7 +18,7 @@ class BrowserEventEmitter {
   emit(event: string, ...args: any[]): boolean {
     const listeners = this.listeners.get(event);
     if (!listeners) return false;
-    listeners.forEach(listener => listener(...args));
+    listeners.forEach((listener) => listener(...args));
     return true;
   }
 
@@ -242,7 +242,7 @@ class MetricsService extends EventEmitter {
             lastCheck: Date.now(),
           };
         }
-        
+
         return {
           name: 'filesystem',
           status: 'healthy',

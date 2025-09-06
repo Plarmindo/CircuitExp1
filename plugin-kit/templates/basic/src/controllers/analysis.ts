@@ -23,11 +23,11 @@ export class AnalysisController {
       }
 
       const { code, type, language } = req.body;
-      
-      this.logger.info('Processing code analysis request', { 
-        type, 
-        language, 
-        codeLength: code.length 
+
+      this.logger.info('Processing code analysis request', {
+        type,
+        language,
+        codeLength: code.length,
       });
 
       const result = await this.aiService.analyzePerformance(code, { type, language });
@@ -35,7 +35,7 @@ export class AnalysisController {
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in analysis handler', { error: error.message });
@@ -56,7 +56,7 @@ export class AnalysisController {
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in bug detection handler', { error: error.message });
@@ -77,7 +77,7 @@ export class AnalysisController {
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in test generation handler', { error: error.message });
@@ -98,7 +98,7 @@ export class AnalysisController {
       res.json({
         success: true,
         data: result,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       this.logger.error('Error in documentation generation handler', { error: error.message });

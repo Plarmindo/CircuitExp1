@@ -55,15 +55,16 @@ export class MetricsService {
         startTime: Date.now(),
         currentTime: Date.now(),
         uptime: 0,
-        availability: 100
-      }
+        availability: 100,
+      },
     };
   }
 
   recordRequest(endpoint: string, statusCode: number, responseTime: number): void {
     this.data.requests.total++;
     this.data.requests.byEndpoint[endpoint] = (this.data.requests.byEndpoint[endpoint] || 0) + 1;
-    this.data.requests.byStatus[statusCode.toString()] = (this.data.requests.byStatus[statusCode.toString()] || 0) + 1;
+    this.data.requests.byStatus[statusCode.toString()] =
+      (this.data.requests.byStatus[statusCode.toString()] || 0) + 1;
 
     this.recordResponseTime(responseTime);
     this.updateUptime();
@@ -72,7 +73,7 @@ export class MetricsService {
   recordError(type: string, endpoint?: string): void {
     this.data.errors.total++;
     this.data.errors.byType[type] = (this.data.errors.byType[type] || 0) + 1;
-    
+
     if (endpoint) {
       this.data.errors.byEndpoint[endpoint] = (this.data.errors.byEndpoint[endpoint] || 0) + 1;
     }
@@ -80,7 +81,12 @@ export class MetricsService {
     this.updateUptime();
   }
 
-  recordAIUsage(model: string, promptTokens: number, completionTokens: number, cost?: number): void {
+  recordAIUsage(
+    model: string,
+    promptTokens: number,
+    completionTokens: number,
+    cost?: number
+  ): void {
     this.data.aiUsage.totalTokens += promptTokens + completionTokens;
     this.data.aiUsage.promptTokens += promptTokens;
     this.data.aiUsage.completionTokens += completionTokens;
@@ -101,11 +107,11 @@ export class MetricsService {
   private recordResponseTime(responseTime: number): void {
     const point: MetricPoint = {
       timestamp: Date.now(),
-      value: responseTime
+      value: responseTime,
     };
 
     this.responseTimeWindow.push(point);
-    
+
     // Trim to window size
     if (this.responseTimeWindow.length > this.WINDOW_SIZE) {
       this.responseTimeWindow = this.responseTimeWindow.slice(-this.WINDOW_SIZE);
@@ -115,14 +121,14 @@ export class MetricsService {
   }
 
   private calculatePerformanceMetrics(): void {
-    const times = this.responseTimeWindow.map(p => p.value).sort((a, b) => a - b);
-    
+    const times = this.responseTimeWindow.map((p) => p.value).sort((a, b) => a - b);
+
     if (times.length === 0) {
       this.data.performance = {
         responseTime: this.responseTimeWindow,
         avgResponseTime: 0,
         p95: 0,
-        p99: 0
+        p99: 0,
       };
       return;
     }
@@ -135,14 +141,14 @@ export class MetricsService {
       responseTime: this.responseTimeWindow,
       avgResponseTime: Math.round(avg * 100) / 100,
       p95: Math.round(p95 * 100) / 100,
-      p99: Math.round(p99 * 100) / 100
+      p99: Math.round(p99 * 100) / 100,
     };
   }
 
   private updateUptime(): void {
     this.data.uptime.currentTime = Date.now();
     this.data.uptime.uptime = this.data.uptime.currentTime - this.data.uptime.startTime;
-    
+
     // Calculate availability based on error rate
     const totalRequests = this.data.requests.total;
     const totalErrors = this.data.errors.total;
@@ -165,9 +171,9 @@ export class MetricsService {
     estimatedCost: number;
   } {
     this.updateUptime();
-    
+
     const uptime = this.formatUptime(this.data.uptime.uptime);
-    
+
     return {
       requests: this.data.requests.total,
       errors: this.data.errors.total,
@@ -175,7 +181,7 @@ export class MetricsService {
       uptime,
       availability: this.data.uptime.availability,
       totalTokens: this.data.aiUsage.totalTokens,
-      estimatedCost: this.data.aiUsage.cost
+      estimatedCost: this.data.aiUsage.cost,
     };
   }
 
@@ -201,8 +207,8 @@ export class MetricsService {
         startTime: Date.now(),
         currentTime: Date.now(),
         uptime: 0,
-        availability: 100
-      }
+        availability: 100,
+      },
     };
     this.responseTimeWindow = [];
     this.logger.info('Metrics reset');

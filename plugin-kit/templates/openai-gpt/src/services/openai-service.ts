@@ -47,7 +47,7 @@ export class OpenAIService {
 
     this.client = new OpenAI({
       apiKey: this.config.apiKey,
-      dangerouslyAllowBrowser: true
+      dangerouslyAllowBrowser: true,
     });
 
     await this.loadMessageHistory();
@@ -55,11 +55,11 @@ export class OpenAIService {
 
   updateConfig(newConfig: OpenAIGPTPluginConfig): void {
     this.config = newConfig;
-    
+
     if (newConfig.apiKey && this.client) {
       this.client = new OpenAI({
         apiKey: newConfig.apiKey,
-        dangerouslyAllowBrowser: true
+        dangerouslyAllowBrowser: true,
       });
     }
   }
@@ -74,31 +74,33 @@ export class OpenAIService {
       const userMessage: ChatMessage = {
         role: 'user',
         content: message,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       this.messageHistory.push(userMessage);
 
       // Prepare messages for API
       const messages = [
-        ...(this.config.systemPrompt ? [{ role: 'system' as const, content: this.config.systemPrompt }] : []),
-        ...this.messageHistory.map(msg => ({ role: msg.role as any, content: msg.content }))
+        ...(this.config.systemPrompt
+          ? [{ role: 'system' as const, content: this.config.systemPrompt }]
+          : []),
+        ...this.messageHistory.map((msg) => ({ role: msg.role as any, content: msg.content })),
       ];
 
       const response = await this.client.chat.completions.create({
         model: this.config.model,
         messages,
         max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature
+        temperature: this.config.temperature,
       });
 
       const content = response.choices[0]?.message?.content || '';
-      
+
       // Add assistant response to history
       const assistantMessage: ChatMessage = {
         role: 'assistant',
         content,
         timestamp: Date.now(),
-        tokens: response.usage?.total_tokens
+        tokens: response.usage?.total_tokens,
       };
       this.messageHistory.push(assistantMessage);
 
@@ -110,7 +112,9 @@ export class OpenAIService {
       return content;
     } catch (error) {
       this.api.logger.error('Failed to send chat message', error);
-      throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `OpenAI API error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -127,21 +131,24 @@ export class OpenAIService {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert code completion AI. Provide only the code completion without explanations or additional text. Ensure the completion is syntactically correct and follows best practices.'
+            content:
+              'You are an expert code completion AI. Provide only the code completion without explanations or additional text. Ensure the completion is syntactically correct and follows best practices.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: Math.min(this.config.maxTokens, 500),
-        temperature: 0.1
+        temperature: 0.1,
       });
 
       return response.choices[0]?.message?.content?.trim() || '';
     } catch (error) {
       this.api.logger.error('Failed to complete code', error);
-      throw new Error(`Code completion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Code completion failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -158,21 +165,23 @@ export class OpenAIService {
         messages: [
           {
             role: 'system',
-            content: `You are a code explanation expert. Provide clear, concise explanations of the provided code. Adapt your explanation to the ${request.level || 'intermediate'} level.`
+            content: `You are a code explanation expert. Provide clear, concise explanations of the provided code. Adapt your explanation to the ${request.level || 'intermediate'} level.`,
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: this.config.maxTokens,
-        temperature: 0.3
+        temperature: 0.3,
       });
 
       return response.choices[0]?.message?.content || '';
     } catch (error) {
       this.api.logger.error('Failed to explain code', error);
-      throw new Error(`Code explanation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Code explanation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -189,21 +198,23 @@ export class OpenAIService {
         messages: [
           {
             role: 'system',
-            content: `You are a test generation expert. Generate comprehensive ${request.testType || 'unit'} tests for the provided code using ${request.framework || 'Jest'} framework. Ensure tests cover edge cases and provide good code coverage.`
+            content: `You are a test generation expert. Generate comprehensive ${request.testType || 'unit'} tests for the provided code using ${request.framework || 'Jest'} framework. Ensure tests cover edge cases and provide good code coverage.`,
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: this.config.maxTokens,
-        temperature: 0.2
+        temperature: 0.2,
       });
 
       return response.choices[0]?.message?.content || '';
     } catch (error) {
       this.api.logger.error('Failed to generate tests', error);
-      throw new Error(`Test generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Test generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -227,21 +238,24 @@ ${code}`;
         messages: [
           {
             role: 'system',
-            content: 'You are a code analysis expert. Provide detailed, actionable insights about the provided code.'
+            content:
+              'You are a code analysis expert. Provide detailed, actionable insights about the provided code.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         max_tokens: this.config.maxTokens,
-        temperature: 0.3
+        temperature: 0.3,
       });
 
       return response.choices[0]?.message?.content || '';
     } catch (error) {
       this.api.logger.error('Failed to analyze code', error);
-      throw new Error(`Code analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Code analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -261,7 +275,7 @@ ${code}`;
       name,
       messages: this.messageHistory,
       timestamp: Date.now(),
-      config: this.config
+      config: this.config,
     };
 
     await this.api.storage.set(`conversations/${name}`, conversation);
@@ -291,13 +305,13 @@ ${code}`;
 
     await this.api.storage.set('chat-history', {
       messages: this.messageHistory,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
   private buildCodeCompletionPrompt(request: CodeCompletionRequest): string {
     const { code, language, cursorPosition, context } = request;
-    
+
     let prompt = `Complete the following ${language || 'code'}:
 
 ${code}`;
@@ -319,7 +333,7 @@ Context: ${context}`;
 
   private buildCodeExplanationPrompt(request: CodeExplanationRequest): string {
     const { code, language, level } = request;
-    
+
     return `Explain the following ${language || 'code'} at a ${level || 'intermediate'} level:
 
 ${code}
@@ -332,7 +346,7 @@ Please provide:
 
   private buildTestGenerationPrompt(request: TestGenerationRequest): string {
     const { code, fileName, framework, testType } = request;
-    
+
     return `Generate ${testType || 'unit'} tests for the following code using ${framework || 'Jest'}:
 
 File: ${fileName}
@@ -351,7 +365,7 @@ Requirements:
     if (this.config.autoSave) {
       await this.saveMessageHistory();
     }
-    
+
     this.client = null;
   }
 }

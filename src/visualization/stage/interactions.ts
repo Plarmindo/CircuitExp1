@@ -24,31 +24,79 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
   const maxZoom = 3.0;
 
   const applyTransform = () => {
+    const stage = app.stage;
     const scale = scaleRef.current;
-    app.stage.scale.set(scale);
+
+    // Ensure scale is finite and positive before applying
+    if (!Number.isFinite(scale) || scale <= 0) {
+      scaleRef.current = 1.0; // Reset to safe default
+      stage.scale.set(1.0);
+    } else {
+      stage.scale.set(scale);
+    }
+
+    // Ensure stage position is finite
+    if (!Number.isFinite(stage.x) || !Number.isFinite(stage.y)) {
+      stage.x = 0;
+      stage.y = 0;
+    }
+
+    // Ensure renderer dimensions are finite before rendering
+    const canvas = app.renderer.view as HTMLCanvasElement;
+    if (
+      canvas &&
+      Number.isFinite(canvas.width) &&
+      Number.isFinite(canvas.height) &&
+      canvas.width > 0 &&
+      canvas.height > 0
+    ) {
+      app.renderer.render(stage);
+    }
   };
 
   const zoomByFactorAt = (factor: number, centerX: number, centerY: number) => {
+    if (!app.canvas) return;
     const canvasEl = app.canvas as HTMLCanvasElement;
     const rect = canvasEl.getBoundingClientRect();
     const stage = app.stage;
     const currentScale = scaleRef.current;
+
+    // Ensure all values are finite before calculations
+    if (!Number.isFinite(currentScale) || currentScale <= 0) return;
+    if (!Number.isFinite(centerX) || !Number.isFinite(centerY)) return;
+    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return;
+
     const worldX = (centerX - rect.left - stage.x) / currentScale;
     const worldY = (centerY - rect.top - stage.y) / currentScale;
-    const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
+
+    // Ensure world coordinates are finite
+    if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+
+    let newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
+
     scaleRef.current = newScale;
     applyTransform();
-    stage.x = centerX - rect.left - worldX * newScale;
-    stage.y = centerY - rect.top - worldY * newScale;
+
+    const newX = centerX - rect.left - worldX * newScale;
+    const newY = centerY - rect.top - worldY * newScale;
+
+    // Ensure new coordinates are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    stage.x = newX;
+    stage.y = newY;
     redraw(false);
   };
 
   const zoomIn = () => {
+    if (!app.canvas) return;
     const canvas = app.canvas as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
     zoomByFactorAt(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
   const zoomOut = () => {
+    if (!app.canvas) return;
     const canvas = app.canvas as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
     zoomByFactorAt(1 / 1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
@@ -67,10 +115,27 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
   };
   const handlePointerMove = (e: PointerEvent) => {
     if (!draggingRef.current || !lastPointerRef.current) return;
+
     const dx = e.clientX - lastPointerRef.current.x;
     const dy = e.clientY - lastPointerRef.current.y;
-    app.stage.x += dx;
-    app.stage.y += dy;
+
+    // Ensure delta values are finite
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+
+    // Ensure current stage position is finite before adding delta
+    if (!Number.isFinite(app.stage.x) || !Number.isFinite(app.stage.y)) {
+      app.stage.x = 0;
+      app.stage.y = 0;
+    }
+
+    const newX = app.stage.x + dx;
+    const newY = app.stage.y + dy;
+
+    // Ensure new positions are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    app.stage.x = newX;
+    app.stage.y = newY;
     lastPointerRef.current = { x: e.clientX, y: e.clientY };
     redraw(false);
   };
@@ -87,19 +152,62 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
   canvasEl.addEventListener('pointerup', handlePointerUp);
 
   const fitToView = (bounds: { minX: number; minY: number; maxX: number; maxY: number } | null) => {
-    if (!bounds) return;
+    if (!bounds || !app.canvas) return;
+
+    // Validate bounds values are finite
+    if (
+      !Number.isFinite(bounds.minX) ||
+      !Number.isFinite(bounds.minY) ||
+      !Number.isFinite(bounds.maxX) ||
+      !Number.isFinite(bounds.maxY)
+    )
+      return;
+
     const canvas = app.canvas as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
+
+    // Validate canvas dimensions are finite
+    if (
+      !Number.isFinite(rect.width) ||
+      !Number.isFinite(rect.height) ||
+      rect.width <= 0 ||
+      rect.height <= 0
+    )
+      return;
+
     const margin = 40;
     const w = bounds.maxX - bounds.minX;
     const h = bounds.maxY - bounds.minY;
+
+    // Prevent division by zero or negative dimensions
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return;
+
     const sx = (rect.width - margin) / w;
     const sy = (rect.height - margin) / h;
-    const newScale = Math.min(Math.max(0.2, Math.min(sx, sy)), 2.5);
+
+    // Ensure scale calculations are finite
+    if (!Number.isFinite(sx) || !Number.isFinite(sy)) return;
+
+    let newScale = Math.min(Math.max(0.2, Math.min(sx, sy)), 2.5);
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
+
     scaleRef.current = newScale;
     applyTransform();
-    app.stage.x = rect.width / 2 - (bounds.minX + w / 2) * newScale;
-    app.stage.y = rect.height / 2 - (bounds.minY + h / 2) * newScale;
+
+    const centerX = bounds.minX + w / 2;
+    const centerY = bounds.minY + h / 2;
+
+    // Ensure center calculations are finite
+    if (!Number.isFinite(centerX) || !Number.isFinite(centerY)) return;
+
+    const newX = rect.width / 2 - centerX * newScale;
+    const newY = rect.height / 2 - centerY * newScale;
+
+    // Ensure final coordinates are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    app.stage.x = newX;
+    app.stage.y = newY;
     redraw(false);
   };
 

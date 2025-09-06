@@ -4,7 +4,8 @@ This guide explains how to use the drag-and-drop ZIP plugin import system for th
 
 ## Overview
 
-The ZIP plugin import system allows users to install plugins by simply dragging and dropping ZIP files or using the import button. It handles extraction, dependency installation, and provides rollback capabilities.
+The ZIP plugin import system allows users to install plugins by simply dragging and dropping ZIP files or using the
+import button. It handles extraction, dependency installation, and provides rollback capabilities.
 
 ## ZIP Bundle Structure
 
@@ -96,6 +97,7 @@ Specify what system resources your plugin needs:
 ## Rollback System
 
 When updating a plugin:
+
 - The previous version is preserved
 - A toggle option appears to revert to the previous version
 - Rollback is instant - no re-download required
@@ -103,6 +105,7 @@ When updating a plugin:
 ## Plugin Directory Structure
 
 After installation, plugins are stored in:
+
 ```
 ~/Smartfilemanager/plugins/
 ├── my-plugin-1.0.0/
@@ -146,7 +149,7 @@ mkdir my-awesome-plugin
 }
 ```
 
-### 3. Create __init__.py
+### 3. Create **init**.py
 
 ```python
 from .main import FileProcessorPlugin
@@ -165,11 +168,11 @@ class FileProcessorPlugin(Plugin):
         super().__init__()
         self.name = "Awesome Plugin"
         self.version = "1.0.0"
-    
+
     def activate(self):
         # Plugin activation logic
         pass
-    
+
     def deactivate(self):
         # Plugin deactivation logic
         pass
@@ -211,6 +214,7 @@ zip -r awesome-plugin-1.0.0.zip .
 ### Debug Mode
 
 Enable debug logging:
+
 ```bash
 export DEBUG_PLUGINS=true
 ```
@@ -256,6 +260,7 @@ export DEBUG_PLUGINS=true
 ## Examples
 
 See the `samples/` directory for complete plugin examples:
+
 - `hello-world-plugin.zip`: Basic plugin structure
 - `file-analyzer-plugin.zip`: Advanced file analysis
 - `ui-extension-plugin.zip`: UI component integration
@@ -263,6 +268,7 @@ See the `samples/` directory for complete plugin examples:
 ## Support
 
 For issues or questions:
+
 - Check the troubleshooting section
 - Review example plugins
 - Submit issues to the project repository

@@ -31,7 +31,7 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
     setLoading(true);
     try {
       const registeredPlugins = pluginManager.list();
-      const pluginInfos: PluginInfo[] = registeredPlugins.map(plugin => ({
+      const pluginInfos: PluginInfo[] = registeredPlugins.map((plugin) => ({
         id: plugin.metadata.id,
         name: plugin.metadata.name,
         version: plugin.metadata.version,
@@ -41,9 +41,9 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
         enabled: pluginManager.isEnabled(plugin.metadata.id),
         path: plugin.metadata.main,
         dependencies: Object.keys(plugin.metadata.dependencies || {}),
-        lastUpdated: new Date() // This would come from filesystem metadata
+        lastUpdated: new Date(), // This would come from filesystem metadata
       }));
-      
+
       setPlugins(pluginInfos);
     } catch (error) {
       console.error('Failed to load plugins:', error);
@@ -53,49 +53,58 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
     }
   }, [pluginManager]);
 
-  const handleEnableDisable = useCallback(async (pluginId: string, enabled: boolean) => {
-    try {
-      if (enabled) {
-        await pluginManager.enable(pluginId);
-        message.success(`Plugin "${pluginId}" enabled`);
-      } else {
-        await pluginManager.disable(pluginId);
-        message.success(`Plugin "${pluginId}" disabled`);
-      }
-      
-      await loadPlugins();
-    } catch (error) {
-      console.error('Failed to toggle plugin:', error);
-      message.error('Failed to toggle plugin');
-    }
-  }, [pluginManager, loadPlugins]);
+  const handleEnableDisable = useCallback(
+    async (pluginId: string, enabled: boolean) => {
+      try {
+        if (enabled) {
+          await pluginManager.enable(pluginId);
+          message.success(`Plugin "${pluginId}" enabled`);
+        } else {
+          await pluginManager.disable(pluginId);
+          message.success(`Plugin "${pluginId}" disabled`);
+        }
 
-  const handleImportSuccess = useCallback(async (result: ImportResult) => {
-    setImportModalVisible(false);
-    await loadPlugins();
-    
-    if (result.success) {
-      message.success(`Plugin "${result.plugin.name}" imported successfully`);
-    }
-  }, [loadPlugins]);
+        await loadPlugins();
+      } catch (error) {
+        console.error('Failed to toggle plugin:', error);
+        message.error('Failed to toggle plugin');
+      }
+    },
+    [pluginManager, loadPlugins]
+  );
+
+  const handleImportSuccess = useCallback(
+    async (result: ImportResult) => {
+      setImportModalVisible(false);
+      await loadPlugins();
+
+      if (result.success) {
+        message.success(`Plugin "${result.plugin.name}" imported successfully`);
+      }
+    },
+    [loadPlugins]
+  );
 
   const handleRefresh = useCallback(async () => {
     await loadPlugins();
     message.success('Plugins refreshed');
   }, [loadPlugins]);
 
-  const handleDelete = useCallback(async (pluginId: string) => {
-    try {
-      // This would need to be implemented in PluginManager
-      // For now, we'll just disable it
-      await pluginManager.disable(pluginId);
-      message.success(`Plugin "${pluginId}" removed`);
-      await loadPlugins();
-    } catch (error) {
-      console.error('Failed to remove plugin:', error);
-      message.error('Failed to remove plugin');
-    }
-  }, [pluginManager, loadPlugins]);
+  const handleDelete = useCallback(
+    async (pluginId: string) => {
+      try {
+        // This would need to be implemented in PluginManager
+        // For now, we'll just disable it
+        await pluginManager.disable(pluginId);
+        message.success(`Plugin "${pluginId}" removed`);
+        await loadPlugins();
+      } catch (error) {
+        console.error('Failed to remove plugin:', error);
+        message.error('Failed to remove plugin');
+      }
+    },
+    [pluginManager, loadPlugins]
+  );
 
   const columns = [
     {
@@ -107,24 +116,24 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
           <strong>{text}</strong>
           <Text type="secondary">{record.id}</Text>
         </Space>
-      )
+      ),
     },
     {
       title: 'Version',
       dataIndex: 'version',
       key: 'version',
-      render: (version: string) => <Tag color="blue">{version}</Tag>
+      render: (version: string) => <Tag color="blue">{version}</Tag>,
     },
     {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
-      render: (category: string) => <Tag color="green">{category}</Tag>
+      render: (category: string) => <Tag color="green">{category}</Tag>,
     },
     {
       title: 'Author',
       dataIndex: 'author',
-      key: 'author'
+      key: 'author',
     },
     {
       title: 'Status',
@@ -135,7 +144,7 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
           onChange={(checked) => handleEnableDisable(record.id, checked)}
           loading={loading}
         />
-      )
+      ),
     },
     {
       title: 'Actions',
@@ -148,16 +157,11 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
             okText="Yes"
             cancelText="No"
           >
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-            />
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
           </Popconfirm>
         </Space>
-      )
-    }
+      ),
+    },
   ];
 
   useEffect(() => {
@@ -177,11 +181,7 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
             >
               Import Plugin
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleRefresh}
-              loading={loading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
               Refresh
             </Button>
           </Space>
@@ -195,7 +195,7 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
           pagination={{
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `Total ${total} plugins`
+            showTotal: (total) => `Total ${total} plugins`,
           }}
         />
       </Card>

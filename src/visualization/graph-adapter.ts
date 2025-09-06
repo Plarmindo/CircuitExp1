@@ -168,8 +168,7 @@ export class GraphAdapter {
   }
 
   /** INTERNAL DEV: surface minimal snapshot used when diagnosing empty layout. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  __debugSnapshot(): any {
+  __debugSnapshot(): unknown {
     const roots: string[] = [];
     for (const n of this.nodes.values()) if (!n.parentPath) roots.push(n.path);
     return { size: this.nodes.size, roots: roots.slice(0, 5), rootCount: roots.length };

@@ -15,7 +15,7 @@ export class CacheService {
 
   constructor(logger: LoggerService) {
     this.logger = logger;
-    
+
     const ttl = parseInt(process.env.CACHE_TTL || '3600', 10); // Default 1 hour
     const checkperiod = parseInt(process.env.CACHE_CHECK_PERIOD || '600', 10); // Default 10 minutes
 
@@ -23,7 +23,7 @@ export class CacheService {
       stdTTL: ttl,
       checkperiod,
       useClones: false,
-      deleteOnExpire: true
+      deleteOnExpire: true,
     });
 
     // Set up event listeners
@@ -97,7 +97,7 @@ export class CacheService {
       misses: stats.misses,
       keys: stats.keys,
       ksize: stats.ksize,
-      vsize: stats.vsize
+      vsize: stats.vsize,
     };
   }
 

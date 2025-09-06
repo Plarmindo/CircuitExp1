@@ -14,7 +14,7 @@ export class CompletionController {
 
   async complete(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Validate input
       const validationResult = this.validation.validate('codeCompletion', req.body);
@@ -23,19 +23,19 @@ export class CompletionController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { prompt, language, maxTokens, temperature, model } = validationResult.data!;
 
-      this.logger.info('Code completion requested', { 
-        language, 
-        maxTokens, 
-        temperature, 
+      this.logger.info('Code completion requested', {
+        language,
+        maxTokens,
+        temperature,
         model,
-        promptLength: prompt.length 
+        promptLength: prompt.length,
       });
 
       // Generate completion
@@ -44,7 +44,7 @@ export class CompletionController {
         language,
         maxTokens,
         temperature,
-        model
+        model,
       });
 
       // Record metrics
@@ -56,8 +56,8 @@ export class CompletionController {
         data: {
           completion: result.completion,
           tokens: result.tokens,
-          model: result.model
-        }
+          model: result.model,
+        },
       });
     } catch (error) {
       this.logger.error('Code completion failed', error);
@@ -67,14 +67,14 @@ export class CompletionController {
       res.status(500).json({
         success: false,
         error: 'Failed to generate completion',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   async completeStream(req: Request, res: Response): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       // Validate input
       const validationResult = this.validation.validate('codeCompletion', req.body);
@@ -83,19 +83,19 @@ export class CompletionController {
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validationResult.errors
+          details: validationResult.errors,
         });
         return;
       }
 
       const { prompt, language, maxTokens, temperature, model } = validationResult.data!;
 
-      this.logger.info('Streaming code completion requested', { 
-        language, 
-        maxTokens, 
-        temperature, 
+      this.logger.info('Streaming code completion requested', {
+        language,
+        maxTokens,
+        temperature,
         model,
-        promptLength: prompt.length 
+        promptLength: prompt.length,
       });
 
       // Set up streaming response
@@ -111,14 +111,14 @@ export class CompletionController {
         language,
         maxTokens,
         temperature,
-        model
+        model,
       });
 
       // Simulate streaming chunks
       const chunks = result.completion.split('\n');
       for (const chunk of chunks) {
         res.write(chunk + '\n');
-        await new Promise(resolve => setTimeout(resolve, 50)); // Simulate delay
+        await new Promise((resolve) => setTimeout(resolve, 50)); // Simulate delay
       }
 
       this.metrics.recordAIUsage(result.model, result.tokens.prompt, result.tokens.completion);
@@ -134,7 +134,7 @@ export class CompletionController {
         res.status(500).json({
           success: false,
           error: 'Failed to generate streaming completion',
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : 'Unknown error',
         });
       } else {
         res.end();

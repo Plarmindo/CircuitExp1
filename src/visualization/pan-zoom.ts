@@ -40,13 +40,30 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
     const rect = canvasEl.getBoundingClientRect();
     const stage = app.stage;
     const currentScale = scaleRef.current;
+
+    // Ensure all inputs are finite
+    if (!Number.isFinite(factor) || !Number.isFinite(centerX) || !Number.isFinite(centerY)) return;
+    if (!Number.isFinite(currentScale) || currentScale <= 0) return;
+    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return;
+
     const worldX = (centerX - rect.left - stage.x) / currentScale;
     const worldY = (centerY - rect.top - stage.y) / currentScale;
     const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
+
+    // Ensure scale calculation is finite
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
+
     scaleRef.current = newScale;
     applyTransform();
-    stage.x = centerX - rect.left - worldX * newScale;
-    stage.y = centerY - rect.top - worldY * newScale;
+
+    const newX = centerX - rect.left - worldX * newScale;
+    const newY = centerY - rect.top - worldY * newScale;
+
+    // Ensure final coordinates are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    stage.x = newX;
+    stage.y = newY;
     redraw(false); // update culling/badges
   };
 
@@ -58,15 +75,31 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
     const cursorY = e.clientY - rect.top;
     const stage = app.stage;
     const currentScale = scaleRef.current;
+
+    // Ensure all inputs are finite
+    if (!Number.isFinite(cursorX) || !Number.isFinite(cursorY)) return;
+    if (!Number.isFinite(currentScale) || currentScale <= 0) return;
+
     const worldX = (cursorX - stage.x) / currentScale;
     const worldY = (cursorY - stage.y) / currentScale;
     const zoomIn = e.deltaY < 0;
     const factor = zoomIn ? 1.1 : 0.9;
     const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
+
+    // Ensure scale calculation is finite
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
+
     scaleRef.current = newScale;
     applyTransform();
-    stage.x = cursorX - worldX * newScale;
-    stage.y = cursorY - worldY * newScale;
+
+    const newX = cursorX - worldX * newScale;
+    const newY = cursorY - worldY * newScale;
+
+    // Ensure final coordinates are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    stage.x = newX;
+    stage.y = newY;
     redraw(false);
   };
 
@@ -79,8 +112,18 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
     if (!dragging || !lastPointer) return;
     const dx = e.clientX - lastPointer.x;
     const dy = e.clientY - lastPointer.y;
-    app.stage.x += dx;
-    app.stage.y += dy;
+
+    // Ensure delta values are finite
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+
+    const newX = app.stage.x + dx;
+    const newY = app.stage.y + dy;
+
+    // Ensure new positions are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    app.stage.x = newX;
+    app.stage.y = newY;
     lastPointer = { x: e.clientX, y: e.clientY };
   };
   const handlePointerUp = (e: PointerEvent) => {
@@ -96,11 +139,24 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
       minY = Infinity,
       maxX = -Infinity,
       maxY = -Infinity;
+    let hasValidCoordinates = false;
     for (const [, v] of idx) {
-      if (v.x < minX) minX = v.x;
-      if (v.y < minY) minY = v.y;
-      if (v.x > maxX) maxX = v.x;
-      if (v.y > maxY) maxY = v.y;
+      if (Number.isFinite(v.x) && Number.isFinite(v.y)) {
+        if (v.x < minX) minX = v.x;
+        if (v.y < minY) minY = v.y;
+        if (v.x > maxX) maxX = v.x;
+        if (v.y > maxY) maxY = v.y;
+        hasValidCoordinates = true;
+      }
+    }
+    if (
+      !hasValidCoordinates ||
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
+      return null;
     }
     return { minX, minY, maxX, maxY };
   };
@@ -117,12 +173,27 @@ export function setupPanZoom(canvasContainer: HTMLElement | null, ctx: PanZoomCo
     if (worldW <= 0 || worldH <= 0 || viewW <= 0 || viewH <= 0) return;
     const scale = Math.min(viewW / worldW, viewH / worldH) * 0.95;
     const newScale = Math.min(maxZoom, Math.max(minZoom, scale));
+
+    // Ensure scale is finite and positive
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
+
     scaleRef.current = newScale;
     applyTransform();
+
     const worldCenterX = (b.minX + b.maxX) / 2;
     const worldCenterY = (b.minY + b.maxY) / 2;
-    app.stage.x = viewW / 2 - worldCenterX * newScale;
-    app.stage.y = viewH / 2 - worldCenterY * newScale;
+
+    // Ensure center calculations are finite
+    if (!Number.isFinite(worldCenterX) || !Number.isFinite(worldCenterY)) return;
+
+    const newX = viewW / 2 - worldCenterX * newScale;
+    const newY = viewH / 2 - worldCenterY * newScale;
+
+    // Ensure final viewport coordinates are finite
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    app.stage.x = newX;
+    app.stage.y = newY;
   };
 
   // Attach listeners
