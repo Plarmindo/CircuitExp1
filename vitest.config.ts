@@ -2,8 +2,12 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['tests/**/*.{ts,tsx}'],
-    exclude: ['node_modules/**', 'tests/e2e/**'],
+    environment: 'node',
+    setupFiles: ['./tests/setup.ts'],
+    // Only collect actual test files
+    include: ['tests/**/*.{test,spec}.ts', 'tests/**/*.{test,spec}.tsx'],
+    // Exclude e2e, setup, and empty placeholder tests
+    exclude: ['node_modules/**', 'tests/e2e/**', 'tests/setup.ts', 'tests/ollama-integration.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'lcov'],

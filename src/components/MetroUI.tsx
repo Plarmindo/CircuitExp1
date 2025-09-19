@@ -10,8 +10,7 @@ import {
 } from '../settings/user-settings-client';
 import type { UserSettings } from '../settings/user-settings-client';
 import './MetroUI.css';
-import { favoritesClient } from '../favorites/favorites-client';
-import { listRecent, clearRecent } from '../recent-scans-client';
+import { UnifiedNavigation } from '../navigation/unified-navigation';
 import { errorReporter } from '../services/error-reporter';
 import { auditLogger } from '../services/audit-logger';
 
@@ -20,6 +19,9 @@ import { RateLimiter, defaultRateLimitConfig } from '../services/rate-limiter';
 import { createGraphAdapter } from '../visualization/graph-adapter';
 import { layoutHierarchicalV2 } from '../visualization/layout-v2';
 import type { LayoutPointV2 } from '../visualization/layout-v2';
+import { ModeProvider, useMode } from '../visualization/modes/ModeProvider';
+import { ModeRegistry } from '../visualization/modes/mode-registry';
+import { SettingsProvider } from '../settings/SettingsProvider';
 
 interface ScanProgress {
   dirsProcessed: number;
@@ -60,7 +62,38 @@ interface SelectedNodeInfo {
   children?: number;
 }
 
-export const MetroUI: React.FC<MetroUIProps> = ({
+const ModeRenderer: React.FC<{ theme: any; layout: any[]; routes: any[]; onNodeClick?: (p: string)=>void; onNodeHover?: (p: string|null)=>void; onLayoutUpdate?: (l: any[])=>void; debug?: boolean; }> = ({ theme, layout, routes, onNodeClick, onNodeHover, onLayoutUpdate, debug }) => {
+  const { selected } = useMode();
+  const [Comp, setComp] = React.useState<React.ComponentType<any> | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const mod = await ModeRegistry.load(selected);
+        if (!cancelled) setComp(() => mod);
+      } catch (e) {
+        console.error('Failed to load mode', selected, e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selected]);
+
+  if (!Comp) return null;
+  return (
+    <Comp
+      theme={theme}
+      layout={layout}
+      routes={routes}
+      onNodeClick={onNodeClick}
+      onNodeHover={onNodeHover}
+      onLayoutUpdate={onLayoutUpdate}
+      debug={debug}
+    />
+  );
+};
+
+export const MetroUIInner: React.FC<MetroUIProps> = ({
   scanId,
   progress,
   nodes,
@@ -68,6 +101,8 @@ export const MetroUI: React.FC<MetroUIProps> = ({
   done,
   rootPath,
 }) => {
+  // Access mode context for switcher
+  const { selected: selectedMode, setMode, definitions } = useMode();
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
   const [showPerformance, setShowPerformance] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
@@ -93,6 +128,8 @@ export const MetroUI: React.FC<MetroUIProps> = ({
   const [depthOverride, setDepthOverride] = useState<number | null>(null);
   // Banner dev inicial quando não há scan ativo (auxilia percepção de core pronto)
   const [showDevIdleHint, setShowDevIdleHint] = useState(false);
+  // Auto-load sample data when no scan is active
+  const [autoLoadedSample, setAutoLoadedSample] = useState(false);
   // NOTE: avoid naming this state variable 'performance' to prevent shadowing the
   // global performance API (was causing runtime errors calling performance.now()).
   const [perfMetrics, setPerfMetrics] = useState<PerformanceMetrics>({
@@ -112,6 +149,26 @@ export const MetroUI: React.FC<MetroUIProps> = ({
   } | null>(null);
 
   const fpsCounterRef = useRef<number[]>([]);
+
+  // Function to load sample data manually
+  const handleLoadSampleData = useCallback(() => {
+    if (!autoLoadedSample) {
+      window.dispatchEvent(
+        new CustomEvent('metro:genTree', { detail: { breadth: 4, depth: 3, files: 3 } })
+      );
+      setAutoLoadedSample(true);
+    }
+  }, [autoLoadedSample]);
+
+  // Auto-load sample data when component mounts and no data is available
+  useEffect(() => {
+    if (!autoLoadedSample && (!nodes || nodes.length === 0) && !scanId && !progress) {
+      const timer = setTimeout(() => {
+        handleLoadSampleData();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [handleLoadSampleData, nodes, scanId, progress, autoLoadedSample]);
 
   // Memoized layout generation from nodes
   const { layoutNodes, routes } = useMemo(() => {
@@ -311,20 +368,30 @@ export const MetroUI: React.FC<MetroUIProps> = ({
       }
     });
 
-    // Listen for scan errors from the main process
-    const offScanError =
-      (
-        window as unknown as {
-          electronAPI?: { onScanError?: (cb: (e: any) => void) => () => void };
-        }
-      )?.electronAPI?.onScanError?.((error) => {
+    // Listen for scan errors from the main process and internal bus
+    const offScanError = (() => {
+      const handler = (error: any) => {
         if (error.scanId === scanId || !scanId) {
           const errorInfo = errorReporter.reportError(
             new Error(error.userMessage || error.error),
             'scan-operation'
           );
         }
-      }) || (() => {});
+      };
+
+      const offElectron = (
+        (window as unknown as {
+          electronAPI?: { onScanError?: (cb: (e: any) => void) => () => void };
+        })?.electronAPI?.onScanError?.(handler)
+      ) || (() => {});
+
+      const offBus = UnifiedNavigation.events.onScanError(handler);
+
+      return () => {
+        try { offElectron(); } catch {}
+        try { offBus(); } catch {}
+      };
+    })();
 
     return () => {
       cancelled = true;
@@ -353,10 +420,10 @@ export const MetroUI: React.FC<MetroUIProps> = ({
       };
       if (w.electronAPI?.selectAndScanFolder) {
         auditLogger.logFileAccess('folder-selection-initiated', 'user-requested-scan');
-        const res = await w.electronAPI.selectAndScanFolder();
+        const res = await UnifiedNavigation.scan.selectAndScanFolder();
         console.log('Folder selection result', res);
         auditLogger.logSystemEvent('folder-selection-completed', 'scan-started', {
-          folder: res && typeof res === 'object' && 'folder' in res ? res.folder : 'unknown',
+          folder: res && typeof res === 'object' && 'folder' in res ? (res as any).folder : 'unknown',
         });
       }
     } catch (error) {
@@ -374,11 +441,8 @@ export const MetroUI: React.FC<MetroUIProps> = ({
 
   const handleCancelScan = useCallback(async () => {
     try {
-      const w = window as unknown as {
-        electronAPI?: { cancelScan?: (id: string) => Promise<unknown> };
-      };
-      if (scanId && w.electronAPI?.cancelScan) {
-        await w.electronAPI.cancelScan(scanId);
+      if (scanId) {
+        await UnifiedNavigation.scan.cancel(scanId);
       }
     } catch (error) {
       console.error('cancelScan failed', error);
@@ -391,12 +455,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
 
   const handleStartScanDev = useCallback(async () => {
     try {
-      const w = window as unknown as {
-        electronAPI?: { startScan?: (root: string) => Promise<unknown> };
-      };
-      if (w.electronAPI?.startScan) {
-        await w.electronAPI.startScan('C:/');
-      }
+      await UnifiedNavigation.scan.start('C:/');
     } catch (error) {
       console.error('startScan dev failed', error);
       const errorInfo = errorReporter.reportError(
@@ -518,7 +577,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
     (async () => {
       try {
         setLoadingFavs(true);
-        const list = await favoritesClient.list();
+        const list = await UnifiedNavigation.favorites.list();
         setFavorites(list);
       } finally {
         setLoadingFavs(false);
@@ -530,7 +589,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
     (async () => {
       try {
         setLoadingRecent(true);
-        const r = await listRecent();
+        const r = await UnifiedNavigation.recent.list();
         if (r.success) setRecent(r.recent);
       } finally {
         setLoadingRecent(false);
@@ -574,13 +633,13 @@ export const MetroUI: React.FC<MetroUIProps> = ({
         auditLogger.logSystemEvent('favorites-management', 'favorite-removed', {
           path: selectedNode.path,
         });
-        const list = await favoritesClient.remove(selectedNode.path);
+        const list = await UnifiedNavigation.favorites.remove(selectedNode.path);
         setFavorites(list);
       } else {
         auditLogger.logSystemEvent('favorites-management', 'favorite-added', {
           path: selectedNode.path,
         });
-        const list = await favoritesClient.add(selectedNode.path);
+        const list = await UnifiedNavigation.favorites.add(selectedNode.path);
         setFavorites(list);
       }
     } catch (e) {
@@ -909,7 +968,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
                 <div className="search-results">
                   {searchQuery && (
                     <div className="results-header">
-                      {filteredNodes?.length || 0} results for "{searchQuery}"
+                      {filteredNodes?.length || 0} results for &quot;{searchQuery}&quot;
                     </div>
                   )}
                   {searchQuery &&
@@ -1038,10 +1097,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
                                 new CustomEvent('metro:centerOnPath', { detail: { path: f } })
                               );
                             } else {
-                              const w = window as unknown as {
-                                electronAPI?: { startScan?: (root: string) => Promise<unknown> };
-                              };
-                              if (w.electronAPI?.startScan) await w.electronAPI.startScan(f);
+                              await UnifiedNavigation.scan.start(f);
                             }
                           } catch (e) {
                             console.error('favorite jump failed', e);
@@ -1056,7 +1112,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
                         aria-label={`Remove favorite ${f}`}
                         className="fav-remove"
                         onClick={async () => {
-                          const list = await favoritesClient.remove(f);
+                          const list = await UnifiedNavigation.favorites.remove(f);
                           setFavorites(list);
                         }}
                         title="Remove"
@@ -1084,10 +1140,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
                         className="recent-jump"
                         onClick={async () => {
                           try {
-                            const w = window as unknown as {
-                              electronAPI?: { startScan?: (root: string) => Promise<unknown> };
-                            };
-                            if (w.electronAPI?.startScan) await w.electronAPI.startScan(r);
+                            await UnifiedNavigation.scan.start(r);
                           } catch (e) {
                             console.error('recent rescan failed', e);
                           }
@@ -1111,7 +1164,7 @@ export const MetroUI: React.FC<MetroUIProps> = ({
                           'recent-scans-cleared',
                           { count: recent.length }
                         );
-                        const res = await clearRecent();
+                        const res = await UnifiedNavigation.recent.clear();
                         if (res.success) setRecent([]);
                       } catch (error) {
                         console.error('clearRecent failed', error);
@@ -1140,6 +1193,22 @@ export const MetroUI: React.FC<MetroUIProps> = ({
         <main className="metro-main" id="mainContent" role="main" aria-label="Visualization Stage">
           {/* Toolbar */}
           <div className="metro-toolbar">
+            {/* Mode Switcher */}
+            <div className="toolbar-section" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <label style={{ fontSize: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                Mode
+                <select
+                  value={selectedMode}
+                  onChange={(e) => setMode(e.target.value as any)}
+                  aria-label="Visualization Mode"
+                  style={{ padding: '4px 6px', border: '1px solid #ccc', borderRadius: 4, fontSize: 12 }}
+                >
+                  {definitions.map((d) => (
+                    <option key={d.id} value={d.id}>{d.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <div className="toolbar-section" role="toolbar" aria-label="Visualization tools">
               <button
                 type="button"
@@ -1308,16 +1377,14 @@ export const MetroUI: React.FC<MetroUIProps> = ({
             aria-label="Visualization Stage (focus to enable keyboard navigation)"
             style={{ width: '100%', height: '100%', position: 'relative' }}
           >
-            <ResponsiveMetroStage
+            <ModeRenderer
               theme={currentTheme === 'dark' ? dark : light}
-              layoutNodes={layoutNodes}
+              layout={layoutNodes}
               routes={routes}
+              onNodeClick={(p)=>handleNodeSelect({ path: p, name: p.split('/').pop() || p, type: 'node' })}
               onNodeHover={handleNodeHover}
-              onNodeSelect={handleNodeSelect}
-              onNodeDoubleClick={handleNodeDoubleClick}
-              onNodeContextMenu={handleNodeContextMenu}
-              onBackgroundClick={handleBackgroundClick}
-              onBackgroundContextMenu={handleBackgroundContextMenu}
+              onLayoutUpdate={(l)=>{/* optional: capture layout updates */}}
+              debug={false}
             />
           </div>
 
@@ -1479,10 +1546,10 @@ export const MetroUI: React.FC<MetroUIProps> = ({
             onClick={async () => {
               try {
                 if (favorites.includes(ctxMenu.path)) {
-                  const list = await favoritesClient.remove(ctxMenu.path);
+                  const list = await UnifiedNavigation.favorites.remove(ctxMenu.path);
                   setFavorites(list);
                 } else {
-                  const list = await favoritesClient.add(ctxMenu.path);
+                  const list = await UnifiedNavigation.favorites.add(ctxMenu.path);
                   setFavorites(list);
                 }
               } catch (err) {
@@ -1499,3 +1566,13 @@ export const MetroUI: React.FC<MetroUIProps> = ({
     </div>
   );
 };
+
+export const MetroUI: React.FC<MetroUIProps> = (props) => (
+  <SettingsProvider>
+    <ModeProvider>
+      <MetroUIInner {...props} />
+    </ModeProvider>
+  </SettingsProvider>
+);
+
+export default MetroUI;
