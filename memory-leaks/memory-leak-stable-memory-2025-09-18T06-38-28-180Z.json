@@ -1,0 +1,165 @@
+{
+  "testName": "stable-memory",
+  "timestamp": 1758177508180,
+  "config": {
+    "threshold": 1,
+    "iterations": 10,
+    "warmupIterations": 1,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 2
+  },
+  "result": {
+    "leakDetected": false,
+    "leakRate": -0.17450714111328125,
+    "totalGrowth": -1.7450714111328125,
+    "snapshots": [
+      {
+        "timestamp": 1758177508177,
+        "heapUsed": 16295744,
+        "heapTotal": 21319680,
+        "external": 3921482,
+        "arrayBuffers": 118711,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177508177,
+        "heapUsed": 16329504,
+        "heapTotal": 21319680,
+        "external": 3921920,
+        "arrayBuffers": 120130,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177508179,
+        "heapUsed": 14390416,
+        "heapTotal": 22892544,
+        "external": 3922175,
+        "arrayBuffers": 99044,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177508179,
+        "heapUsed": 14410048,
+        "heapTotal": 22892544,
+        "external": 3889180,
+        "arrayBuffers": 99854,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177508179,
+        "heapUsed": 14430256,
+        "heapTotal": 22892544,
+        "external": 3889435,
+        "arrayBuffers": 100664,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177508179,
+        "heapUsed": 14449384,
+        "heapTotal": 22892544,
+        "external": 3889690,
+        "arrayBuffers": 101474,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177508179,
+        "heapUsed": 14465904,
+        "heapTotal": 22892544,
+        "external": 3889945,
+        "arrayBuffers": 102284,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Check timers and intervals for potential leaks",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "No memory leak detected in stable-memory: -1.75MB total change",
+      "details": [
+        "Test: stable-memory",
+        "Total memory growth: -1.75MB",
+        "Leak rate: -0.1745MB per iteration",
+        "Iterations: 10",
+        "Severity: LOW",
+        "Snapshots: 7"
+      ],
+      "severity": "low"
+    }
+  }
+}

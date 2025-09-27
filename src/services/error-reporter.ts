@@ -2,7 +2,7 @@ import type { ErrorInfo } from '../components/ErrorHandler';
 import { createLogger } from '../logger/central-logger';
 import { auditLogger } from './audit-logger';
 
-const log = createLogger({ component: 'error-reporter' });
+const _log = createLogger({ component: 'error-reporter' });
 
 export interface ErrorReport {
   id: string;

@@ -43,7 +43,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ className }) => {
     setIsTyping(true);
 
     try {
-      const response = await openaiService.sendChatMessage(input.trim());
+      const _response = await openaiService.sendChatMessage(input.trim());
       setMessages(openaiService.getMessageHistory());
       setInput('');
     } catch (err) {

@@ -6,10 +6,10 @@ import type { GraphAdapter } from '../graph-adapter';
 // Window typing with debug extensions
 interface MetroDebugWindow extends Window {
   __metroDebug?: {
-    benchResult?: any;
-    lastPartitionBench?: any;
-    startQuickBench?: (p?: QuickRealParams) => any;
-    startRealBench?: (p?: QuickRealParams) => any;
+    benchResult?: Record<string, unknown>;
+    lastPartitionBench?: Record<string, unknown>;
+    startQuickBench?: (p?: QuickRealParams) => unknown;
+    startRealBench?: (p?: QuickRealParams) => unknown;
     benchPartition?: (p?: PartitionBenchParams) => any;
   };
 }

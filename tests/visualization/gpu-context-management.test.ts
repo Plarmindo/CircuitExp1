@@ -81,6 +81,7 @@ describe('GPU Context Management', () => {
         getContext: vi.fn().mockImplementation((context) => {
           if (context === 'webgl' || context === 'webgl2') {
             return {
+              isContextLost: vi.fn().mockReturnValue(false),
               getParameter: vi.fn().mockImplementation((param) => {
                 if (param === 0x0d33) return 8192; // MAX_TEXTURE_SIZE
                 if (param === 0x0d3a) return [8192, 8192]; // MAX_VIEWPORT_DIMS
@@ -113,6 +114,7 @@ describe('GPU Context Management', () => {
         getContext: vi.fn().mockImplementation((context) => {
           if (context === 'webgl' || context === 'webgl2') {
             return {
+              isContextLost: vi.fn().mockReturnValue(false),
               getParameter: vi.fn().mockImplementation((param) => {
                 if (param === 0x0d33) return 256; // Low MAX_TEXTURE_SIZE
                 if (param === 0x0d3a) return [256, 256]; // Low MAX_VIEWPORT_DIMS

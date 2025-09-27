@@ -1,0 +1,159 @@
+{
+  "testName": "stable-memory",
+  "timestamp": 1758180773958,
+  "config": {
+    "threshold": 1,
+    "iterations": 10,
+    "warmupIterations": 1,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 2
+  },
+  "result": {
+    "leakDetected": true,
+    "leakRate": 0.01273193359375,
+    "totalGrowth": 0.1273193359375,
+    "snapshots": [
+      {
+        "timestamp": 1758180773955,
+        "heapUsed": 15340064,
+        "heapTotal": 21295104,
+        "external": 3900215,
+        "arrayBuffers": 101790,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": [],
+        "eventListeners": 13,
+        "timers": 0
+      },
+      {
+        "timestamp": 1758180773956,
+        "heapUsed": 15374272,
+        "heapTotal": 21295104,
+        "external": 3900653,
+        "arrayBuffers": 103205,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": [],
+        "eventListeners": 13,
+        "timers": 0
+      },
+      {
+        "timestamp": 1758180773956,
+        "heapUsed": 15402024,
+        "heapTotal": 21295104,
+        "external": 3900908,
+        "arrayBuffers": 104013,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": [],
+        "eventListeners": 13,
+        "timers": 0
+      },
+      {
+        "timestamp": 1758180773957,
+        "heapUsed": 15431936,
+        "heapTotal": 21295104,
+        "external": 3901163,
+        "arrayBuffers": 104821,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": [],
+        "eventListeners": 13,
+        "timers": 0
+      },
+      {
+        "timestamp": 1758180773957,
+        "heapUsed": 15452096,
+        "heapTotal": 21295104,
+        "external": 3901418,
+        "arrayBuffers": 105629,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": [],
+        "eventListeners": 13,
+        "timers": 0
+      },
+      {
+        "timestamp": 1758180773957,
+        "heapUsed": 15473568,
+        "heapTotal": 21295104,
+        "external": 3901673,
+        "arrayBuffers": 106437,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": [],
+        "eventListeners": 13,
+        "timers": 0
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Check timers and intervals for potential leaks",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "Memory leak detected in stable-memory: 0.13MB total growth (0.0127MB/iteration)",
+      "details": [
+        "Test: stable-memory",
+        "Total memory growth: 0.13MB",
+        "Leak rate: 0.0127MB per iteration",
+        "Iterations: 10",
+        "Severity: LOW",
+        "Snapshots: 6"
+      ],
+      "severity": "low"
+    }
+  }
+}

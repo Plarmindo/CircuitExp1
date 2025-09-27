@@ -2,167 +2,167 @@
   "cycles": [
     {
       "cycle": 1,
-      "heapUsed": 8151784
+      "heapUsed": 8167312
     },
     {
       "cycle": 2,
-      "heapUsed": 8163648
+      "heapUsed": 8179080
     },
     {
       "cycle": 3,
-      "heapUsed": 8165400
+      "heapUsed": 8180792
     },
     {
       "cycle": 4,
-      "heapUsed": 8167096
+      "heapUsed": 8182448
     },
     {
       "cycle": 5,
-      "heapUsed": 8178408
+      "heapUsed": 8193568
     },
     {
       "cycle": 6,
-      "heapUsed": 8188952
+      "heapUsed": 8207496
     },
     {
       "cycle": 7,
-      "heapUsed": 8191272
+      "heapUsed": 8209832
     },
     {
       "cycle": 8,
-      "heapUsed": 8193168
+      "heapUsed": 8211688
     },
     {
       "cycle": 9,
-      "heapUsed": 8195440
+      "heapUsed": 8213928
     },
     {
       "cycle": 10,
-      "heapUsed": 8212504
+      "heapUsed": 8230984
     },
     {
       "cycle": 11,
-      "heapUsed": 8215016
+      "heapUsed": 8233496
     },
     {
       "cycle": 12,
-      "heapUsed": 8216616
+      "heapUsed": 8235064
     },
     {
       "cycle": 13,
-      "heapUsed": 8218216
+      "heapUsed": 8236632
     },
     {
       "cycle": 14,
-      "heapUsed": 8219816
+      "heapUsed": 8238200
     },
     {
       "cycle": 15,
-      "heapUsed": 8230896
+      "heapUsed": 8247944
     },
     {
       "cycle": 16,
-      "heapUsed": 8232528
+      "heapUsed": 8249544
     },
     {
       "cycle": 17,
-      "heapUsed": 8234272
+      "heapUsed": 8251256
     },
     {
       "cycle": 18,
-      "heapUsed": 8235888
+      "heapUsed": 8252840
     },
     {
       "cycle": 19,
-      "heapUsed": 8237864
+      "heapUsed": 8254784
     },
     {
       "cycle": 20,
-      "heapUsed": 8239480
+      "heapUsed": 8256368
     },
     {
       "cycle": 21,
-      "heapUsed": 8241096
+      "heapUsed": 8257952
     },
     {
       "cycle": 22,
-      "heapUsed": 8242712
+      "heapUsed": 8259536
     },
     {
       "cycle": 23,
-      "heapUsed": 8244328
+      "heapUsed": 8261120
     },
     {
       "cycle": 24,
-      "heapUsed": 8245944
+      "heapUsed": 8262704
     },
     {
       "cycle": 25,
-      "heapUsed": 8247560
+      "heapUsed": 8264288
     },
     {
       "cycle": 26,
-      "heapUsed": 8249176
+      "heapUsed": 8265872
     },
     {
       "cycle": 27,
-      "heapUsed": 8250792
+      "heapUsed": 8267456
     },
     {
       "cycle": 28,
-      "heapUsed": 8252408
+      "heapUsed": 8269040
     },
     {
       "cycle": 29,
-      "heapUsed": 8254024
+      "heapUsed": 8270624
     },
     {
       "cycle": 30,
-      "heapUsed": 8255640
+      "heapUsed": 8272208
     },
     {
       "cycle": 31,
-      "heapUsed": 8257256
+      "heapUsed": 8273792
     },
     {
       "cycle": 32,
-      "heapUsed": 8258872
+      "heapUsed": 8275376
     },
     {
       "cycle": 33,
-      "heapUsed": 8260488
+      "heapUsed": 8276960
     },
     {
       "cycle": 34,
-      "heapUsed": 8262104
+      "heapUsed": 8278544
     },
     {
       "cycle": 35,
-      "heapUsed": 8263720
+      "heapUsed": 8280128
     },
     {
       "cycle": 36,
-      "heapUsed": 8265336
+      "heapUsed": 8281712
     },
     {
       "cycle": 37,
-      "heapUsed": 8266952
+      "heapUsed": 8283296
     },
     {
       "cycle": 38,
-      "heapUsed": 8268568
+      "heapUsed": 8284880
     },
     {
       "cycle": 39,
-      "heapUsed": 8270184
+      "heapUsed": 8286464
     },
     {
       "cycle": 40,
-      "heapUsed": 8271800
+      "heapUsed": 8288048
     }
   ],
   "stable": true,
-  "heapDeltaPct": 1.5354360858406852,
+  "heapDeltaPct": 1.536963055072958,
   "notes": [
     "window not present: script should be executed in browser/electron dev context via Playwright or manual.",
     "__metroDebug not found: ensure MetroStage mounted (open UI) before running.",

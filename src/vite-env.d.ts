@@ -1,5 +1,22 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly DEV: boolean;
+  readonly PROD: boolean;
+  readonly MODE: string;
+  readonly BASE_URL: string;
+  readonly FORCE_SOFTWARE_RENDERING?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+  readonly hot?: any;
+}
+
+declare module 'pixi.js' {
+  export * from 'pixi.js';
+}
+
 declare global {
   interface Window {
     electronAPI?: {

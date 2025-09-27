@@ -205,7 +205,7 @@ class AuditLogger {
   /**
    * Get recent audit events
    */
-  getRecentEvents(limit = 100): AuditEvent[] {
+  getRecentEvents(_limit = 100): AuditEvent[] {
     // Handled by main process - return empty array for renderer
     return [];
   }

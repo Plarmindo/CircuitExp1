@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -50,25 +50,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
   const [realTimeMonitoring, setRealTimeMonitoring] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (realTimeMonitoring && isVisible) {
-      intervalRef.current = setInterval(() => {
-        collectMetrics();
-      }, 2000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [realTimeMonitoring, isVisible]);
-
-  const collectMetrics = async () => {
+  const collectMetrics = useCallback(async () => {
     try {
       // Get performance data from Electron main process
       const performanceData = await window.electronAPI?.getPerformanceMetrics?.();
@@ -145,7 +127,25 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
     }
 
     setAlerts((prev) => [...newAlerts, ...prev].slice(-10));
-  };
+  }, []);
+
+  useEffect(() => {
+    if (realTimeMonitoring && isVisible) {
+      intervalRef.current = setInterval(() => {
+        collectMetrics();
+      }, 2000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [realTimeMonitoring, isVisible, collectMetrics]);
 
   const getLatestMetric = () => {
     return (

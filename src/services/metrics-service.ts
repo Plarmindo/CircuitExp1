@@ -5,9 +5,9 @@
 import { createLogger } from '../logger/central-logger';
 // Simple browser-compatible EventEmitter for renderer process
 class BrowserEventEmitter {
-  private listeners: Map<string, Array<(...args: any[]) => void>> = new Map();
+  private listeners: Map<string, Array<(...args: unknown[]) => void>> = new Map();
 
-  on(event: string, listener: (...args: any[]) => void): this {
+  on(event: string, listener: (...args: unknown[]) => void): this {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
@@ -15,14 +15,14 @@ class BrowserEventEmitter {
     return this;
   }
 
-  emit(event: string, ...args: any[]): boolean {
+  emit(event: string, ...args: unknown[]): boolean {
     const listeners = this.listeners.get(event);
     if (!listeners) return false;
     listeners.forEach((listener) => listener(...args));
     return true;
   }
 
-  off(event: string, listener: (...args: any[]) => void): this {
+  off(event: string, listener: (...args: unknown[]) => void): this {
     const listeners = this.listeners.get(event);
     if (listeners) {
       const index = listeners.indexOf(listener);
@@ -144,7 +144,7 @@ class MetricsService extends EventEmitter {
       if (result.status !== 'healthy') {
         log.warn('Health check failed', { name, status: result.status, message: result.message });
       }
-    } catch (error) {
+    } catch {
       const failedCheck: HealthCheck = {
         name,
         status: 'unhealthy',
@@ -249,7 +249,7 @@ class MetricsService extends EventEmitter {
           message: 'Filesystem check skipped in renderer',
           lastCheck: Date.now(),
         };
-      } catch (error) {
+      } catch {
         return {
           name: 'filesystem',
           status: 'unhealthy',

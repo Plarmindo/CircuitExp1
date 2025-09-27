@@ -1,7 +1,7 @@
-import * as PIXI from 'pixi.js';
+import type { Application } from 'pixi.js';
 
 export interface InteractionInitParams {
-  app: PIXI.Application;
+  app: Application;
   scaleRef: { current: number };
   draggingRef: { current: boolean };
   lastPointerRef: { current: { x: number; y: number } | null };
@@ -72,7 +72,7 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
     // Ensure world coordinates are finite
     if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
 
-    let newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
+    const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
     if (!Number.isFinite(newScale) || newScale <= 0) return;
 
     scaleRef.current = newScale;
@@ -188,7 +188,7 @@ export function initInteractions(p: InteractionInitParams): InteractionAPI {
     // Ensure scale calculations are finite
     if (!Number.isFinite(sx) || !Number.isFinite(sy)) return;
 
-    let newScale = Math.min(Math.max(0.2, Math.min(sx, sy)), 2.5);
+    const newScale = Math.min(Math.max(0.2, Math.min(sx, sy)), 2.5);
     if (!Number.isFinite(newScale) || newScale <= 0) return;
 
     scaleRef.current = newScale;

@@ -24,26 +24,54 @@ const SECURITY_CONSTANTS = {
   
   // Forbidden file patterns
   FORBIDDEN_PATTERNS: [
-    /\.(exe|dll|bat|cmd|sh|bin)$/i,
+    /\.(exe|dll|bat|cmd|sh|bin|msi|com|scr|pif|vbs|js|jar)$/i,
     /^\./, // Hidden files
     /node_modules/i,
-    /\.git/i
+    /\.git/i,
+    /\.env/i, // Environment files
+    /config/i,
+    /password/i,
+    /secret/i,
+    /key/i,
+    /\.pem$/i,
+    /\.key$/i,
+    /\.crt$/i,
+    /\.p12$/i,
+    /\.pfx$/i
   ],
   
-  // Content Security Policy for production
+  // Content Security Policy for production (hardened)
   CSP_PRODUCTION: [
     "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self'",
+    "script-src 'self' 'nonce-{nonce}'",
+    "style-src 'self' 'nonce-{nonce}'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'none'",
     "object-src 'none'",
-    "media-src 'none'"
+    "media-src 'none'",
+    "worker-src 'none'",
+    "manifest-src 'self'",
+    "upgrade-insecure-requests",
+    "block-all-mixed-content"
   ].join('; '),
+  
+  // Additional security headers
+  ADDITIONAL_HEADERS: {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'X-XSS-Protection': '1; mode=block',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+    'X-Permitted-Cross-Domain-Policies': 'none',
+    'X-DNS-Prefetch-Control': 'off',
+    'X-Download-Options': 'noopen',
+    'X-Robots-Tag': 'noindex, nofollow'
+  },
   
   // Development CSP (more permissive)
   CSP_DEVELOPMENT: [
@@ -162,14 +190,124 @@ class SecurityValidator {
   }
 
   static getSecurityHeaders(isDevelopment = false) {
-    return {
-      'Content-Security-Policy': isDevelopment ? SECURITY_CONSTANTS.CSP_DEVELOPMENT : SECURITY_CONSTANTS.CSP_PRODUCTION,
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
-      'X-XSS-Protection': '1; mode=block',
-      'Referrer-Policy': 'no-referrer',
-      'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
-    };
+    const headers = isDevelopment 
+      ? {
+          'Content-Security-Policy': SECURITY_CONSTANTS.CSP_DEVELOPMENT,
+          ...SECURITY_CONSTANTS.ADDITIONAL_HEADERS
+        }
+      : {
+          'Content-Security-Policy': SECURITY_CONSTANTS.CSP_PRODUCTION,
+          ...SECURITY_CONSTANTS.ADDITIONAL_HEADERS
+        };
+
+    // Remove HSTS for development
+    if (isDevelopment) {
+      delete headers['Strict-Transport-Security'];
+    }
+
+    return headers;
+  }
+
+  /**
+   * Enhanced file validation with content scanning
+   */
+  static validateFileContent(content, filePath) {
+    if (!content || typeof content !== 'string') {
+      return { valid: false, error: 'Invalid file content' };
+    }
+
+    // Check for suspicious patterns in file content
+    const suspiciousPatterns = [
+      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+      /javascript:/gi,
+      /eval\s*\(/gi,
+      /Function\s*\(/gi,
+      /document\.write\s*\(/gi,
+      /innerHTML\s*=/gi,
+      /\.innerText\s*=/gi,
+      /\.outerHTML\s*=/gi,
+      /window\.location\s*=/gi,
+      /location\.href\s*=/gi,
+      /window\.open\s*\(/gi,
+      /XMLHttpRequest\s*\(/gi,
+      /fetch\s*\(/gi,
+      /\.postMessage\s*\(/gi,
+      /\.addEventListener\s*\(/gi,
+      /\.attachEvent\s*\(/gi
+    ];
+
+    for (const pattern of suspiciousPatterns) {
+      if (pattern.test(content)) {
+        return { 
+          valid: false, 
+          error: 'Suspicious content detected',
+          pattern: pattern.toString()
+        };
+      }
+    }
+
+    // Check for overly large content
+    if (content.length > 1024 * 1024) { // 1MB limit for text content
+      return { valid: false, error: 'Content too large' };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Validate file upload with comprehensive checks
+   */
+  static validateFileUpload(file, allowedExtensions = SECURITY_CONSTANTS.ALLOWED_EXTENSIONS) {
+    if (!file) {
+      return { valid: false, error: 'No file provided' };
+    }
+
+    const { name, size, type } = file;
+
+    // Validate file name
+    const nameValidation = this.validateFilePath(name);
+    if (!nameValidation.valid) {
+      return nameValidation;
+    }
+
+    // Validate extension
+    const ext = path.extname(name).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      return { valid: false, error: 'File extension not allowed' };
+    }
+
+    // Validate size
+    const sizeValidation = this.validateFileSize(size);
+    if (!sizeValidation.valid) {
+      return sizeValidation;
+    }
+
+    // Validate MIME type
+    const allowedMimeTypes = [
+      'text/plain',
+      'text/csv',
+      'application/json',
+      'text/xml',
+      'application/xml',
+      'text/markdown',
+      'text/html',
+      'text/css',
+      'application/javascript',
+      'text/typescript'
+    ];
+
+    if (!allowedMimeTypes.includes(type) && type !== '') {
+      return { valid: false, error: 'MIME type not allowed' };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Generate security nonce for CSP
+   */
+  static generateNonce() {
+    return require('crypto').randomBytes(16).toString('base64');
   }
 
   static validateFileSize(size) {
@@ -250,9 +388,19 @@ class SecurityLogger {
   }
 }
 
+// Create SecurityConfig namespace for backward compatibility with tests
+const SecurityConfig = {
+  validateFilePath: SecurityValidator.validateFilePath.bind(SecurityValidator),
+  validateFileSize: SecurityValidator.validateFileSize.bind(SecurityValidator),
+  validateFileContent: SecurityValidator.validateFileContent.bind(SecurityValidator),
+  validateFileUpload: SecurityValidator.validateFileUpload.bind(SecurityValidator),
+  getSecurityHeaders: SecurityValidator.getSecurityHeaders.bind(SecurityValidator)
+};
+
 module.exports = {
   SECURITY_CONSTANTS,
   SecurityValidator,
+  SecurityConfig,
   RateLimiter,
   SecurityLogger
 };

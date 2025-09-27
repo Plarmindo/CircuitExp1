@@ -128,7 +128,7 @@ export class ReviewController {
       const data = validationResult.data as any;
       const { code, language, context } = data;
       const model = data.model || 'claude-3-sonnet-20240229';
-      const temperature = data.temperature || 0.3;
+      const _temperature = data.temperature || 0.3;
 
       this.logger.info('Quick code review request', {
         requestId,
@@ -213,7 +213,7 @@ export class ReviewController {
       const data = validationResult.data as any;
       const { code, language, context } = data;
       const model = data.model || 'claude-3-sonnet-20240229';
-      const temperature = data.temperature || 0.3;
+      const _temperature = data.temperature || 0.3;
 
       this.logger.info('Detailed code review request', {
         requestId,

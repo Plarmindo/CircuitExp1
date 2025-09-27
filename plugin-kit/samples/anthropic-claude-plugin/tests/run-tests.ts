@@ -3,7 +3,6 @@
  * Comprehensive test runner with debugging capabilities
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { PluginTestRunner, TestSuite } from '../../../src/testing/plugin-test-utils';
 
@@ -221,7 +220,7 @@ async function runBenchmark() {
           const initialMemory = process.memoryUsage().heapUsed;
 
           // Simulate memory usage
-          const largeArray = new Array(1000).fill('test');
+          const _largeArray = new Array(1000).fill('test');
           await new Promise((resolve) => setTimeout(resolve, 100));
 
           const finalMemory = process.memoryUsage().heapUsed;

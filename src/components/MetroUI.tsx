@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import ResponsiveMetroStage from './ResponsiveMetroStage';
 import { MiniMap } from './MiniMap';
 import { setTheme, light, dark } from '../visualization/style-tokens';
 import {
@@ -18,7 +17,6 @@ import { PIIDetector, defaultPIIConfig } from '../services/pii-detector';
 import { RateLimiter, defaultRateLimitConfig } from '../services/rate-limiter';
 import { createGraphAdapter } from '../visualization/graph-adapter';
 import { layoutHierarchicalV2 } from '../visualization/layout-v2';
-import type { LayoutPointV2 } from '../visualization/layout-v2';
 import { ModeProvider, useMode } from '../visualization/modes/ModeProvider';
 import { ModeRegistry } from '../visualization/modes/mode-registry';
 import { SettingsProvider } from '../settings/SettingsProvider';
@@ -62,7 +60,7 @@ interface SelectedNodeInfo {
   children?: number;
 }
 
-const ModeRenderer: React.FC<{ theme: any; layout: any[]; routes: any[]; onNodeClick?: (p: string)=>void; onNodeHover?: (p: string|null)=>void; onLayoutUpdate?: (l: any[])=>void; debug?: boolean; }> = ({ theme, layout, routes, onNodeClick, onNodeHover, onLayoutUpdate, debug }) => {
+const ModeRenderer: React.FC<{ theme: unknown; layout: unknown[]; routes: unknown[]; onNodeClick?: (p: string)=>void; onNodeHover?: (p: string|null)=>void; onLayoutUpdate?: (l: unknown[])=>void; debug?: boolean; }> = ({ theme, layout, routes, onNodeClick, onNodeHover, onLayoutUpdate, debug }) => {
   const { selected } = useMode();
   const [Comp, setComp] = React.useState<React.ComponentType<any> | null>(null);
 
@@ -122,8 +120,8 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   const [loadingRecent, setLoadingRecent] = useState(false);
   const [settings, setSettings] = useState<UserSettings | null>(null);
 
-  const [piiDetector] = useState(() => new PIIDetector(defaultPIIConfig));
-  const [rateLimiter] = useState(() => new RateLimiter(defaultRateLimitConfig));
+  const [_piiDetector] = useState(() => new PIIDetector(defaultPIIConfig));
+  const [_rateLimiter] = useState(() => new RateLimiter(defaultRateLimitConfig));
   // Override manual de profundidade (controle de LOD manual). null = automático via zoom.
   const [depthOverride, setDepthOverride] = useState<number | null>(null);
   // Banner dev inicial quando não há scan ativo (auxilia percepção de core pronto)
@@ -226,7 +224,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   const liveRegionRef = useRef<HTMLDivElement | null>(null);
 
   // Handle node click events from the visualization
-  const handleNodeClick = useCallback(
+  const _handleNodeClick = useCallback(
     (nodePath: string) => {
       const node = nodes.find((n) => n.path === nodePath);
       if (node) {
@@ -284,7 +282,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   );
 
   // Handle node double-click events from the visualization
-  const handleNodeDoubleClick = useCallback(
+  const _handleNodeDoubleClick = useCallback(
     (nodePath: string) => {
       if (!nodePath) {
         return;
@@ -308,27 +306,27 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   );
 
   // Handle node context-menu (right-click) events from the visualization
-  const handleNodeContextMenu = useCallback((nodePath: string, x: number, y: number) => {
+  const _handleNodeContextMenu = useCallback((nodePath: string, x: number, y: number) => {
     if (!nodePath) return;
     setCtxMenu({ visible: true, x, y, path: nodePath });
   }, []);
 
   // Handle clicks on the background of the visualization (deselect any selection)
-  const handleBackgroundClick = useCallback(() => {
+  const _handleBackgroundClick = useCallback(() => {
     setSelectedNode(null);
     setCtxMenu(null);
     window.dispatchEvent(new Event('metro:backgroundClick'));
   }, []);
 
   // Handle context-menu on the background (could show a generic menu)
-  const handleBackgroundContextMenu = useCallback((x: number, y: number) => {
+  const _handleBackgroundContextMenu = useCallback((x: number, y: number) => {
     // For now, just close any existing context menu; future: open generic menu
     setCtxMenu(null);
     window.dispatchEvent(new CustomEvent('metro:backgroundContextMenu', { detail: { x, y } }));
   }, []);
 
   // Handle layout update events from the visualization
-  const handleLayoutUpdate = useCallback((layoutInfo: any) => {
+  const _handleLayoutUpdate = useCallback((layoutInfo: unknown) => {
     if (layoutInfo && layoutInfo.stats) {
       setLodStats(layoutInfo.stats);
     }
@@ -370,9 +368,9 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
 
     // Listen for scan errors from the main process and internal bus
     const offScanError = (() => {
-      const handler = (error: any) => {
+      const handler = (error: unknown) => {
         if (error.scanId === scanId || !scanId) {
-          const errorInfo = errorReporter.reportError(
+          const _errorInfo = errorReporter.reportError(
             new Error(error.userMessage || error.error),
             'scan-operation'
           );
@@ -381,15 +379,25 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
 
       const offElectron = (
         (window as unknown as {
-          electronAPI?: { onScanError?: (cb: (e: any) => void) => () => void };
+          electronAPI?: { onScanError?: (cb: (e: unknown) => void) => () => void };
         })?.electronAPI?.onScanError?.(handler)
       ) || (() => {});
 
       const offBus = UnifiedNavigation.events.onScanError(handler);
 
       return () => {
-        try { offElectron(); } catch {}
-        try { offBus(); } catch {}
+        try {
+          offElectron();
+        } catch (error) {
+          // Ignore cleanup errors
+          console.warn('Failed to cleanup electron listener:', error);
+        }
+        try {
+          offBus();
+        } catch (error) {
+          // Ignore cleanup errors
+          console.warn('Failed to cleanup bus listener:', error);
+        }
       };
     })();
 
@@ -399,7 +407,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
       offUpdated();
       offScanError();
     };
-  }, [scanId]);
+  }, [scanId, currentTheme]);
 
   // Theme switcher
   const toggleTheme = () => {
@@ -432,7 +440,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
         'folder-selection-failed',
         error instanceof Error ? error.message : 'Unknown error'
       );
-      const errorInfo = errorReporter.reportError(
+      const _errorInfo = errorReporter.reportError(
         error instanceof Error ? error : new Error('Failed to select folder'),
         'folder-selection'
       );
@@ -446,7 +454,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
       }
     } catch (error) {
       console.error('cancelScan failed', error);
-      const errorInfo = errorReporter.reportError(
+      const _errorInfo = errorReporter.reportError(
         error instanceof Error ? error : new Error('Failed to cancel scan'),
         'scan-cancel'
       );
@@ -458,7 +466,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
       await UnifiedNavigation.scan.start('C:/');
     } catch (error) {
       console.error('startScan dev failed', error);
-      const errorInfo = errorReporter.reportError(
+      const _errorInfo = errorReporter.reportError(
         error instanceof Error ? error : new Error('Failed to start scan'),
         'scan-start'
       );
@@ -900,7 +908,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               title="Debug: log adapter nodes"
               onClick={() => {
                 try {
-                  const dbg: any = (window as unknown as { __metroDebug?: unknown }).__metroDebug;
+                  const dbg: unknown = (window as unknown as { __metroDebug?: unknown }).__metroDebug;
                   if (dbg?.getNodes) {
                     const nodes = dbg.getNodes();
                     console.log('[Debug] getNodes count=', nodes.length, nodes.slice(0, 5));
@@ -1172,7 +1180,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
                           'recent-scans-management-failed',
                           error instanceof Error ? error.message : 'Unknown error'
                         );
-                        const errorInfo = errorReporter.reportError(
+                        const _errorInfo = errorReporter.reportError(
                           error instanceof Error
                             ? error
                             : new Error('Failed to clear recent scans'),
@@ -1192,22 +1200,36 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
         {/* Main Content */}
         <main className="metro-main" id="mainContent" role="main" aria-label="Visualization Stage">
           {/* Toolbar */}
-          <div className="metro-toolbar">
+          <div className="metro-toolbar" data-testid="metro-toolbar">
             {/* Mode Switcher */}
             <div className="toolbar-section" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <label style={{ fontSize: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 Mode
-                <select
-                  value={selectedMode}
-                  onChange={(e) => setMode(e.target.value as any)}
+                <div
+                  role="group"
                   aria-label="Visualization Mode"
-                  style={{ padding: '4px 6px', border: '1px solid #ccc', borderRadius: 4, fontSize: 12 }}
+                  style={{ display: 'flex', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, overflow: 'hidden' }}
                 >
-                  {definitions.map((d) => (
-                    <option key={d.id} value={d.id}>{d.label}</option>
+                  {definitions.map((d, idx) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setMode(d.id as any)}
+                      className="tool-btn"
+                      aria-pressed={selectedMode === d.id}
+                      title={d.label}
+                      style={{
+                        padding: '4px 8px',
+                        background: selectedMode === d.id ? 'rgba(59,130,246,0.15)' : 'transparent',
+                        borderRight: idx < definitions.length - 1 ? '1px solid var(--border, #e5e7eb)' : 'none',
+                        fontSize: 12,
+                      }}
+                    >
+                      {d.label}
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+              </div>
             </div>
             <div className="toolbar-section" role="toolbar" aria-label="Visualization tools">
               <button
@@ -1383,7 +1405,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               routes={routes}
               onNodeClick={(p)=>handleNodeSelect({ path: p, name: p.split('/').pop() || p, type: 'node' })}
               onNodeHover={handleNodeHover}
-              onLayoutUpdate={(l)=>{/* optional: capture layout updates */}}
+              onLayoutUpdate={(_l)=>{/* optional: capture layout updates */}}
               debug={false}
             />
           </div>
@@ -1576,3 +1598,4 @@ export const MetroUI: React.FC<MetroUIProps> = (props) => (
 );
 
 export default MetroUI;
+

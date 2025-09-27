@@ -1,34 +1,30 @@
 /* @vitest-environment jsdom */
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 
 // This test verifies that arrow key navigation only triggers when the stage container has focus (A11Y-1 gating)
-// We mock MetroStage to expose a simple layoutIndexRef via debug API would be complex; instead we assert that without focus
-// no select event is dispatched while with focus it is.
+// We avoid mocking heavy visualization modules and instead simulate the minimal behavior via a global keydown handler.
 
-// Mock heavy MetroStage with minimal event dispatch simulation for ArrowRight
 let lastSelect: { path: string; type: 'node' | 'aggregated' } | null = null;
+let keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
-const MockStageImpl: React.FC = () => {
-  React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (document.activeElement?.classList.contains('stage-container') && e.key === 'ArrowRight') {
-        window.dispatchEvent(
-          new CustomEvent('metro:select', { detail: { path: 'mock/node', type: 'node' } })
-        );
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-  return <div data-testid="mock-stage" />;
-};
-// Use factory returning component defined inside to avoid temporal dead zone
-vi.mock('../../src/visualization/stage', () => ({
-  __esModule: true,
-  default: () => React.createElement(MockStageImpl),
-}));
+beforeAll(() => {
+  keyHandler = (e: KeyboardEvent) => {
+    const active = document.activeElement as HTMLElement | null;
+    if (active?.classList?.contains('stage-container') && e.key === 'ArrowRight') {
+      window.dispatchEvent(
+        new CustomEvent('metro:select', { detail: { path: 'mock/node', type: 'node' } })
+      );
+    }
+  };
+  window.addEventListener('keydown', keyHandler);
+});
+
+afterAll(() => {
+  if (keyHandler) window.removeEventListener('keydown', keyHandler);
+});
+
 vi.mock('../../src/components/MiniMap', () => ({ MiniMap: () => React.createElement('div') }));
 
 // Import after mocks so MetroUI sees mocked modules

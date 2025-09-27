@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Table, Space, Tag, Switch, Modal, message, Popconfirm } from 'antd';
-import { PlusOutlined, ImportOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Card, Button, Table, Space, Tag, Switch, Modal as _Modal, message, Popconfirm, Typography } from 'antd';
+import { PlusOutlined as _PlusOutlined, ImportOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { PluginManager } from '../../plugins/core/PluginSystem';
 import { PluginImportModal } from './PluginImportModal';
 import { ImportResult } from '../../plugins/import/ZipPluginImporter';
@@ -114,7 +114,7 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
       render: (text: string, record: PluginInfo) => (
         <Space direction="vertical" size={0}>
           <strong>{text}</strong>
-          <Text type="secondary">{record.id}</Text>
+          <Typography.Text type="secondary">{record.id}</Typography.Text>
         </Space>
       ),
     },

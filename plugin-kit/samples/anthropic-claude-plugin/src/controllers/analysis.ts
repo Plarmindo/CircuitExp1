@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import {
   AIService,
-  AnalysisRequest,
-  BugDetectionRequest,
-  TestGenerationRequest,
-  DocumentationRequest,
+  AnalysisRequest as _AnalysisRequest,
+  BugDetectionRequest as _BugDetectionRequest,
+  TestGenerationRequest as _TestGenerationRequest,
+  DocumentationRequest as _DocumentationRequest,
 } from '../services/ai';
 import { ValidationService } from '../services/validation';
 import { MetricsService } from '../services/metrics';

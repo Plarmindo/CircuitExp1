@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import * as PIXI from 'pixi.js';
 import { createGraphAdapter } from './graph-adapter';
 import { layoutHierarchicalV2 } from './layout-v2';
@@ -141,4 +142,9 @@ export const MetroStageSample: React.FC<MetroStageSampleProps> = ({
       <div ref={containerRef} style={{ width, height }} />
     </div>
   );
+};
+
+MetroStageSample.propTypes = {
+  width: PropTypes.number,
+  height: PropTypes.number,
 };

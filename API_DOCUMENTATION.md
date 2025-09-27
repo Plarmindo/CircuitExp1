@@ -3,7 +3,9 @@
 ## Overview
 
 CircuitExp1 is a secure, high-performance file system visualization tool built with Electron and React. This
-documentation covers the main APIs, security features, and integration points.
+documentation covers the main APIs, security features, code signing capabilities, and integration points.
+
+**Production Status**: ✅ Ready for production deployment with comprehensive security hardening and code signing.
 
 ## Architecture
 
@@ -335,10 +337,78 @@ const detector = new PIIDetector({
 });
 ```
 
-## Support
+## Code Signing & Build APIs
+
+### Code Signing Configuration
+
+```typescript
+interface CodeSigningConfig {
+  windows: {
+    certificatePath: string;
+    certificatePassword: string;
+    timestampUrl: string;
+    signtoolPath?: string;
+  };
+  macos: {
+    identity: string;
+    appleId: string;
+    appleIdPassword: string;
+    teamId: string;
+  };
+  linux: {
+    gpgKeyId: string;
+    gpgPassphrase: string;
+  };
+}
+```
+
+### Build Scripts
+
+```bash
+# Setup code signing environment
+npm run setup:code-signing
+
+# Build signed packages for all platforms
+npm run build:signed
+
+# Platform-specific signed builds
+npm run dist:win:signed
+npm run dist:mac:signed
+npm run dist:linux:signed
+
+# Verify signatures
+npm run verify:signatures
+```
+
+### Security Verification API
+
+```typescript
+interface SignatureVerification {
+  platform: 'windows' | 'macos' | 'linux';
+  filePath: string;
+  isValid: boolean;
+  signerInfo: {
+    name: string;
+    timestamp: string;
+    algorithm: string;
+  };
+  errors?: string[];
+}
+
+// Verify signatures programmatically
+const verifySignature = async (filePath: string): Promise<SignatureVerification> => {
+  // Implementation in scripts/verify-signatures.js
+};
+```
+
+## Support & Resources
 
 ### 1. Documentation
 
+- [Production Deployment Guide](./PRODUCTION_DEPLOYMENT.md)
+- [Security Hardening Guide](./SECURITY_HARDENING_GUIDE.md)
+- [Plugin Development Kit](./plugin-kit/README.md)
+- [Code Signing Setup Guide](./.env.code-signing.template)
 - [Security Guide](./SECURITY.md)
 - [Performance Guide](./PERFORMANCE.md)
 - [Troubleshooting](./TROUBLESHOOTING.md)
@@ -352,6 +422,7 @@ const detector = new PIIDetector({
 
 - [Security Policy](./SECURITY.md)
 - [Responsible Disclosure](./SECURITY.md#reporting-vulnerabilities)
+- [Code Signing Verification](./scripts/verify-signatures.js)
 
 ---
 

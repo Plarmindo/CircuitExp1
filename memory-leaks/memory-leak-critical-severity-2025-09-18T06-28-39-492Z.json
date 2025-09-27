@@ -1,0 +1,166 @@
+{
+  "testName": "critical-severity",
+  "timestamp": 1758176919492,
+  "config": {
+    "threshold": 1,
+    "iterations": 10,
+    "warmupIterations": 1,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 2
+  },
+  "result": {
+    "leakDetected": true,
+    "leakRate": 0.32406463623046877,
+    "totalGrowth": 3.2406463623046875,
+    "snapshots": [
+      {
+        "timestamp": 1758176919472,
+        "heapUsed": 13175752,
+        "heapTotal": 32591872,
+        "external": 3890979,
+        "arrayBuffers": 87128,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176919476,
+        "heapUsed": 13843264,
+        "heapTotal": 33058816,
+        "external": 3891417,
+        "arrayBuffers": 88545,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176919481,
+        "heapUsed": 14501592,
+        "heapTotal": 33472512,
+        "external": 3891672,
+        "arrayBuffers": 89354,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176919485,
+        "heapUsed": 15288432,
+        "heapTotal": 34086912,
+        "external": 3891927,
+        "arrayBuffers": 90164,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176919488,
+        "heapUsed": 16380064,
+        "heapTotal": 35008512,
+        "external": 3892182,
+        "arrayBuffers": 90974,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176919491,
+        "heapUsed": 16557400,
+        "heapTotal": 35008512,
+        "external": 3892437,
+        "arrayBuffers": 91782,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176919491,
+        "heapUsed": 16573816,
+        "heapTotal": 35008512,
+        "external": 3892692,
+        "arrayBuffers": 92591,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Consistent memory leak detected - check for unclosed resources",
+        "Check timers and intervals for potential leaks",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "Memory leak detected in critical-severity: 3.24MB total growth (0.3241MB/iteration)",
+      "details": [
+        "Test: critical-severity",
+        "Total memory growth: 3.24MB",
+        "Leak rate: 0.3241MB per iteration",
+        "Iterations: 10",
+        "Severity: LOW",
+        "Snapshots: 7"
+      ],
+      "severity": "low"
+    }
+  }
+}

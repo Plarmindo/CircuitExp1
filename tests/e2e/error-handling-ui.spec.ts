@@ -16,7 +16,7 @@ test.describe('User-Friendly Error Handling', () => {
     });
 
     // Check that error banner appears
-    const errorBanner = await page.locator('.error-banner').first();
+    const errorBanner = page.locator('.error-banner').first();
     await expect(errorBanner).toBeVisible();
 
     // Check error title and message
@@ -44,7 +44,7 @@ test.describe('User-Friendly Error Handling', () => {
       );
     });
 
-    const errorBanner = await page.locator('.error-banner').first();
+    const errorBanner = page.locator('.error-banner').first();
     await expect(errorBanner).toBeVisible();
 
     await expect(errorBanner.locator('.error-title')).toContainText('Directory Not Found');
@@ -67,7 +67,7 @@ test.describe('User-Friendly Error Handling', () => {
       );
     });
 
-    const errorBanner = await page.locator('.error-banner').first();
+    const errorBanner = page.locator('.error-banner').first();
     await expect(errorBanner).toBeVisible();
 
     await expect(errorBanner.locator('.error-title')).toContainText('Disk Space Low');
@@ -85,7 +85,7 @@ test.describe('User-Friendly Error Handling', () => {
       );
     });
 
-    const errorBanner = await page.locator('.error-banner').first();
+    const errorBanner = page.locator('.error-banner').first();
     const detailsToggle = errorBanner.locator('button:has-text("Show details")');
     await expect(detailsToggle).toBeVisible();
 
@@ -95,7 +95,7 @@ test.describe('User-Friendly Error Handling', () => {
 
     // Click to hide details
     await detailsToggle.click();
-    await expect(errorBanner.locator('.error-details')).not.toBeVisible();
+    await expect(errorBanner.locator('.error-details')).toBeHidden();
   });
 
   test('error can be dismissed', async ({ page }) => {
@@ -107,13 +107,13 @@ test.describe('User-Friendly Error Handling', () => {
       );
     });
 
-    const errorBanner = await page.locator('.error-banner').first();
+    const errorBanner = page.locator('.error-banner').first();
     await expect(errorBanner).toBeVisible();
 
     const dismissButton = errorBanner.locator('button:has-text("Dismiss")');
     await dismissButton.click();
 
-    await expect(errorBanner).not.toBeVisible();
+    await expect(errorBanner).toBeHidden();
   });
 
   test('multiple errors stack correctly', async ({ page }) => {
@@ -177,7 +177,7 @@ test.describe('User-Friendly Error Handling', () => {
       );
     });
 
-    const errorBanner = await page.locator('.error-banner').first();
+    const errorBanner = page.locator('.error-banner').first();
     await expect(errorBanner).toBeVisible();
     await expect(errorBanner.locator('.error-title')).toContainText('Access Denied');
   });

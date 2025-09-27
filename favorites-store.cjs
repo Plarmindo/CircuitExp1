@@ -1,66 +1,94 @@
-// CORE-1 Favorites persistence module (CommonJS)
-// Provides simple JSON-backed list with corruption fallback + backup.
+// Simple favorites persistence store
 const fs = require('fs');
 const path = require('path');
 
-function createFavoritesStore(filePathOrFn) {
-  const resolvePath = () => (typeof filePathOrFn === 'function' ? filePathOrFn() : filePathOrFn);
+function createFavoritesStore(getFilePath) {
+  let favorites = [];
+  let filePath = null;
 
-  function ensureDirExists(fp) {
-    const dir = path.dirname(fp);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  }
-
-  function save(list) {
-    const fp = resolvePath();
-    ensureDirExists(fp);
-    try {
-      fs.writeFileSync(fp, JSON.stringify(list, null, 2), 'utf8');
-    } catch (e) {
-      console.error('[favorites-store] save failed', e.message);
+  function ensurePath() {
+    if (!filePath) {
+      filePath = getFilePath();
+      // Ensure directory exists
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     }
+    return filePath;
   }
 
   function load() {
-    const fp = resolvePath();
     try {
-      if (!fs.existsSync(fp)) return [];
-      const raw = fs.readFileSync(fp, 'utf8');
-      const data = JSON.parse(raw);
-      if (Array.isArray(data)) return data.filter(x => typeof x === 'string');
-      throw new Error('favorites not array');
-    } catch (err) {
-      // Corruption: backup original then reset file to []
-      try {
-        if (fs.existsSync(fp)) {
-          const bak = fp + '.corrupt-' + Date.now() + '.bak';
-            fs.copyFileSync(fp, bak);
-        }
-      } catch (e2) {
-        console.warn('[favorites-store] failed to backup corrupt file', e2.message);
+      const file = ensurePath();
+      if (fs.existsSync(file)) {
+        const data = fs.readFileSync(file, 'utf8');
+        favorites = JSON.parse(data) || [];
       }
-      save([]);
-      return [];
+    } catch (error) {
+      console.warn('[Favorites] Failed to load:', error.message);
+      favorites = [];
+    }
+    return favorites;
+  }
+
+  function save() {
+    try {
+      const file = ensurePath();
+      fs.writeFileSync(file, JSON.stringify(favorites, null, 2));
+    } catch (error) {
+      console.error('[Favorites] Failed to save:', error.message);
     }
   }
 
-  function list() { return load(); }
-  function add(p) {
-    if (typeof p !== 'string' || !p.trim()) throw new Error('path required');
-    const current = load();
-    if (!current.includes(p)) {
-      current.push(p);
-      save(current);
-    }
-    return current;
-  }
-  function remove(p) {
-    const next = load().filter(x => x !== p);
-    save(next);
-    return next;
+  function list() {
+    return [...favorites];
   }
 
-  return { list, add, remove, _load: load, _save: save, path: resolvePath };
+  function add(itemPath) {
+    if (typeof itemPath !== 'string' || !itemPath.trim()) {
+      return false;
+    }
+    
+    const normalizedPath = path.resolve(itemPath);
+    if (!favorites.includes(normalizedPath)) {
+      favorites.push(normalizedPath);
+      save();
+      return true;
+    }
+    return false;
+  }
+
+  function remove(itemPath) {
+    if (typeof itemPath !== 'string') {
+      return false;
+    }
+    
+    const normalizedPath = path.resolve(itemPath);
+    const index = favorites.indexOf(normalizedPath);
+    if (index >= 0) {
+      favorites.splice(index, 1);
+      save();
+      return true;
+    }
+    return false;
+  }
+
+  function clear() {
+    favorites = [];
+    save();
+    return [];
+  }
+
+  // Load on creation
+  load();
+
+  return {
+    list,
+    add,
+    remove,
+    clear
+  };
 }
 
 module.exports = { createFavoritesStore };

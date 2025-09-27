@@ -1,0 +1,149 @@
+{
+  "testName": "array-accumulation",
+  "timestamp": 1758177889537,
+  "config": {
+    "threshold": 1,
+    "iterations": 10,
+    "warmupIterations": 1,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 2
+  },
+  "result": {
+    "leakDetected": true,
+    "leakRate": 0.052301788330078126,
+    "totalGrowth": 0.5230178833007812,
+    "snapshots": [
+      {
+        "timestamp": 1758177889531,
+        "heapUsed": 14642616,
+        "heapTotal": 21295104,
+        "external": 3901297,
+        "arrayBuffers": 93106,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177889532,
+        "heapUsed": 14742520,
+        "heapTotal": 21295104,
+        "external": 3901775,
+        "arrayBuffers": 94525,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177889533,
+        "heapUsed": 14837896,
+        "heapTotal": 21295104,
+        "external": 3902030,
+        "arrayBuffers": 95335,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177889534,
+        "heapUsed": 14959704,
+        "heapTotal": 21295104,
+        "external": 3902285,
+        "arrayBuffers": 96145,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177889534,
+        "heapUsed": 14993208,
+        "heapTotal": 21295104,
+        "external": 3902540,
+        "arrayBuffers": 96955,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758177889535,
+        "heapUsed": 15191040,
+        "heapTotal": 21295104,
+        "external": 3902795,
+        "arrayBuffers": 97765,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Potential event listeners leak detected - review add/remove listener patterns",
+        "Potential timers leak detected - ensure intervals/timeouts are cleared",
+        "Check timers and intervals for potential leaks",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "Memory leak detected in array-accumulation: 0.52MB total growth (0.0523MB/iteration)",
+      "details": [
+        "Test: array-accumulation",
+        "Total memory growth: 0.52MB",
+        "Leak rate: 0.0523MB per iteration",
+        "Iterations: 10",
+        "Severity: LOW",
+        "Snapshots: 6"
+      ],
+      "severity": "low"
+    }
+  }
+}

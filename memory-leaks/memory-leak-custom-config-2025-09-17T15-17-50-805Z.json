@@ -1,0 +1,164 @@
+{
+  "testName": "custom-config",
+  "timestamp": 1758122270805,
+  "config": {
+    "threshold": 0.5,
+    "iterations": 5,
+    "warmupIterations": 1,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 1
+  },
+  "result": {
+    "leakDetected": false,
+    "leakRate": 0.02049102783203125,
+    "totalGrowth": 0.10245513916015625,
+    "snapshots": [
+      {
+        "timestamp": 1758122270709,
+        "heapUsed": 15151464,
+        "heapTotal": 22605824,
+        "external": 3896509,
+        "arrayBuffers": 141581,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758122270709,
+        "heapUsed": 15174144,
+        "heapTotal": 22605824,
+        "external": 3896945,
+        "arrayBuffers": 142993,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758122270709,
+        "heapUsed": 15191720,
+        "heapTotal": 22605824,
+        "external": 3897200,
+        "arrayBuffers": 143802,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758122270710,
+        "heapUsed": 15208536,
+        "heapTotal": 22605824,
+        "external": 3897455,
+        "arrayBuffers": 144611,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758122270804,
+        "heapUsed": 15225672,
+        "heapTotal": 22605824,
+        "external": 3897710,
+        "arrayBuffers": 145420,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758122270804,
+        "heapUsed": 15242488,
+        "heapTotal": 22605824,
+        "external": 3897965,
+        "arrayBuffers": 146229,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758122270805,
+        "heapUsed": 15258896,
+        "heapTotal": 22605824,
+        "external": 3898220,
+        "arrayBuffers": 147036,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "No memory leak detected in custom-config: 0.10MB total change",
+      "details": [
+        "Test: custom-config",
+        "Total memory growth: 0.10MB",
+        "Leak rate: 0.0205MB per iteration",
+        "Iterations: 5",
+        "Severity: LOW",
+        "Snapshots: 7"
+      ],
+      "severity": "low"
+    }
+  }
+}

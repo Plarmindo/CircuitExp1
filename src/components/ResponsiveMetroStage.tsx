@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { LayoutNodeLite, RouteCommand } from '../visualization/stage/types';
-
-// Dynamic import of MetroStage enables code splitting
-const LazyMetroStage = lazy(() => import('../visualization/stage'));
+import { MetroStage } from '../visualization/stage';
 
 interface ResponsiveMetroStageProps {
   layout?: LayoutNodeLite[];
@@ -10,7 +8,7 @@ interface ResponsiveMetroStageProps {
   onNodeClick?: (path: string) => void;
   onNodeHover?: (path: string | null) => void;
   onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
-  theme?: any;
+  theme?: unknown;
   debug?: boolean;
 }
 
@@ -77,21 +75,52 @@ const ResponsiveMetroStage: React.FC<ResponsiveMetroStageProps> = ({
     };
   }, []);
 
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Ignore when typing in inputs or editable content
+    const target = e.target as HTMLElement | null;
+    if (target) {
+      const tag = target.tagName;
+      const isEditable = target.getAttribute('contenteditable') === 'true';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || isEditable) return;
+    }
+    const k = e.key;
+    const withAccel = e.ctrlKey || e.metaKey;
+    if (k === '+' || k === '=' || (withAccel && (k === '+' || k === '='))) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('metro:zoomIn'));
+    } else if (k === '-' || (withAccel && k === '-')) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('metro:zoomOut'));
+    } else if (k === '0' && withAccel) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('metro:fit'));
+    }
+  };
+
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Suspense fallback={null}>
-        <LazyMetroStage
-          width={dimensions.width}
-          height={dimensions.height}
-          layout={layout}
-          routes={routes}
-          onNodeClick={onNodeClick}
-          onNodeHover={onNodeHover}
-          onLayoutUpdate={onLayoutUpdate}
-          theme={theme}
-          debug={debug}
-        />
-      </Suspense>
+    <div
+      ref={containerRef}
+      className="stage-container"
+      tabIndex={0}
+      style={{ width: '100%', height: '100%', position: 'relative', outline: 'none' }}
+      aria-label="Visualization Stage"
+      role="region"
+      onKeyDown={onKeyDown}
+    >
+      <MetroStage
+        width={dimensions.width}
+        height={dimensions.height}
+        layout={layout}
+        routes={routes}
+        onNodeClick={onNodeClick}
+        onNodeHover={onNodeHover}
+        onLayoutUpdate={onLayoutUpdate}
+        theme={theme}
+        debug={debug}
+      />
     </div>
   );
 };

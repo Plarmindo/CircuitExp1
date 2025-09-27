@@ -1,7 +1,9 @@
 // Metro Stage - Modular Components Export
 // This file provides a clean API for all stage-related components
 
-import React, { useRef, useEffect, Suspense } from 'react';
+import React, { useRef, useEffect } from 'react';
+// Direct import to avoid lazy loading issues
+import { MetroStage as MetroStageComponent } from './metro-stage';
 
 // Core types and interfaces
 export type {
@@ -23,8 +25,8 @@ export type {
   DebugOverlayData,
   ExportManagerConfig,
   FallbackRendererConfig,
-  InteractionHandlers,
-  EventListenerConfig,
+  // InteractionHandlers, // moved to interaction-handlers
+  // EventListenerConfig, // moved to event-listeners
   InteractionHandlerDeps,
   RenderSceneConfig,
   Bounds,
@@ -40,7 +42,7 @@ export type { ExportOptions as ExportManagerOptions, ExportResult } from './expo
 
 // Interaction handlers
 export { createInteractionHandlers } from './interaction-handlers';
-export type { InteractionHandlerConfig } from './interaction-handlers';
+export type { InteractionHandlerConfig, InteractionHandlers } from './interaction-handlers';
 
 // Event listeners
 export { setupEventListeners, dispatchMetroEvent } from './event-listeners';
@@ -51,28 +53,21 @@ export { FallbackRenderer } from './fallback-renderer';
 export type { FallbackRendererConfig } from './fallback-renderer';
 
 // Main component
-// Use lightweight MetroStage during tests (jsdom) to avoid heavy Pixi hooks
-
-const isTestEnv =
-  typeof process !== 'undefined' && /^(test|testing)$/i.test(process.env.NODE_ENV ?? '');
-
-// Vitest sets the VITEST environment variable. Detect it explicitly so that the heavy Pixi
-// hooks are never executed inside the happy-dom test environment.
-const isVitest = typeof process !== 'undefined' && process.env.VITEST !== undefined;
+// Use lightweight MetroStage only when window is missing (SSR/node) or in JSDOM environments.
 
 // Detect any non-browser (or very limited browser) environment where the global `window` is
 // missing. In those situations we cannot create a real WebGL context.
 const isWindowMissing = typeof window === 'undefined';
 
 // Classic JSDOM UA sniffing – kept for backwards compatibility with older Jest suites.
-const isJsdom = typeof navigator !== 'undefined' && navigator.userAgent?.includes('jsdom');
+const isJsdom = typeof navigator !== 'undefined' && (navigator as any).userAgent?.includes('jsdom');
 
 const PlaceholderMetroStage: React.FC<any> = ({ width = 800, height = 600, children }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // noop placeholder for JSDOM tests
   useEffect(() => {
     // Expose minimal debug API expected by tests
-    const globalAny = window as unknown as { __metroDebug?: any };
+    const globalAny = (typeof window !== 'undefined' ? window : {}) as unknown as { __metroDebug?: Record<string, unknown> };
     if (!globalAny.__metroDebug) {
       const dbg = (() => {
         let layoutCalls = 0;
@@ -103,24 +98,15 @@ const PlaceholderMetroStage: React.FC<any> = ({ width = 800, height = 600, child
   );
 };
 
-import React, { Suspense } from 'react';
-
-// Dynamically import the heavy Pixi-powered MetroStage only when needed
-const LazyMetroStage = React.lazy(() =>
-  import('./metro-stage').then((mod) => ({ default: mod.MetroStage ?? mod.default }))
-);
-
-type MetroStageLazyProps = React.ComponentProps<typeof LazyMetroStage>;
+type MetroStageLazyProps = React.ComponentProps<typeof MetroStageComponent>;
 
 const MetroStageExport: React.FC<MetroStageLazyProps> = (props) => {
-  if (isTestEnv || isVitest || isWindowMissing || isJsdom) {
+  // Important: do NOT gate by NODE_ENV here so that Playwright E2E (which sets NODE_ENV='test')
+  // still uses the real MetroStage in a real browser/Electron environment.
+  if (isWindowMissing || isJsdom) {
     return React.createElement(PlaceholderMetroStage, props);
   }
-  return React.createElement(
-    Suspense,
-    { fallback: null },
-    React.createElement(LazyMetroStage, props)
-  );
+  return React.createElement(MetroStageComponent, props);
 };
 
 export type { MetroStageProps } from './metro-stage';

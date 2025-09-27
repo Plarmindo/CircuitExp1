@@ -25,6 +25,13 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
   // Listen for global errors
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
+      // Extra dev logging to surface full details in console
+      try {
+        // Log entire event and error for better traceability
+        console.error('[global error]', event.message, event.error || event);
+      } catch {
+        // Deliberately empty, as the error is already logged.
+      }
       const errorInfo: ErrorInfo = {
         id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         title: 'Unexpected Error',
@@ -39,6 +46,12 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      // Extra dev logging to surface full details in console
+      try {
+        console.error('[unhandledrejection]', event.reason, event);
+      } catch {
+        // Deliberately empty, as the error is already logged.
+      }
       const errorInfo: ErrorInfo = {
         id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         title: 'Unhandled Promise Rejection',
@@ -253,7 +266,7 @@ function createScanErrorInfo(error: string, code?: string, path?: string): Error
   return {
     id: `scan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     title: 'Scan Error',
-    message: `An error occurred while scanning: ${error}`,
+    message: 'An error occurred during scanning',
     details: error,
     errorCode: code,
     severity: 'error',
@@ -261,26 +274,4 @@ function createScanErrorInfo(error: string, code?: string, path?: string): Error
     dismissible: true,
     timestamp: Date.now(),
   };
-}
-
-// Global error reporting function
-export function reportError(error: string | Error, context?: Record<string, unknown>) {
-  const errorInfo: ErrorInfo = {
-    id: `report-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    title: 'Application Error',
-    message: typeof error === 'string' ? error : error.message,
-    details: typeof error === 'string' ? undefined : error.stack,
-    severity: 'error',
-    recoverable: false,
-    dismissible: true,
-    timestamp: Date.now(),
-  };
-
-  // Dispatch custom event for ErrorHandler
-  window.dispatchEvent(new CustomEvent('metro:errorReported', { detail: errorInfo }));
-
-  // Log to console in development
-  if (import.meta.env.DEV) {
-    console.error('[ErrorHandler]', error, context);
-  }
 }

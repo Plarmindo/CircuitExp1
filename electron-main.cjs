@@ -1,712 +1,527 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const http = require('http');
-const scanManager = require('./scan-manager.cjs'); // RESTORED: necessário para startScan e eventos
-const { validateSchema } = require('./ipc-validation.cjs'); // SEC-2 basic input validation
-const DEV_PORT_ENV = process.env.VITE_DEV_PORT || 5173;
-let detectedDevPort = null;
-// CORE-4 centralized logger (phase 1). Fallback to console if import fails.
-// CORE-4: use CommonJS runtime logger (avoids requiring TS transpile in Electron main during tests)
-let coreLogger, getRecentLogs, enableFileLogger;
-try {
-  ({
-    log: coreLogger,
-    getRecentLogs,
-    enableFile: enableFileLogger,
-  } = require('./src/logger/central-logger.cjs'));
-} catch {
-  coreLogger = console;
-  getRecentLogs = () => [];
-  enableFileLogger = () => {};
-}
-process.on('uncaughtException', (err) => {
-  try {
-    coreLogger.error('[uncaughtException]', { message: err.message, stack: err.stack });
-  } catch {}
-});
-process.on('unhandledRejection', (reason) => {
-  try {
-    coreLogger.error('[unhandledRejection]', {
-      reason: reason && reason.message ? { message: reason.message, stack: reason.stack } : reason,
-    });
-  } catch {}
-});
+const isDev = process.env.NODE_ENV === 'development' || process.env.DEV_FORCE_URL === '1';
 
-// Simple favorites persistence (CORE-1) – refactored to dedicated module with corruption fallback
+// Import CSP Manager for security headers
+const { CSPManager } = require('./src/security/csp-manager.cjs');
+const cspManager = CSPManager.getInstance();
+
+// Import scan manager and validation
+const scanManager = require('./scan-manager.cjs');
+const { validateSchema, sanitizePath, isSafePath } = require('./ipc-validation.cjs');
+const fs = require('fs').promises;
+const { realpath } = require('fs').promises;
+
+// Track active scans and main window reference
+let mainWindow = null;
+const activeScanCount = new Map(); // scanId -> count
+const rateLimitMap = new Map(); // windowId -> { count, resetTime }
+const MAX_CONCURRENT_SCANS = 1;
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10;
+
+// Event throttling
+const EVENT_THROTTLE_MS = 100; // 10 Hz
+const lastEventTime = new Map(); // eventType -> timestamp
+const pendingEvents = new Map(); // eventType -> event data
+
+// Path allowlist for security
+const ALLOWED_SCAN_ROOTS = [
+  path.join(require('os').homedir()),
+  'C:\\Users', // Windows
+  '/Users',    // macOS
+  '/home'      // Linux
+];
+
+// Import stores
 const { createFavoritesStore } = require('./favorites-store.cjs');
-const favoritesStore = createFavoritesStore(() =>
+const { createRecentScansStore } = require('./recent-scans-store.cjs');
+
+// Initialize stores
+const favoritesStore = createFavoritesStore(() => 
   path.join(app.getPath('userData'), 'favorites.json')
 );
-// CORE-2 Recent scans store
-const { createRecentScansStore } = require('./recent-scans-store.cjs');
 const recentScansStore = createRecentScansStore(
   () => path.join(app.getPath('userData'), 'recent-scans.json'),
-  { max: 7 }
+  { max: 10 }
 );
-// CORE-3 User settings store
-const { createUserSettingsStore } = require('./user-settings-store.cjs');
-const userSettingsStore = createUserSettingsStore(() =>
-  path.join(app.getPath('userData'), 'user-settings.json')
-);
-let favoritesCache = favoritesStore.list();
-let recentScansCache = recentScansStore.list();
 
-async function probePort(port) {
-  // Primeiro GET / para ver assinatura básica; depois se parecer Vite confirmar /@vite/client
-  return new Promise((resolve) => {
-    const chunks = [];
-    const req = http.get({ host: 'localhost', port, path: '/', timeout: 800 }, (res) => {
-      res.on('data', (d) => {
-        if (chunks.length < 40) chunks.push(d);
-      });
-      res.on('end', () => {
-        const body = Buffer.concat(chunks).toString('utf8');
-        const hasModuleScript = /<script[^>]+type="module"[^>]+src="\/src\/main\.[tj]sx?"/i.test(
-          body
-        );
-        if (!hasModuleScript) {
-          if (process.env.DEBUG_DEV_DETECT) {
-            console.log('[dev-detect] body snippet (first 200 chars):', body.slice(0, 200));
-          }
-          return resolve({ ok: true, isVite: false });
-        }
-        // Confirmação /@vite/client
-        const req2 = http.get(
-          { host: 'localhost', port, path: '/@vite/client', timeout: 800 },
-          (res2) => {
-            const c2 = [];
-            res2.on('data', (d2) => {
-              if (c2.length < 40) c2.push(d2);
-            });
-            res2.on('end', () => {
-              const body2 = Buffer.concat(c2).toString('utf8');
-              const isHot = body2.includes('import.meta.hot');
-              resolve({ ok: true, isVite: isHot });
-            });
-          }
-        );
-        req2.on('error', () => resolve({ ok: true, isVite: false }));
-        req2.on('timeout', () => {
-          req2.destroy();
-          resolve({ ok: true, isVite: false });
-        });
-      });
-    });
-    req.on('error', () => resolve({ ok: false }));
-    req.on('timeout', () => {
-      req.destroy();
-      resolve({ ok: false });
-    });
-  });
+// Enhanced security logging
+function logSecurityViolation(type, details, windowId) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    type,
+    details,
+    windowId,
+    userAgent: mainWindow?.webContents.getUserAgent() || 'unknown'
+  };
+  console.warn('[SECURITY]', JSON.stringify(logEntry));
 }
 
-async function findDevServerPort() {
-  // Prioriza porta configurada e variáveis comuns; remove duplicados
-  const candidates = [DEV_PORT_ENV, 5175, 5174, 5176, 5177, 5178].filter(
-    (v, i, a) => a.indexOf(v) === i
-  );
-  coreLogger.info('[dev-detect] probing candidates', { candidates });
-  for (const p of candidates) {
-    const result = await probePort(p);
-    if (result.ok && result.isVite) {
-      coreLogger.info('[dev-detect] using dev server port (vite signature found)', { port: p });
-      return p;
-    }
-    if (result.ok) {
-      coreLogger.debug('[dev-detect] non-vite response', { port: p });
-    }
+// Rate limiting per window
+function checkRateLimit(windowId) {
+  const now = Date.now();
+  const windowData = rateLimitMap.get(windowId) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+  
+  if (now > windowData.resetTime) {
+    windowData.count = 0;
+    windowData.resetTime = now + RATE_LIMIT_WINDOW;
   }
-  coreLogger.warn('[dev-detect] no Vite dev server detected, will fallback');
-  return null;
+  
+  windowData.count++;
+  rateLimitMap.set(windowId, windowData);
+  
+  return windowData.count <= MAX_REQUESTS_PER_WINDOW;
 }
 
-app.whenReady().then(() => {
+// Validate scan path security with realpath
+async function validateScanPath(inputPath, windowId) {
+  if (typeof inputPath !== 'string' || !inputPath.trim()) {
+    logSecurityViolation('invalid_path_type', { inputPath: typeof inputPath }, windowId);
+    throw new Error('Invalid path: must be a non-empty string');
+  }
+
+  const sanitized = sanitizePath(inputPath);
+  if (!sanitized) {
+    logSecurityViolation('path_sanitization_failed', { inputPath }, windowId);
+    throw new Error('Invalid path: contains unsafe characters or traversal');
+  }
+
+  if (!isSafePath(sanitized)) {
+    logSecurityViolation('path_traversal_detected', { inputPath, sanitized }, windowId);
+    throw new Error('Invalid path: path traversal detected');
+  }
+
+  let resolvedPath;
   try {
-    // CORE-4: enable file sink (production only) under userData/logs
-    if (app.isPackaged) {
-      const logDir = path.join(app.getPath('userData'), 'logs');
-      enableFileLogger(logDir, 'app.ndjson');
-      coreLogger.info('[logger] file sink enabled', { dir: logDir });
-    } else {
-      coreLogger.debug('[logger] dev mode – file sink skipped');
-    }
-  } catch (err) {
-    try {
-      coreLogger.error('[logger] enable file sink failed', { error: err.message });
-    } catch {}
+    // Use realpath to resolve symlinks and get canonical path
+    resolvedPath = await realpath(sanitized);
+  } catch (error) {
+    logSecurityViolation('path_resolution_failed', { inputPath, sanitized, error: error.message }, windowId);
+    throw new Error('Invalid path: cannot resolve path');
   }
 
-  // Register IPC handlers immediately when app is ready
-  registerIPCHandlers();
-  createWindow();
-});
+  // Check against allowed roots using canonical paths
+  const isAllowed = await Promise.all(
+    ALLOWED_SCAN_ROOTS.map(async (root) => {
+      try {
+        const resolvedRoot = await realpath(root);
+        return resolvedPath.startsWith(resolvedRoot);
+      } catch {
+        return false;
+      }
+    })
+  ).then(results => results.some(Boolean));
 
-function registerIPCHandlers() {
-  // Window state management for dynamic map resizing
+  if (!isAllowed) {
+    logSecurityViolation('access_denied', { inputPath, resolvedPath, allowedRoots: ALLOWED_SCAN_ROOTS }, windowId);
+    throw new Error('Access denied: path outside allowed directories');
+  }
+
+  return resolvedPath;
+}
+
+// Setup IPC handlers
+function setupIpcHandlers() {
+  // Scan operations
+  ipcMain.handle('scan:start', async (event, rootPath, options = {}) => {
+    const windowId = event.sender.id;
+    
+    try {
+      // Rate limiting check
+      if (!checkRateLimit(windowId)) {
+        logSecurityViolation('rate_limit_exceeded', { windowId }, windowId);
+        throw new Error('Rate limit exceeded. Too many requests from this window.');
+      }
+      
+      // Validate inputs with enhanced security
+      const validatedPath = await validateScanPath(rootPath, windowId);
+      
+      // Concurrent scan limiting
+      if (activeScanCount.size >= MAX_CONCURRENT_SCANS) {
+        throw new Error('Maximum concurrent scans reached. Please wait for current scan to complete.');
+      }
+
+      // Start scan with strict default limits for security and performance
+      const scanOptions = {
+        maxDepth: Math.min(options.maxDepth || 10, 15), // Hard limit at 15
+        maxEntries: Math.min(options.maxEntries || 50000, 100000), // Hard limit at 100k
+        followSymlinks: false, // Always false for security
+        batchSize: Math.min(options.batchSize || 250, 500), // Limit batch size
+        timeSliceMs: Math.max(options.timeSliceMs || 12, 5), // Minimum 5ms
+        includeMetadata: options.includeMetadata || false
+      };
+      
+      // Add timeout for long-running scans
+      const scanTimeout = setTimeout(() => {
+        scanManager.cancelScan(result.scanId);
+        logSecurityViolation('scan_timeout', { scanId: result.scanId, path: validatedPath }, windowId);
+      }, 300000); // 5 minute timeout
+
+      const result = scanManager.startScan(validatedPath, scanOptions);
+      activeScanCount.set(result.scanId, { windowId, timeout: scanTimeout });
+      
+      return result;
+    } catch (error) {
+      console.error('[IPC] scan:start error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('scan:cancel', async (event, scanId) => {
+    try {
+      const result = scanManager.cancelScan(scanId);
+      const scanData = activeScanCount.get(scanId);
+      if (scanData?.timeout) {
+        clearTimeout(scanData.timeout);
+      }
+      activeScanCount.delete(scanId);
+      return { success: result };
+    } catch (error) {
+      console.error('[IPC] scan:cancel error:', error.message);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('scan:state', async (event, scanId) => {
+    try {
+      return scanManager.getScanState(scanId);
+    } catch (error) {
+      console.error('[IPC] scan:state error:', error.message);
+      throw error;
+    }
+  });
+
+  // Legacy folder selection (updated to use scan manager)
+  ipcMain.handle('select-and-scan-folder', async () => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory'],
+      });
+      
+      if (canceled || filePaths.length === 0) {
+        return null;
+      }
+
+      const selectedPath = filePaths[0];
+      const validatedPath = validateScanPath(selectedPath);
+      
+      // Start scan with default options
+      const result = scanManager.startScan(validatedPath, {
+        maxDepth: 10,
+        maxEntries: 50000,
+        followSymlinks: false
+      });
+      
+      activeScanCount.set(result.scanId, 1);
+      return result;
+    } catch (error) {
+      console.error('[IPC] select-and-scan-folder error:', error.message);
+      throw error;
+    }
+  });
+
+  // Window state management
   ipcMain.handle('window:getBounds', () => {
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-    if (win && !win.isDestroyed()) {
-      return win.getBounds();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      return mainWindow.getBounds();
     }
     return null;
   });
 
   ipcMain.handle('window:maximize', () => {
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-    if (win && !win.isDestroyed()) {
-      win.maximize();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.maximize();
       return true;
     }
     return false;
   });
 
   ipcMain.handle('window:unmaximize', () => {
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-    if (win && !win.isDestroyed()) {
-      win.unmaximize();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.unmaximize();
       return true;
     }
     return false;
   });
 
   ipcMain.handle('window:isMaximized', () => {
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-    if (win && !win.isDestroyed()) {
-      return win.isMaximized();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      return mainWindow.isMaximized();
     }
     return false;
   });
 
-  // CORE-2 Recent scans IPC
-  ipcMain.handle('recent:list', () => {
-    recentScansCache = recentScansStore.list();
-    return { success: true, recent: recentScansCache, max: recentScansStore.max };
-  });
-  ipcMain.handle('recent:clear', () => {
-    recentScansCache = recentScansStore.clear();
-    return { success: true, recent: recentScansCache };
-  });
-
-  // CORE-1 Favorites IPC
-  ipcMain.handle('favorites:list', () => {
-    favoritesCache = favoritesStore.list();
-    return { success: true, favorites: favoritesCache };
-  });
-  ipcMain.handle('favorites:add', (e, path) => {
-    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [path]);
-    if (!v.ok) return { success: false, error: 'validation', details: v.errors };
+  // Favorites functionality
+  ipcMain.handle('favorites:list', async () => {
     try {
-      favoritesCache = favoritesStore.add(path);
-      return { success: true, favorites: favoritesCache };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-  ipcMain.handle('favorites:remove', (e, path) => {
-    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [path]);
-    if (!v.ok) return { success: false, error: 'validation', details: v.errors };
-    try {
-      favoritesCache = favoritesStore.remove(path);
-      return { success: true, favorites: favoritesCache };
-    } catch (err) {
-      return { success: false, error: err.message };
+      return { success: true, favorites: favoritesStore.list() };
+    } catch (error) {
+      console.error('[IPC] favorites:list error:', error.message);
+      return { success: false, error: error.message };
     }
   });
 
-  // CORE-3 Settings IPC
-  ipcMain.handle('settings:get', () => {
+  ipcMain.handle('favorites:add', async (event, itemPath) => {
+    const windowId = event.sender.id;
     try {
-      const s = userSettingsStore.get();
-      return { success: true, settings: s, file: userSettingsStore.path() };
-    } catch (e) {
-      return { success: false, error: e.message };
+      if (!checkRateLimit(windowId)) {
+        throw new Error('Rate limit exceeded');
+      }
+      
+      const validatedPath = await validateScanPath(itemPath, windowId);
+      const success = favoritesStore.add(validatedPath);
+      return { success, path: validatedPath };
+    } catch (error) {
+      console.error('[IPC] favorites:add error:', error.message);
+      return { success: false, error: error.message };
     }
   });
-  ipcMain.handle('settings:update', (e, patch) => {
-    const v = validateSchema([{ type: 'record' }], [patch]);
-    if (!v.ok) return { success: false, error: 'validation', details: v.errors };
+
+  ipcMain.handle('favorites:remove', async (event, itemPath) => {
     try {
-      const s = userSettingsStore.update(patch);
-      try {
-        const windows = BrowserWindow.getAllWindows();
-        windows.forEach((win) => {
-          if (!win.isDestroyed()) {
-            win.webContents.send('settings:updated', s);
-          }
-        });
-      } catch (_) {}
-      return { success: true, settings: s };
-    } catch (err) {
-      return { success: false, error: err.message };
+      const success = favoritesStore.remove(itemPath);
+      return { success };
+    } catch (error) {
+      console.error('[IPC] favorites:remove error:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Recent scans functionality
+  ipcMain.handle('recent:list', async () => {
+    try {
+      return { success: true, recent: recentScansStore.list() };
+    } catch (error) {
+      console.error('[IPC] recent:list error:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('recent:clear', async () => {
+    try {
+      recentScansStore.clear();
+      return { success: true };
+    } catch (error) {
+      console.error('[IPC] recent:clear error:', error.message);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Basic settings functionality
+  const userSettings = {};
+  
+  ipcMain.handle('settings:get', async () => {
+    try {
+      return { success: true, settings: { ...userSettings } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('settings:update', async (event, patch) => {
+    try {
+      Object.assign(userSettings, patch);
+      return { success: true, settings: { ...userSettings } };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Basic logging functionality
+  const recentLogs = [];
+  const MAX_LOGS = 1000;
+  
+  ipcMain.handle('logs:recent', async (event, limit = 100) => {
+    try {
+      return { success: true, logs: recentLogs.slice(-limit) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Renderer logging
+  ipcMain.on('renderer:log', (event, logData) => {
+    const { level, msg, detail, component } = logData;
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level: level?.toUpperCase() || 'INFO',
+      component: component || 'Unknown',
+      message: msg,
+      detail: detail || ''
+    };
+    
+    // Add to recent logs
+    recentLogs.push(logEntry);
+    if (recentLogs.length > MAX_LOGS) {
+      recentLogs.shift();
+    }
+    
+    console.log(`[RENDERER:${logEntry.level}] ${logEntry.component}: ${logEntry.message}`, logEntry.detail);
+  });
+  
+  // CSP violation reporting
+  ipcMain.on('csp-violation', (event, violationData) => {
+    logSecurityViolation('csp_violation', violationData, event.sender.id);
+  });
+}
+
+// Throttled event sending
+function sendThrottledEvent(eventType, payload) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  
+  const now = Date.now();
+  const lastTime = lastEventTime.get(eventType) || 0;
+  
+  if (now - lastTime >= EVENT_THROTTLE_MS) {
+    // Send immediately
+    mainWindow.webContents.send(eventType, payload);
+    lastEventTime.set(eventType, now);
+    pendingEvents.delete(eventType);
+  } else {
+    // Queue for later
+    pendingEvents.set(eventType, payload);
+    
+    // Schedule delayed send
+    setTimeout(() => {
+      const pending = pendingEvents.get(eventType);
+      if (pending && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(eventType, pending);
+        lastEventTime.set(eventType, Date.now());
+        pendingEvents.delete(eventType);
+      }
+    }, EVENT_THROTTLE_MS - (now - lastTime));
+  }
+}
+
+// Setup scan event forwarding to renderer with throttling
+function setupScanEventForwarding() {
+  // Forward scan events to renderer
+  scanManager.on('scan:registered', (payload) => {
+    // Always send scan started immediately (not throttled)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('scan:started', payload);
+    }
+  });
+
+  scanManager.on('scan:progress', (payload) => {
+    sendThrottledEvent('scan:progress', payload);
+  });
+
+  scanManager.on('scan:partial', (payload) => {
+    // Limit batch size for large datasets
+    const maxBatchSize = 100;
+    if (payload.nodes && payload.nodes.length > maxBatchSize) {
+      // Split into smaller chunks
+      for (let i = 0; i < payload.nodes.length; i += maxBatchSize) {
+        const chunk = {
+          ...payload,
+          nodes: payload.nodes.slice(i, i + maxBatchSize)
+        };
+        sendThrottledEvent('scan:partial', chunk);
+      }
+    } else {
+      sendThrottledEvent('scan:partial', payload);
+    }
+  });
+
+  scanManager.on('scan:done', (payload) => {
+    // Always send completion immediately (not throttled)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('scan:done', payload);
+      // Clean up active scan tracking and timeout
+      const scanData = activeScanCount.get(payload.scanId);
+      if (scanData?.timeout) {
+        clearTimeout(scanData.timeout);
+      }
+      activeScanCount.delete(payload.scanId);
+    }
+  });
+
+  scanManager.on('scan:cancelled', (payload) => {
+    // Always send cancellation immediately (not throttled)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('scan:done', { ...payload, cancelled: true });
+      // Clean up active scan tracking
+      activeScanCount.delete(payload.scanId);
     }
   });
 }
 
-// LEGACY synchronous scanFolder REMOVED (Item 9) – replaced by async scan manager.
-// (If needed for fallback debugging, can temporarily restore behind DEV flag.)
-
-async function createWindow() {
-  const win = new BrowserWindow({
+function createWindow() {
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    show: false, // Start hidden to prevent visual resize
     webPreferences: {
-      preload: __dirname + '/preload.cjs',
-      contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true, // SEC-3 sandbox enabled to harden renderer, no Node primitives in DOM
-      enableRemoteModule: false, // explicit: remote module deprecated/disabled
+      contextIsolation: true,
+      enableRemoteModule: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      sandbox: true,
+      // Enable WebGL for PixiJS rendering
+      webgl: true,
+      // Add preload script for secure IPC
+      preload: path.join(__dirname, 'preload.cjs'),
     },
+    // **NEW**: Enable hardware acceleration for better HTML5 performance
+    show: true,
+    frame: true,
+    titleBarStyle: 'default',
+    backgroundColor: '#ffffff'
   });
 
-  // Set proper Content Security Policy headers
-  win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self';",
-        ],
-      },
-    });
-  });
-
-  // Maximize window to use full display area
-  win.maximize();
-  win.show();
-  // Load user settings early (theme etc.) and inform renderer after load
-  let initialSettings = userSettingsStore.get();
-  const isDev = !app.isPackaged; // re-evaluate here after ready
   if (isDev) {
-    if (process.env.DEV_FORCE_URL) {
-      // Developer override: assume the dev server is at the configured port.
-      detectedDevPort = DEV_PORT_ENV;
-      coreLogger.info('[dev-detect] DEV_FORCE_URL set', { port: detectedDevPort });
-    } else if (!detectedDevPort) {
-      detectedDevPort = await findDevServerPort();
-      // Retry curto adicional: às vezes Vite ainda está a bootstrapar quando electron arranca
-      if (!detectedDevPort) {
-        try {
-          coreLogger.info('[dev-detect] retry in 1200ms');
-        } catch {}
-        await new Promise((r) => setTimeout(r, 1200));
-        detectedDevPort = await findDevServerPort();
-      }
-    }
-    if (detectedDevPort) {
-      win.loadURL(`http://localhost:${detectedDevPort}/#forceStage`);
-      // Dev-only CSP allowing Vite HMR websocket. We still avoid arbitrary remote origins.
-      // SEC-1 (dev mode relaxed): allow 'unsafe-inline' style for Vite injected styles; no remote scripts.
-      win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-        // DEV: permitir inline + eval para Vite preamble + React Fast Refresh.
-        // Mantemos restrições em outras diretivas.
-        // Ajuste: remover 'unsafe-inline' e 'unsafe-eval' para alinhar com SEC-1 mesmo em dev, já que React 19 + Vite permitem sem inline se preamble carregado.
-        // Se surgir erro de preamble novamente poderemos reintroduzir condicional controlada por env.
-        // DEV: relax CSP to allow Vite's injected preamble (inline scripts/styles)
-        // and HMR websocket. This is strictly dev-only and kept permissive
-        // to avoid blocking the Vite/react preamble that is injected at runtime.
-        const devCsp = [
-          "default-src 'self'",
-          // Allow inline scripts and eval in dev so Vite/react preamble can run.
-          "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-          // Allow inline styles injected by Vite in dev.
-          "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data:",
-          "font-src 'self'",
-          // Permit both http(s) and ws to localhost dev server for HMR and client requests
-          `connect-src 'self' http://localhost:${detectedDevPort} ws://localhost:${detectedDevPort}`,
-          "object-src 'none'",
-          "frame-ancestors 'none'",
-          "base-uri 'self'",
-        ].join('; ');
-        callback({
-          responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [devCsp] },
-        });
-      });
-    } else {
-      coreLogger.warn('[dev-detect] fallback path engaged (no running dev server)');
-      // Fallback temporário + tentativa tardia de reconectar se Vite surgir depois
-      const indexPathDevFail = path.join(__dirname, 'dist', 'index.html');
-      if (fs.existsSync(indexPathDevFail)) {
-        win.loadFile(indexPathDevFail);
-      } else {
-        win.loadURL(
-          'data:text/html,<h1>Dev server não encontrado</h1><p>A iniciar tentativa tardia...</p>'
-        );
-      }
-      // Nova tentativa pós fallback (até 3 vezes)
-      for (let attempt = 1; attempt <= 3 && !detectedDevPort; attempt++) {
-        await new Promise((r) => setTimeout(r, 1500));
-        detectedDevPort = await findDevServerPort();
-        if (detectedDevPort) {
-          try {
-            coreLogger.info('[dev-detect] late connect success', {
-              attempt,
-              port: detectedDevPort,
-            });
-            win.loadURL(`http://localhost:${detectedDevPort}/#forceStage`);
-            break;
-          } catch (e) {
-            coreLogger.error('[dev-detect] late loadURL failed', { error: e.message });
-          }
-        } else {
-          try {
-            coreLogger.debug('[dev-detect] late retry no server', { attempt });
-          } catch {}
-        }
-      }
-    }
-  } else {
-    // Production: load built static assets (run: npm run build)
-    const indexPath = path.join(__dirname, 'dist', 'index.html');
-    win.loadFile(indexPath);
-    // SEC-1 Production CSP hardened: restrict connect-src, allow only self + data: images.
-    // NOTE: If inline styles required, migrate them to external CSS (handled by Vite build already).
-    win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-      const csp = [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self'", // no inline
-        "img-src 'self' data:",
-        "font-src 'self'", // limit fonts
-        "connect-src 'self'", // no external fetch
-        "object-src 'none'",
-        "frame-ancestors 'none'",
-        "base-uri 'self'",
-      ].join('; ');
-      // SEC-1 instrumentation (test visibility only): capture last production CSP for E2E header assertion.
-      // Stored on process global to avoid exposing via IPC in production runtime; harmless string.
-      try {
-        process._lastProdCSP = csp;
-      } catch (_) {
-        /* ignore */
-      }
+    mainWindow.loadURL('http://localhost:5175');
+    // Set development security headers
+    const securityHeaders = cspManager.getSecurityHeaders(true, 5175);
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
       callback({
-        responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [csp] },
+        responseHeaders: {
+          ...details.responseHeaders,
+          ...Object.fromEntries(Object.entries(securityHeaders).map(([k, v]) => [k.toLowerCase(), [v]]))
+        }
+      });
+    });
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+    // Set production security headers
+    const securityHeaders = cspManager.getSecurityHeaders();
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          ...Object.fromEntries(Object.entries(securityHeaders).map(([k, v]) => [k.toLowerCase(), [v]]))
+        }
       });
     });
   }
 
-  // Item 9: Start asynchronous scan on startup instead of sending full tree snapshot.
-  win.webContents.once('did-finish-load', () => {
-    try {
-      win.webContents.send('settings:loaded', initialSettings);
-    } catch (e) {
-      console.warn('failed to send initial settings', e);
-    }
-    const mockFolder = path.join(__dirname, 'mock-root');
-    // Only auto-start mock scan in dev; in prod we might wait for user selection
-    if (!!app.isPackaged) return; // only dev
-    try {
-      const { scanId } = scanManager.startScan(mockFolder, { includeMetadata: false });
-      if (process.env.DEBUG_SCAN) console.log('[startup] async scan started', scanId, mockFolder);
-      try {
-        win.webContents.send('scan:started', { scanId, rootPath: mockFolder });
-      } catch (_) {}
-    } catch (e) {
-      console.error('[startup] failed to start async scan:', e.message);
-    }
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 
-  ipcMain.handle('select-and-scan-folder', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      properties: ['openDirectory'],
-    });
-    if (canceled || filePaths.length === 0) return { success: false, cancelled: true };
-    try {
-      // Cancel all existing scans to ensure only one active scan at a time
-      try {
-        const existing = scanManager.listScans();
-        for (const sid of existing) {
-          try {
-            scanManager.cancelScan(sid);
-          } catch (_) {}
-        }
-      } catch (e) {
-        console.warn('[select-and-scan-folder] failed to cancel existing scans', e.message);
-      }
-      const { scanId } = scanManager.startScan(filePaths[0], { includeMetadata: false });
-      // CORE-2 track recent path
-      recentScansCache = recentScansStore.touch(filePaths[0]);
-      if (process.env.DEBUG_SCAN)
-        console.log('[selection] async scan started', scanId, filePaths[0]);
-      try {
-        win.webContents.send('scan:started', { scanId, rootPath: filePaths[0] });
-      } catch (_) {}
-      return { success: true, scanId };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  });
-
-  ipcMain.handle('open-path', async (event, pathArg) => {
-    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [pathArg]);
-    if (!v.ok) {
-      coreLogger.warn('[ipc][open-path] validation fail', { errors: v.errors });
-      return { success: false, error: 'validation', details: v.errors };
-    }
-    shell.openPath(pathArg);
-    return { success: true };
-  });
-
-  ipcMain.handle('rename-path', async (event, oldPath, newName) => {
-    const v = validateSchema(
-      [
-        { type: 'string', nonEmpty: true, noTraversal: true },
-        { type: 'string', nonEmpty: true },
-      ],
-      [oldPath, newName]
-    );
-    if (!v.ok) {
-      coreLogger.warn('[ipc][rename-path] validation fail', { errors: v.errors });
-      return { success: false, error: 'validation', details: v.errors };
-    }
-    try {
-      const dir = path.dirname(oldPath);
-      const newPath = path.join(dir, newName);
-      fs.renameSync(oldPath, newPath);
-      return { success: true, newPath };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-
-  ipcMain.handle('delete-path', async (event, targetPath) => {
-    const v = validateSchema([{ type: 'string', nonEmpty: true, noTraversal: true }], [targetPath]);
-    if (!v.ok) {
-      coreLogger.warn('[ipc][delete-path] validation fail', { errors: v.errors });
-      return { success: false, error: 'validation', details: v.errors };
-    }
-    try {
-      if (fs.lstatSync(targetPath).isDirectory()) fs.rmdirSync(targetPath, { recursive: true });
-      else fs.unlinkSync(targetPath);
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-
-  /*
-   * IPC: toggle-favorite
-   * Toggle or explicitly set a path as favorite.
-   * Args:
-   *   pathArg: string – absolute path to file/folder (required)
-   *   setFav: boolean | undefined – if provided, force add (true) or remove (false); if omitted, toggle based on current state.
-   * Returns updated favorites list.
-   */
-  ipcMain.handle('toggle-favorite', async (_event, pathArg, setFav) => {
-    // Validate input types and ensure no path traversal attempts
-    const v = validateSchema(
-      [
-        { type: 'string', nonEmpty: true, noTraversal: true },
-        { type: 'boolean', optional: true },
-      ],
-      [pathArg, setFav]
-    );
-    if (!v.ok) {
-      coreLogger.warn('[ipc][toggle-favorite] validation fail', { errors: v.errors });
-      return { success: false, error: 'validation', details: v.errors };
-    }
-
-    try {
-      // Refresh cache to avoid stale state when called in quick succession
-      favoritesCache = favoritesStore.list();
-      const alreadyFav = favoritesCache.includes(pathArg);
-      let shouldAdd;
-      if (typeof setFav === 'boolean') {
-        shouldAdd = setFav;
-      } else {
-        shouldAdd = !alreadyFav; // toggle mode
-      }
-
-      if (shouldAdd && !alreadyFav) {
-        favoritesCache = favoritesStore.add(pathArg);
-      } else if (!shouldAdd && alreadyFav) {
-        favoritesCache = favoritesStore.remove(pathArg);
-      }
-      return { success: true, favorites: favoritesCache };
-    } catch (err) {
-      coreLogger.error('[ipc][toggle-favorite] exception', { error: err.message });
-      return { success: false, error: err.message };
-    }
-  });
-
-  ipcMain.handle('show-properties', async (event, pathArg) => {
-    await dialog.showMessageBox(win, {
-      type: 'info',
-      title: 'Propriedades',
-      message: `Propriedades de ${pathArg}`,
-      detail: pathArg,
-      buttons: ['OK'],
-    });
-    return true;
-  });
-
-  win.webContents.on('will-navigate', (e) => {
-    e.preventDefault();
-  }); // Item 13: block external navigation
-  // FIX: setWindowOpenHandler lives on webContents, not BrowserWindow instance
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' })); // Item 13: deny new windows
-
-  // Store listener refs so they can be removed correctly on window close
-  const forward = (channel) => (payload) => {
-    if (!win.isDestroyed()) {
-      if (process.env.DEBUG_SCAN && channel === 'scan:progress') {
-        const {
-          scanId,
-          dirsProcessed,
-          filesProcessed,
-          queueLengthRemaining,
-          elapsedMs,
-          approxCompletion,
-        } = payload;
-        console.log(
-          '[progress]',
-          scanId,
-          'dirs:',
-          dirsProcessed,
-          'files:',
-          filesProcessed,
-          'queue:',
-          queueLengthRemaining,
-          'elapsedMs:',
-          elapsedMs,
-          'approx:',
-          approxCompletion
-        );
-      }
-      win.webContents.send(channel, payload);
-    }
-  };
-  const onProgress = forward('scan:progress');
-  const onPartial = forward('scan:partial');
-  if (process.env.DEBUG_SCAN_VERBOSE) {
-    scanManager.on('scan:partial', (payload) => {
-      try {
-        const n = payload?.nodes?.length || 0;
-        const firstNode = payload?.nodes?.[0];
-        const depthsSample = payload?.nodes
-          ?.slice(0, 5)
-          .map((n) => n.depth)
-          .join(',');
-        const anyDepth0 = payload?.nodes?.some((x) => x.depth === 0);
-        console.log(
-          '[main][scan:partial]',
-          'count=',
-          n,
-          'first=',
-          firstNode?.path,
-          'firstDepth=',
-          firstNode?.depth,
-          'sampleDepths=',
-          depthsSample,
-          'hasDepth0=',
-          anyDepth0
-        );
-      } catch {
-        /* ignore */
-      }
-    });
-  }
-  const onDone = forward('scan:done');
-  scanManager.on('scan:progress', onProgress);
-  scanManager.on('scan:partial', onPartial);
-  scanManager.on('scan:done', onDone);
-
-  win.on('closed', () => {
-    scanManager.off('scan:progress', onProgress);
-    scanManager.off('scan:partial', onPartial);
-    scanManager.off('scan:done', onDone);
-  });
-
-  ipcMain.handle('scan:start', (event, rootPath, options = {}) => {
-    try {
-      const v = validateSchema(
-        [
-          { type: 'string', nonEmpty: true },
-          { type: 'object', optional: true },
-        ],
-        [rootPath, options]
-      );
-      if (!v.ok) return { success: false, error: 'validation', details: v.errors };
-      // CORE-4: always emit request debug (will filter by level) so tests can assert presence without env flags
-      try {
-        coreLogger.debug('[scan:start] request', { rootPath, options });
-      } catch {}
-      // Cancel any existing scans before starting a new one
-      try {
-        const existing = scanManager.listScans();
-        for (const sid of existing) {
-          try {
-            scanManager.cancelScan(sid);
-          } catch (_) {}
-        }
-      } catch (e) {
-        coreLogger.warn('[scan:start] failed to cancel existing scans', { error: e.message });
-      }
-      const result = scanManager.startScan(rootPath, options);
-      // CORE-2 track programmatic start as well
-      recentScansCache = recentScansStore.touch(rootPath);
-      try {
-        event.sender.send('scan:started', { scanId: result.scanId, rootPath });
-      } catch (_) {}
-      // CORE-4: unconditional info log (ring buffer capture) – removed env gating to satisfy centralized logging acceptance
-      try {
-        coreLogger.info('[scan:start] started', { scanId: result.scanId, rootPath });
-      } catch {}
-      return { success: true, ...result };
-    } catch (e) {
-      coreLogger.error('[scan:start] exception', { error: e.message });
-      return { success: false, error: e.message };
-    }
-  });
-
-  ipcMain.handle('scan:cancel', (event, scanId) => {
-    try {
-      if (typeof scanId !== 'string') throw new Error('scanId must be string');
-      const ok = scanManager.cancelScan(scanId);
-      coreLogger.info('[scan:cancel]', { scanId, ok });
-      return { success: ok };
-    } catch (e) {
-      coreLogger.error('[scan:cancel] exception', { error: e.message, scanId });
-      return { success: false, error: e.message };
-    }
-  });
-
-  ipcMain.handle('scan:state', (event, scanId) => {
-    try {
-      const state = scanManager.getScanState(scanId);
-      if (!state) return { success: false, error: 'not found' };
-      return { success: true, state };
-    } catch (e) {
-      coreLogger.warn('[scan:state] error', { error: e.message, scanId });
-      return { success: false, error: e.message };
-    }
-  });
-
-  // CORE-4 expose recent logs (dev only)
-  ipcMain.handle('logs:recent', (_e, limit = 100) => {
-    try {
-      return { success: true, logs: getRecentLogs(Math.min(Math.max(limit, 1), 500)) };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
-  });
-
-  // CORE-4: renderer forwarded log events (limited surface – only accepted shape)
-  ipcMain.on('renderer:log', (e, payload) => {
-    try {
-      if (!payload || typeof payload !== 'object') return;
-      const { level, msg, detail, component } = payload;
-      const allowed = ['debug', 'info', 'warn', 'error'];
-      if (!allowed.includes(level)) return;
-      (coreLogger[level] || coreLogger.info).call(coreLogger, `[renderer] ${msg}`, {
-        component: component || 'renderer',
-        detail,
-      });
-    } catch {
-      /* swallow */
-    }
-  });
+  // Set up IPC handlers
+  setupIpcHandlers();
+  
+  // Set up scan manager event forwarding
+  setupScanEventForwarding();
 }
+
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});

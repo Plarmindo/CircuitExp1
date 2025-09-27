@@ -30,8 +30,8 @@ async function start() {
 
   let electron; let shuttingDown = false;
   const startElectron = () => {
-    const electronBin = require.resolve('electron/cli.js');
-    electron = spawn(process.execPath, [electronBin,'electron-main.cjs'], {
+    const electronExe = require('electron');
+    electron = spawn(electronPath, ['electron-main.cjs'], {
       env: { ...process.env, VITE_DEV_PORT: String(activePort), DEV_FORCE_URL: '1' },
       stdio: 'inherit'
     });

@@ -285,8 +285,8 @@ export class PluginDeploymentSystem {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
     if (window.electronAPI?.createPluginBackup) {
-      const result = await window.electronAPI.createPluginBackup(plugin, timestamp);
-      const backupPath = result.backupPath;
+      const _result = await window.electronAPI.createPluginBackup(plugin, timestamp);
+      const _backupPath = result.backupPath;
 
       this.rollbackStack.push({
         pluginId: plugin.metadata.id,
@@ -314,7 +314,7 @@ export class PluginDeploymentSystem {
     logs: DeploymentLog[]
   ): Promise<void> {
     if (window.electronAPI?.deployPlugin) {
-      const result = await window.electronAPI.deployPlugin(plugin, config.target);
+      const _result = await window.electronAPI.deployPlugin(plugin, config.target);
 
       logs.push({
         level: 'info',
@@ -332,7 +332,7 @@ export class PluginDeploymentSystem {
     logs: DeploymentLog[]
   ): Promise<void> {
     if (window.electronAPI?.verifyPluginDeployment) {
-      const result = await window.electronAPI.verifyPluginDeployment(plugin, config.target);
+      const _result = await window.electronAPI.verifyPluginDeployment(plugin, config.target);
 
       if (!result.exists) {
         throw new Error('Plugin file not found after deployment');
@@ -354,7 +354,7 @@ export class PluginDeploymentSystem {
 
   private async restoreFromBackup(backupPath: string, logs: DeploymentLog[]): Promise<void> {
     if (window.electronAPI?.restoreFromBackup) {
-      const result = await window.electronAPI.restoreFromBackup(backupPath);
+      const _result = await window.electronAPI.restoreFromBackup(backupPath);
 
       logs.push({
         level: 'info',
@@ -451,7 +451,7 @@ Examples:
           notify: true,
         };
 
-        const result = await this.deploymentSystem.deploy(plugin, config);
+        const _result = await this.deploymentSystem.deploy(plugin, config);
 
         console.log(`\nDeployment ${result.success ? 'SUCCEEDED' : 'FAILED'}`);
         console.log(`Duration: ${result.duration}ms`);
@@ -511,7 +511,7 @@ Examples:
       if (window.electronAPI?.loadPluginFile) {
         const plugin = await window.electronAPI.loadPluginFile(pluginPath);
         const validator = new PluginValidator();
-        const result = await validator.validatePlugin(plugin);
+        const _result = await validator.validatePlugin(plugin);
 
         console.log(`\nValidation Results:`);
         console.log(`Overall: ${result.overall ? 'PASSED' : 'FAILED'}`);

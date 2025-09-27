@@ -87,7 +87,7 @@ export class AnalysisController {
 
   async handleDocumentationGeneration(req: Request, res: Response): Promise<void> {
     try {
-      const { code, format } = req.body;
+      const { code, format: _format } = req.body;
       if (!code) {
         res.status(400).json({ error: 'Code is required' });
         return;

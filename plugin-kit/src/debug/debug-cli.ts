@@ -124,7 +124,7 @@ class DebugCli {
     if (command) {
       try {
         await command.handler(args);
-      } catch (error) {
+      } catch (_error) {
         console.error(`Error: ${error.message}`);
       }
     } else {
@@ -178,10 +178,10 @@ class DebugCli {
       });
 
       const testSuite = await this.loadTestSuite(pluginPath, suiteName);
-      const results = await this.currentTestRunner.runTestSuite(testSuite);
+      const _results = await this.currentTestRunner.runTestSuite(testSuite);
 
       console.log('\n' + this.currentTestRunner.generateReport());
-    } catch (error) {
+    } catch (_error) {
       console.error(`Test execution failed: ${error.message}`);
     }
   }
@@ -219,7 +219,7 @@ class DebugCli {
 
   private async profilePlugin(args: string[]): Promise<void> {
     const pluginPath = args[0];
-    const functionName = this.getFlagValue(args, '--function');
+    const _functionName = this.getFlagValue(args, '--function');
 
     if (!pluginPath) {
       console.log('Usage: profile <plugin-path> [--function <function-name>]');
@@ -239,7 +239,7 @@ class DebugCli {
       const metrics = this.profiler.getMetrics();
       console.log('Profile Results:');
       console.log(JSON.stringify(metrics, null, 2));
-    } catch (error) {
+    } catch (_error) {
       console.error(`Profiling failed: ${error.message}`);
     }
   }
@@ -377,7 +377,7 @@ class DebugCli {
   ): Promise<{ isValid: boolean; errors: string[] }> {
     const errors: string[] = [];
     const requiredFiles = ['manifest.json', 'src/index.ts'];
-    const optionalFiles = ['README.md', 'package.json', 'tsconfig.json'];
+    const _optionalFiles = ['README.md', 'package.json', 'tsconfig.json'];
 
     for (const file of requiredFiles) {
       const filePath = path.join(pluginPath, file);
@@ -396,7 +396,7 @@ class DebugCli {
         if (!manifest.version) errors.push('Manifest missing "version" field');
         if (!manifest.main) errors.push('Manifest missing "main" field');
         if (!manifest.apiVersion) errors.push('Manifest missing "apiVersion" field');
-      } catch (error) {
+      } catch (_error) {
         errors.push('Invalid manifest.json format');
       }
     }

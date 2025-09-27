@@ -1,0 +1,59 @@
+{
+  "testName": "zero-iterations",
+  "timestamp": 1758178836510,
+  "config": {
+    "threshold": 5,
+    "iterations": 0,
+    "warmupIterations": 0,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 10
+  },
+  "result": {
+    "leakDetected": false,
+    "leakRate": 0,
+    "totalGrowth": 0,
+    "snapshots": [
+      {
+        "timestamp": 1758178836509,
+        "heapUsed": 16476440,
+        "heapTotal": 23154688,
+        "external": 3916272,
+        "arrayBuffers": 174560,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Potential event listeners leak detected - review add/remove listener patterns",
+        "Potential timers leak detected - ensure intervals/timeouts are cleared",
+        "Check timers and intervals for potential leaks",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "No memory leak detected in zero-iterations: 0.00MB total change",
+      "details": [
+        "Test: zero-iterations",
+        "Total memory growth: 0.00MB",
+        "Leak rate: 0.0000MB per iteration",
+        "Iterations: 0",
+        "Severity: LOW",
+        "Snapshots: 1"
+      ],
+      "severity": "low"
+    }
+  }
+}

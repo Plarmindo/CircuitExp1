@@ -138,8 +138,8 @@ export class CompletionController {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('Access-Control-Allow-Origin', '*');
 
-      const totalTokens = 0;
-      const completionText = '';
+      const _totalTokens = 0;
+      const _completionText = '';
 
       // Generate completion
       const result = await this.aiService.completeCode({

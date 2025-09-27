@@ -217,7 +217,7 @@ describe('Plugin Performance Tests', () => {
       await pluginManager.register(plugin);
 
       // Initial memory usage
-      const initialMemory = process.memoryUsage().heapUsed;
+      const _initialMemory = process.memoryUsage().heapUsed;
 
       await pluginManager.enable(plugin.metadata.id);
 
@@ -231,7 +231,7 @@ describe('Plugin Performance Tests', () => {
         global.gc();
       }
 
-      const finalMemory = process.memoryUsage().heapUsed;
+      const _finalMemory = process.memoryUsage().heapUsed;
 
       // Verify plugin was properly deactivated
       expect(pluginManager.isEnabled(plugin.metadata.id)).toBe(false);

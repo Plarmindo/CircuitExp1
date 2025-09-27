@@ -60,6 +60,8 @@
 import { GraphAdapter } from './graph-adapter';
 import type { GraphNode } from './graph-adapter';
 import { assignStationId, siblingComparator, hashPathToId } from './id-sorting';
+import { PerformanceMonitor } from './performance/performance-monitor';
+import { createForceDirectedLayout, convertToHierarchicalLayout, type ForceLayoutOptions } from './performance/force-directed-layout';
 
 export interface LayoutPointV2 {
   path: string;
@@ -96,6 +98,8 @@ export interface LayoutOptionsV2 {
   maxSpacingFactor?: number; // cap on spacing growth
   aggregationThreshold?: number; // collapse siblings after this count
   expandedAggregations?: Set<string>; // synthetic aggregation node paths currently expanded (toggle visibility strategy)
+  algorithm?: 'hierarchical' | 'force-directed'; // Layout algorithm to use
+  forceDirectedOptions?: Partial<ForceLayoutOptions>; // Force-directed layout options
 }
 
 const DEFAULTS: Required<LayoutOptionsV2> = {
@@ -106,13 +110,83 @@ const DEFAULTS: Required<LayoutOptionsV2> = {
   maxSpacingFactor: 3,
   aggregationThreshold: 200, // increased default to ensure small trees are fully expanded by default (avoid early aggregation hiding nodes)
   expandedAggregations: new Set<string>(),
+  algorithm: 'hierarchical',
+  forceDirectedOptions: {
+    iterations: 300,
+    enableBarnesHut: true,
+    enableMultiLevel: true,
+    enableWorkers: true,
+    coarseningThreshold: 1000,
+  },
 };
 
 export function layoutHierarchicalV2(
   adapter: GraphAdapter,
-  opts: LayoutOptionsV2 = {}
+  opts: LayoutOptionsV2 = {},
+  monitor?: PerformanceMonitor
 ): LayoutResultV2 {
   const o = { ...DEFAULTS, ...opts };
+
+  // Currently only synchronous hierarchical algorithm is supported by this entry point.
+  // Force-directed layout requires asynchronous simulation; use `layoutForceDirected` directly.
+  if (o.algorithm === 'force-directed') {
+    throw new Error('Force-directed algorithm requires asynchronous computation. Use _layoutForceDirected() instead.');
+  }
+  return layoutHierarchical(adapter, o, monitor);
+}
+
+
+/**
+ * Force-directed layout implementation
+ */
+async function _layoutForceDirected(
+  adapter: GraphAdapter,
+  opts: Required<LayoutOptionsV2>,
+  monitor?: PerformanceMonitor
+): Promise<LayoutResultV2> {
+  const _allNodes = adapter.getAllNodes();
+
+  // Create and run force-directed layout
+  const forceLayout = createForceDirectedLayout(opts.forceDirectedOptions, monitor);
+
+  try {
+    forceLayout.initialize(adapter);
+    const _layoutStats = await forceLayout.simulate();
+
+    // Get positions and convert to hierarchical format
+    const positions = forceLayout.getPositions();
+    const { nodes: layoutNodes, bbox } = convertToHierarchicalLayout(positions, adapter);
+
+    // Convert to LayoutPointV2 format
+    const placed: LayoutPointV2[] = layoutNodes.map(node => ({
+      path: node.path,
+      x: node.x,
+      y: node.y,
+      depth: node.depth,
+      parentPath: node.parentPath,
+    }));
+
+    const nodeIndex = new Map<string, LayoutPointV2>();
+    placed.forEach(node => nodeIndex.set(node.path, node));
+
+    return {
+      nodes: placed,
+      bbox,
+      nodeIndex,
+    };
+  } finally {
+    forceLayout.destroy();
+  }
+}
+
+/**
+ * Traditional hierarchical layout implementation
+ */
+function layoutHierarchical(
+  adapter: GraphAdapter,
+  opts: Required<LayoutOptionsV2>,
+  _monitor?: PerformanceMonitor
+): LayoutResultV2 {
   const all = adapter.getAllNodes();
   const roots = all.filter((n) => !n.parentPath).sort(siblingComparator);
   const placed: LayoutPointV2[] = [];
@@ -122,19 +196,19 @@ export function layoutHierarchicalV2(
   const placeNodeSet = (nodes: GraphNode[], depthAdjusted = false) => {
     nodes.sort(siblingComparator);
     const count = nodes.length;
-    let effSpacing = o.horizontalSpacing;
-    if (count > o.spacingThreshold) {
-      const factor = 1 + ((count - o.spacingThreshold) / o.spacingThreshold) * o.spacingGrowthRate;
-      effSpacing = o.horizontalSpacing * Math.min(o.maxSpacingFactor, factor);
+    let effSpacing = opts.horizontalSpacing;
+    if (count > opts.spacingThreshold) {
+      const factor = 1 + ((count - opts.spacingThreshold) / opts.spacingThreshold) * opts.spacingGrowthRate;
+      effSpacing = opts.horizontalSpacing * Math.min(opts.maxSpacingFactor, factor);
     }
     // Aggregation check
-    if (count > o.aggregationThreshold) {
+    if (count > opts.aggregationThreshold) {
       const first = nodes[0];
       const parentPath = first.parentPath; // all share same parent in this set
       const syntheticPath =
         (parentPath || '') + '/*__agg__' + hashPathToId(String(count) + nodes[0].path);
-      const y = (depthAdjusted ? first.depth : first.depth) * o.verticalSpacing; // depth consistent
-      const expanded = !!o.expandedAggregations && o.expandedAggregations.has(syntheticPath);
+      const y = (depthAdjusted ? first.depth : first.depth) * opts.verticalSpacing; // depth consistent
+      const expanded = !!opts.expandedAggregations && opts.expandedAggregations.has(syntheticPath);
       const lp: LayoutPointV2 = {
         path: syntheticPath,
         x: cursor * effSpacing,
@@ -159,7 +233,7 @@ export function layoutHierarchicalV2(
           const childLp: LayoutPointV2 = {
             path: n.path,
             x: cursor * effSpacing,
-            y: n.depth * o.verticalSpacing,
+            y: n.depth * opts.verticalSpacing,
             depth: n.depth,
             __cursor: cursor,
             __effSpacing: effSpacing,
@@ -181,7 +255,7 @@ export function layoutHierarchicalV2(
       const lp: LayoutPointV2 = {
         path: n.path,
         x: cursor * effSpacing,
-        y: n.depth * o.verticalSpacing,
+        y: n.depth * opts.verticalSpacing,
         depth: n.depth,
         __cursor: cursor,
         __effSpacing: effSpacing,
@@ -219,8 +293,8 @@ export function layoutHierarchicalV2(
     minY,
     maxX,
     maxY,
-    width: maxX - minX + o.horizontalSpacing,
-    height: maxY - minY + o.verticalSpacing,
+    width: maxX - minX + opts.horizontalSpacing,
+    height: maxY - minY + opts.verticalSpacing,
   };
   return { nodes: placed, bbox, nodeIndex };
 }

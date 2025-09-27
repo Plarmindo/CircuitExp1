@@ -1,0 +1,75 @@
+{
+  "testName": "zero-iterations",
+  "timestamp": 1758176609653,
+  "config": {
+    "threshold": 5,
+    "iterations": 0,
+    "warmupIterations": 0,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 10
+  },
+  "result": {
+    "leakDetected": true,
+    "leakRate": null,
+    "totalGrowth": 0.02356719970703125,
+    "snapshots": [
+      {
+        "timestamp": 1758176609653,
+        "heapUsed": 16106752,
+        "heapTotal": 22892544,
+        "external": 3918484,
+        "arrayBuffers": 240549,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758176609653,
+        "heapUsed": 16131464,
+        "heapTotal": 22892544,
+        "external": 3919002,
+        "arrayBuffers": 242198,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Consistent memory leak detected - check for unclosed resources",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "Memory leak detected in zero-iterations: 0.02MB total growth (InfinityMB/iteration)",
+      "details": [
+        "Test: zero-iterations",
+        "Total memory growth: 0.02MB",
+        "Leak rate: InfinityMB per iteration",
+        "Iterations: 0",
+        "Severity: CRITICAL",
+        "Snapshots: 2"
+      ],
+      "severity": "critical"
+    }
+  }
+}

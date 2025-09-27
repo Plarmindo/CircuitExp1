@@ -1,0 +1,93 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - button "📈" [ref=e5] [cursor=pointer]
+  - generic [ref=e6]:
+    - link "Skip to main content" [ref=e7] [cursor=pointer]:
+      - /url: "#mainContent"
+    - banner [ref=e8]:
+      - generic [ref=e9]:
+        - heading "🚇 Metro Map Visualizer" [level=1] [ref=e10]
+        - generic [ref=e13]: ⏸️ Ready
+      - generic [ref=e14]:
+        - button "Select Folder and Start Scan" [ref=e15] [cursor=pointer]: 📁
+        - button "Start Development Scan" [ref=e16] [cursor=pointer]: 🛠️
+        - button "Cancel Ongoing Scan" [ref=e17] [cursor=pointer]: 🛑
+        - button "Toggle Theme" [ref=e18] [cursor=pointer]: 🌙
+        - button "Toggle Performance Overlay" [ref=e19] [cursor=pointer]: 📊
+        - button "Open Performance Dashboard" [ref=e20] [cursor=pointer]: 📈
+        - button "Toggle Minimap" [ref=e21] [cursor=pointer]: 🗺️
+        - button "Generate Synthetic Test Tree" [ref=e22] [cursor=pointer]: 🌱
+      - generic [ref=e23]:
+        - button "🧪N" [ref=e24] [cursor=pointer]
+        - button "Force redraw" [ref=e25] [cursor=pointer]: 🔄
+    - generic [ref=e26]:
+      - complementary [ref=e27]:
+        - generic [ref=e28]:
+          - button "◀️" [ref=e29] [cursor=pointer]
+          - heading "Project Explorer" [level=3] [ref=e30]
+        - textbox "Search files and folders..." [ref=e32]
+        - generic [ref=e33]:
+          - heading "Statistics" [level=4] [ref=e34]
+          - generic [ref=e35]:
+            - generic [ref=e36]:
+              - generic [ref=e37]: "0"
+              - generic [ref=e38]: Total Nodes
+            - generic [ref=e39]:
+              - generic [ref=e40]: "0"
+              - generic [ref=e41]: Received
+            - generic [ref=e42]:
+              - generic [ref=e43]: "0"
+              - generic [ref=e44]: Directories
+            - generic [ref=e45]:
+              - generic [ref=e46]: "0"
+              - generic [ref=e47]: Files
+        - generic [ref=e48]:
+          - heading "Favorites" [level=4] [ref=e49]
+          - generic [ref=e50]: No favorites yet
+          - list
+        - generic [ref=e51]:
+          - heading "Recent Scans" [level=4] [ref=e52]
+          - generic [ref=e53]: No recent scans
+          - list
+      - main "Visualization Stage" [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e57]:
+            - text: Mode
+            - group "Visualization Mode" [ref=e58]:
+              - button "Drawer Explorer" [ref=e59] [cursor=pointer]
+              - button "Semantic Zoom" [ref=e60] [cursor=pointer]
+              - button "Split View" [pressed] [ref=e61] [cursor=pointer]
+          - toolbar "Visualization tools" [ref=e62]:
+            - button "Zoom in" [ref=e63] [cursor=pointer]: 🔍➕
+            - button "Zoom out" [ref=e64] [cursor=pointer]: 🔍➖
+            - button "Fit to view" [ref=e65] [cursor=pointer]: ⏹️
+          - button "Export PNG" [ref=e67] [cursor=pointer]: 📸
+          - generic "Override manual da profundidade máxima visível (LOD). Deixe vazio para automático." [ref=e69]:
+            - text: Depth Cap
+            - spinbutton "Depth Cap" [ref=e70]
+        - group "Visualization Stage (focus to enable keyboard navigation)" [ref=e71]:
+          - generic [ref=e72]:
+            - region "Visualization Stage" [ref=e74]
+            - separator [ref=e424]
+            - region "Visualization Stage" [ref=e426]
+        - generic [ref=e777]: Minimap
+        - generic [ref=e783]:
+          - generic [ref=e784]: Nenhum scan ativo. Iniciar?
+          - button "Scan C:/" [ref=e785] [cursor=pointer]
+          - button "Árvore Sintética" [ref=e786] [cursor=pointer]
+          - button "Fechar" [ref=e787] [cursor=pointer]
+  - region "Error notifications":
+    - alert [ref=e789]:
+      - generic [ref=e790]:
+        - generic [ref=e791]: ⚠️
+        - heading "Unexpected Error" [level=3] [ref=e792]
+        - button "Dismiss error" [ref=e793] [cursor=pointer]: ×
+      - paragraph [ref=e794]: An unexpected error occurred
+      - generic [ref=e795]:
+        - button "Hide Details" [expanded] [active] [ref=e796] [cursor=pointer]
+        - log [ref=e797]: "Error: Test error with stack trace at eval (eval at evaluate (:291:30), <anonymous>:3:16) at UtilityScript.evaluate (<anonymous>:293:16) at UtilityScript.<anonymous> (<anonymous>:1:44)"
+      - button "Dismiss" [ref=e799] [cursor=pointer]
+      - generic [ref=e800]: 3:09:46 PM
+```

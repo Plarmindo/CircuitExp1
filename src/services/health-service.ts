@@ -95,22 +95,39 @@ class HealthService {
    * Get basic system metrics
    */
   private getBasicMetrics(): Record<string, unknown> {
-    const memUsage = process.memoryUsage();
-    const systemMetrics = {
-      memory: {
-        heapUsed: memUsage.heapUsed,
-        heapTotal: memUsage.heapTotal,
-        external: memUsage.external,
-        rss: memUsage.rss,
-      },
-      cpu: process.cpuUsage(),
-      platform: process.platform,
-      arch: process.arch,
-      nodeVersion: process.version,
-      recentLogs: getRecentLogs(10),
-    };
+    // Check if we're in a Node.js environment (main process) or browser (renderer)
+    const isNodeEnvironment = typeof process !== 'undefined' && process.versions && process.versions.node;
 
-    return systemMetrics;
+    if (isNodeEnvironment) {
+      const memUsage = process.memoryUsage();
+      return {
+        memory: {
+          heapUsed: memUsage.heapUsed,
+          heapTotal: memUsage.heapTotal,
+          external: memUsage.external,
+          rss: memUsage.rss,
+        },
+        cpu: process.cpuUsage(),
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        recentLogs: getRecentLogs(10),
+      };
+    } else {
+      // Renderer context - use performance API and navigator
+      return {
+        memory: {
+          // Use performance.memory if available (Chrome/Electron)
+          heapUsed: (performance as any).memory?.usedJSHeapSize || 0,
+          heapTotal: (performance as any).memory?.totalJSHeapSize || 0,
+          external: 0,
+          rss: 0,
+        },
+        platform: navigator.platform,
+        userAgent: navigator.userAgent,
+        recentLogs: getRecentLogs(10),
+      };
+    }
   }
 
   /**
@@ -134,8 +151,15 @@ class HealthService {
   private registerDefaultChecks(): void {
     // Memory health check
     this.registerCheck('memory', async () => {
-      const memUsage = process.memoryUsage();
-      const heapUsedMB = memUsage.heapUsed / 1024 / 1024;
+      const isNodeEnvironment = typeof process !== 'undefined' && process.versions && process.versions.node;
+
+      let heapUsedMB = 0;
+      if (isNodeEnvironment) {
+        const memUsage = process.memoryUsage();
+        heapUsedMB = memUsage.heapUsed / 1024 / 1024;
+      } else if ((performance as any).memory) {
+        heapUsedMB = (performance as any).memory.usedJSHeapSize / 1024 / 1024;
+      }
 
       if (heapUsedMB > 1000) {
         return {

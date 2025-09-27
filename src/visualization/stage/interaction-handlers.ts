@@ -6,6 +6,9 @@ export interface InteractionHandlers {
   handleFitToView: () => void;
   handleSelect: (path: string) => void;
   handleExportPNG: () => void;
+  // Added explicit zoom controls so global event listeners can invoke them
+  zoomIn: () => void;
+  zoomOut: () => void;
 }
 
 export interface InteractionHandlerConfig {
@@ -22,6 +25,14 @@ export interface InteractionHandlerConfig {
  */
 export function createInteractionHandlers(config: InteractionHandlerConfig): InteractionHandlers {
   const { app, layoutIndex, scaleRef, selectedKeyRef, pixiFailed, redraw } = config;
+
+  const getCanvas = (): HTMLCanvasElement | undefined => {
+    // Prefer standard PIXI renderer.view when available, fallback to app.view/canvas
+    const rendererView = (app.renderer as any)?.view as HTMLCanvasElement | undefined;
+    const appView = (app as any)?.view as HTMLCanvasElement | undefined;
+    const appCanvas = (app as any)?.canvas as HTMLCanvasElement | undefined;
+    return rendererView || appView || appCanvas;
+  };
 
   const handleFitToView = (): void => {
     const bounds = computeBounds(layoutIndex);
@@ -64,6 +75,53 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
     app.stage.y = viewH / 2 - worldCenterY * newScale;
   };
 
+  // Zoom helpers mirrored from interactions.ts so keyboard shortcuts can work
+  const zoomByFactorAt = (factor: number, centerX: number, centerY: number) => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const stage = app.stage;
+    const currentScale = scaleRef.current;
+
+    if (!Number.isFinite(currentScale) || currentScale <= 0) return;
+    if (!Number.isFinite(centerX) || !Number.isFinite(centerY)) return;
+    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return;
+
+    const worldX = (centerX - rect.left - stage.x) / currentScale;
+    const worldY = (centerY - rect.top - stage.y) / currentScale;
+    if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+
+    const minZoom = 0.3;
+    const maxZoom = 3.0;
+    const newScale = Math.min(maxZoom, Math.max(minZoom, currentScale * factor));
+    if (!Number.isFinite(newScale) || newScale <= 0) return;
+
+    scaleRef.current = newScale;
+    if (!pixiFailed) stage.scale.set(newScale);
+
+    const newX = centerX - rect.left - worldX * newScale;
+    const newY = centerY - rect.top - worldY * newScale;
+    if (!Number.isFinite(newX) || !Number.isFinite(newY)) return;
+
+    stage.x = newX;
+    stage.y = newY;
+    redraw(false);
+  };
+
+  const zoomIn = (): void => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    zoomByFactorAt(1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+
+  const zoomOut = (): void => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    zoomByFactorAt(1 / 1.2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+
   const handleSelect = (path: string): void => {
     // Toggle selection logic
     selectedKeyRef.current = path === selectedKeyRef.current ? null : path;
@@ -86,5 +144,7 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
     handleFitToView,
     handleSelect,
     handleExportPNG,
+    zoomIn,
+    zoomOut,
   };
 }

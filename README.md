@@ -51,15 +51,45 @@ Ensure you ran tests before packaging.
 - Synthetic large tree: `npm run perf:tree`
 - Memory leak probe: `npm run perf:leak`
 
-## Security Notes
+## Security & Production Features
 
-The app uses a strict preload with `contextIsolation: true` and no `nodeIntegration`. IPC channels are minimal; further
-hardening (CSP tightening for production, IPC validation) is pending.
+The app implements comprehensive security measures for production deployment:
+
+- **Strict Security Model**: Uses `contextIsolation: true` with no `nodeIntegration`
+- **Input Validation**: Comprehensive IPC validation via `ipc-validation.cjs`
+- **Path Traversal Protection**: Prevents unauthorized file system access
+- **Content Security Policy**: Production-hardened CSP with nonce-based inline script support
+- **Code Signing**: Multi-platform code signing (Windows EV, macOS Developer ID, Linux GPG)
+- **PII Detection**: Automatic detection and redaction of sensitive information
+- **Rate Limiting**: Protection against abuse and resource exhaustion
+
+## Production Deployment
+
+### Code Signing Setup
+
+1. **Configure Environment**: Copy `.env.code-signing.template` to `.env` and fill in your certificate details
+2. **Setup Code Signing**: Run `npm run setup:code-signing` to configure certificates
+3. **Build Signed Packages**: Use `npm run build:signed` for production builds
+4. **Verify Signatures**: Run `npm run verify:signatures` to validate signed packages
+
+### Production Build Commands
+
+- **Signed Windows Build**: `npm run dist:win:signed`
+- **Signed macOS Build**: `npm run dist:mac:signed`
+- **Signed Linux Build**: `npm run dist:linux:signed`
+- **All Platforms**: `npm run build:signed`
+
+### Security Verification
+
+- **Signature Verification**: `npm run verify:signatures`
+- **Security Audit**: `npm run audit:security`
+- **Dependency Check**: `npm run audit:deps`
+
+See `PRODUCTION_DEPLOYMENT.md` for detailed deployment instructions and `SECURITY_HARDENING_GUIDE.md` for security configuration.
 
 ## Roadmap (High-Level)
 
-- Packaging hardening & signing
-- IPC schema validation layer
-- Accessibility (keyboard navigation, focus ring, color contrast)
-- Enhanced aggregation + filtering UI
-- Export snapshot / report
+- Enhanced accessibility features (keyboard navigation, screen reader support)
+- Advanced filtering and aggregation UI
+- Export functionality for reports and snapshots
+- Multi-language internationalization support

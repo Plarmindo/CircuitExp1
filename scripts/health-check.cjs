@@ -39,7 +39,7 @@ async function waitForServer(timeoutMs=15000){
 
 async function run() {
   const results = { steps: [], ok: true, electron: WANT_ELECTRON };
-  function step(name, ok, detail){results.steps.push({name, ok, detail}); if(!ok) results.ok=false; console.log(`${ok? '✓':'✗'} ${name}${detail? ' - '+detail:''}`);}  
+  function step(name, ok, detail){results.steps.push({name, ok, detail}); if(!ok) results.ok=false; console.log(`${ok? '✓':'✗'} ${name}${detail? ' - '+detail:''}`);}
 
   // 1. Ensure node_modules present
   const hasNM = fs.existsSync(path.join(process.cwd(),'node_modules'));
@@ -48,36 +48,88 @@ async function run() {
 
   // 2. Start Vite dev server (spawn first, programmatic fallback)
   console.log('Starting Vite dev server on port', PORT);
-  const npxBin = process.platform==='win32' ? path.join(process.env.APPDATA || 'C:/Users', '..','npm','npx.cmd') : 'npx';
-  const spawnCmd = fs.existsSync(npxBin)? npxBin : (process.platform==='win32'? 'npx.cmd':'npx');
-  const spawnArgs = ['vite','--port', String(PORT),'--strictPort'];
+
+  // Improved Windows npx detection with error logging
+  function findNpxCommand() {
+    if (process.platform !== 'win32') return 'npx';
+
+    // Try common npx locations on Windows
+    const candidates = [
+      'npx.cmd',
+      'npx.ps1',
+      path.join(process.env.APPDATA || 'C:/Users', '..', 'npm', 'npx.cmd'),
+      path.join(process.env.PROGRAMFILES || 'C:/Program Files', 'nodejs', 'npx.cmd'),
+      path.join(process.env.LOCALAPPDATA || 'C:/Users/Local', 'npm', 'npx.cmd')
+    ];
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
+
+    // Fallback to PowerShell execution for .ps1 scripts
+    return process.platform === 'win32' ? 'powershell.exe' : 'npx';
+  }
+
+  const npxCmd = findNpxCommand();
+  const isPS1 = npxCmd === 'powershell.exe';
+  const spawnCmd = npxCmd;
+  const spawnArgs = isPS1
+    ? ['-ExecutionPolicy', 'Bypass', '-Command', 'npx', 'vite', '--port', String(PORT), '--strictPort']
+    : ['vite', '--port', String(PORT), '--strictPort'];
+
   let viteProc=null; let viteProgrammatic=null; let viteReady=false; let viteLogs='';
+  let spawnError = null;
   try {
-    viteProc = spawn(spawnCmd, spawnArgs, { stdio:['ignore','pipe','pipe'] });
+    viteProc = spawn(spawnCmd, spawnArgs, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',
+      windowsHide: true
+    });
+    viteProc.on('error', (err) => {
+      spawnError = err;
+      viteLogs += `Spawn error: ${err.message}\n`;
+      if (err.code === 'EINVAL') {
+        console.log('EINVAL detected - likely port bind or path issue. Check port availability.');
+      }
+    });
     viteProc.stdout.on('data', d=>{ const s=d.toString(); viteLogs+=s; if(!viteReady && /ready in/i.test(s)) viteReady=true; });
     viteProc.stderr.on('data', d=>{ viteLogs+=d.toString(); });
+    step('spawn vite', true, `using ${spawnCmd} ${spawnArgs.join(' ')}`);
   } catch(e){
-    step('spawn vite', false, e.message);
+    spawnError = e;
+    step('spawn vite', false, `Command failed: ${e.message}. Full logs: ${viteLogs.substring(0, 200)}...`);
   }
-  // Probe with fallback attempts
+  // Probe with enhanced fallback attempts and longer timeouts
   let serverOk=false; let attempts=0;
-  while(attempts<4 && !serverOk){
+  const maxAttempts = 5; // Increased to 5
+  while(attempts < maxAttempts && !serverOk){
     attempts++;
-    serverOk = await waitForServer( attempts===1? 2000: 1200 );
+    const attemptTimeout = attempts === 1 ? 5000 : 3000; // Longer initial (5s), then 3s
+    console.log(`Attempt ${attempts}/${maxAttempts} - waiting ${attemptTimeout}ms for server...`);
+    serverOk = await waitForServer(attemptTimeout);
     if(serverOk) break;
-    if(attempts===2 && !viteProgrammatic){
+    if(attempts === 2 && !viteProgrammatic){
       try {
         const viteModule = await import('vite');
-        viteProgrammatic = await viteModule.createServer({ server:{ port: PORT, strictPort:true } });
+        viteProgrammatic = await viteModule.createServer({
+          server: { port: PORT, strictPort: true, host: '0.0.0.0' },
+          configFile: false // Use default config
+        });
         await viteProgrammatic.listen();
         step('vite programmatic fallback', true);
+        console.log('Programmatic server started on port', PORT);
       } catch(err){
         step('vite programmatic fallback', false, err.message);
+        console.log('Programmatic fallback logs:', viteLogs.substring(0, 300));
+      }
+    } else if (attempts === maxAttempts && spawnError) {
+      console.log('All attempts failed. Spawn error details:', spawnError.message);
+      if (spawnError.code === 'EINVAL') {
+        console.log('Suggestion: Check if port ' + PORT + ' is free (netstat -ano | findstr :' + PORT + ') or try different port.');
       }
     }
   }
-  if(!serverOk) serverOk = await waitForServer(1000);
-  step('vite dev server reachable', serverOk, serverOk? null: 'failed to start vite');
+  step('vite dev server reachable', serverOk, serverOk? null: `failed after ${maxAttempts} attempts. Logs: ${viteLogs.substring(0, 200)}...`);
   if(!serverOk){
     try { viteProc && viteProc.kill(); } catch{}
     try { viteProgrammatic && await viteProgrammatic.close(); } catch{}
@@ -104,13 +156,23 @@ async function run() {
       return null;
     }
     const electronBin = resolveElectronBinary();
-    const electronCmd = electronBin || spawnCmd;
-    const electronArgs = electronBin? ['electron-main.cjs'] : ['electron','electron-main.cjs'];
+    const electronCmd = electronBin || (isPS1 ? 'powershell.exe' : 'npx');
+    const electronArgs = electronBin
+      ? ['electron-main.cjs']
+      : isPS1
+        ? ['-ExecutionPolicy', 'Bypass', '-Command', 'npx', 'electron', 'electron-main.cjs']
+        : ['electron', 'electron-main.cjs'];
     let electronSpawnOk=true; let electronOutput=''; let loaded=false; let electron;
     try {
-      electron = spawn(electronCmd, electronArgs, { env, stdio:['ignore','pipe','pipe'] });
+      electron = spawn(electronCmd, electronArgs, {
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: process.platform === 'win32',
+        windowsHide: true
+      });
       electron.stdout.on('data', d=>{ const s=d.toString(); electronOutput+=s; if(/forceStage/.test(s)) loaded=true; });
       electron.stderr.on('data', d=>{ electronOutput+=d.toString(); });
+      step('electron spawn', true, `using ${electronCmd}`);
     } catch (e) {
       electronSpawnOk=false; step('electron spawn', false, e.message);
     }

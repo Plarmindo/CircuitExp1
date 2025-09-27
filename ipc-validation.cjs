@@ -267,6 +267,14 @@ function sanitizePath(p) {
     p = p.slice(2); // remove drive part from the remaining path for sanitisation
   }
   
+  // Decode URL-encoded characters first to catch encoded traversal
+  try {
+    p = decodeURIComponent(p);
+  } catch {
+    // If decoding fails, treat as potentially malicious
+    return null;
+  }
+  
   // Remove potentially dangerous characters (colon already handled)
   let sanitized = p.replace(/[<>:"|?*\x00-\x1f]/g, '');
   

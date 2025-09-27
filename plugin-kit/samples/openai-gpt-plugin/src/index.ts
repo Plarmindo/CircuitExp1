@@ -100,7 +100,7 @@ export class OpenAIGPTPlugin {
 
   private setupErrorHandling(): void {
     this.app.use(
-      (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      (err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
         this.logger.error('Unhandled error', err);
         this.metrics.recordError();
         res.status(500).json({ error: 'Internal server error' });
@@ -112,7 +112,7 @@ export class OpenAIGPTPlugin {
       process.exit(1);
     });
 
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on('unhandledRejection', (reason, _promise) => {
       this.logger.error('Unhandled rejection', reason);
       process.exit(1);
     });

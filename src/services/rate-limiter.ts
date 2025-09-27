@@ -79,7 +79,7 @@ export class RateLimiter {
     }
   }
 
-  public checkRateLimit(identifier: string, operation: string, metadata?: any): RateLimitResult {
+  public checkRateLimit(identifier: string, operation: string, metadata?: Record<string, unknown>): RateLimitResult {
     if (!this.config.enabled) {
       return {
         allowed: true,
@@ -222,7 +222,7 @@ export class RateLimiter {
     return { ...this.config };
   }
 
-  public exportMetrics(): any {
+  public exportMetrics(): Record<string, unknown> {
     return {
       config: this.config,
       stats: this.stats,

@@ -22,12 +22,12 @@ export class ChatController {
         return;
       }
 
-      const { message, context, sessionId } = req.body;
+      const { message, context: _context, sessionId: _sessionId } = req.body;
 
       this.logger.info('Processing chat request', {
         message: message.substring(0, 50),
-        sessionId,
-        hasContext: !!context,
+        sessionId: _sessionId,
+        hasContext: !!_context,
       });
 
       const result = await this.aiService.chat(message, { context, sessionId });
@@ -51,7 +51,7 @@ export class ChatController {
         return;
       }
 
-      const { message, context, sessionId } = req.body;
+      const { message, context: _context, sessionId: _sessionId } = req.body;
 
       res.writeHead(200, {
         'Content-Type': 'text/plain',

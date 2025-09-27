@@ -11,6 +11,15 @@ export interface UserSettings {
     confidenceThreshold: number;
     customPatterns: string[];
   };
+  // Visualization preferences and feature flags
+  visualization?: {
+    // Persisted default visualization mode; string union to avoid cross-package import cycles
+    defaultMode?: 'drawer' | 'zoom' | 'split';
+    // Explicitly enabled modes; if omitted, all registered modes are considered enabled unless gated by env
+    enabledModes?: Array<'drawer' | 'zoom' | 'split'>;
+    // Arbitrary feature flags merged with env variables
+    featureFlags?: Record<string, boolean>;
+  };
 }
 
 interface ElectronAPISettings {
@@ -21,7 +30,7 @@ interface ElectronAPISettings {
   onSettingsLoaded?: (cb: (s: UserSettings) => void) => () => void;
   onSettingsUpdated?: (cb: (s: UserSettings) => void) => () => void;
 }
-const w = window as unknown as { electronAPI?: ElectronAPISettings };
+const w = (typeof window !== 'undefined' ? window : {}) as unknown as { electronAPI?: ElectronAPISettings };
 
 export async function getUserSettings(): Promise<{
   success: boolean;

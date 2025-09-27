@@ -1,7 +1,6 @@
 // Stage modularization: shared types & interfaces extracted from monolithic metro-stage.tsx
 import type { LayoutPointV2 } from '../layout-v2';
-import type { Application } from 'pixi.js';
-import * as PIXI from 'pixi.js';
+import type { Application, Sprite, Graphics, Text } from 'pixi.js';
 
 export interface FastAppendResult {
   usedFastPath: boolean;
@@ -173,22 +172,7 @@ export interface InteractionState {
   lastPointer: { x: number; y: number } | null;
 }
 
-export interface InteractionHandlers {
-  wheel?: (e: WheelEvent) => void;
-  pointerdown?: (e: PointerEvent) => void;
-  pointermove?: (e: PointerEvent) => void;
-  pointerup?: (e: PointerEvent) => void;
-  themeChanged?: () => void;
-}
-
-export interface EventListenerConfig {
-  interactionHandlers: InteractionHandlers;
-  interactionsApiRef: React.MutableRefObject<{
-    zoomIn?: () => void;
-    zoomOut?: () => void;
-    [key: string]: unknown;
-  } | null>;
-}
+// Removed duplicate InteractionHandlers and EventListenerConfig definitions to avoid conflicts
 
 export interface InteractionHandlerDeps {
   app: Application;
@@ -223,11 +207,11 @@ export interface RenderSceneConfig {
   hoveredKeyRef: React.MutableRefObject<string | null>;
   selectedKeyRef: React.MutableRefObject<string | null>;
   nodeColorRef: React.MutableRefObject<Map<string, number>>;
-  spriteNodes: React.MutableRefObject<Map<string, PIXI.Sprite>>;
-  spriteLines: React.MutableRefObject<Map<string, PIXI.Graphics>>;
-  spriteBadges: React.MutableRefObject<Map<string, PIXI.Text>>;
-  spriteLabels: React.MutableRefObject<Map<string, PIXI.Text>>;
+  spriteNodes: React.MutableRefObject<Map<string, Sprite>>;
+  spriteLines: React.MutableRefObject<Map<string, Graphics>>;
+  spriteBadges: React.MutableRefObject<Map<string, Text>>;
+  spriteLabels: React.MutableRefObject<Map<string, Text>>;
   reuseStatsRef: React.MutableRefObject<{ totalAllocated: number; reusedPct: number }>;
   lastCulledCountRef: React.MutableRefObject<number>;
-  onNodeSpriteCreate?: (sprite: PIXI.Sprite, key: string) => void;
+  onNodeSpriteCreate?: (sprite: Sprite, key: string) => void;
 }

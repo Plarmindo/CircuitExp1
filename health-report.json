@@ -1,5 +1,5 @@
 {
-  "ok": false,
+  "ok": true,
   "steps": [
     {
       "name": "node_modules present",
@@ -8,8 +8,12 @@
     },
     {
       "name": "spawn vite",
-      "ok": false,
-      "detail": "spawn EINVAL"
+      "ok": true,
+      "detail": "using C:\\Program Files\\nodejs\\npx.cmd vite --port 5175 --strictPort"
+    },
+    {
+      "name": "vite programmatic fallback",
+      "ok": true
     },
     {
       "name": "vite dev server reachable",
@@ -19,11 +23,6 @@
     {
       "name": "/@vite/client served",
       "ok": true
-    },
-    {
-      "name": "electron launch (dev)",
-      "ok": false,
-      "detail": "no loadURL evidence"
     }
   ]
 }

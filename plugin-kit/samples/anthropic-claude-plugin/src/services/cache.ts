@@ -31,11 +31,11 @@ export class CacheService {
       this.logger.debug('Cache key set', { key, size: JSON.stringify(value).length });
     });
 
-    this.cache.on('del', (key, value) => {
+    this.cache.on('del', (key, _value) => {
       this.logger.debug('Cache key deleted', { key });
     });
 
-    this.cache.on('expired', (key, value) => {
+    this.cache.on('expired', (key, _value) => {
       this.logger.debug('Cache key expired', { key });
     });
 

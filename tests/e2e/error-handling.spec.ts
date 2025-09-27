@@ -36,7 +36,7 @@ test.describe('Error handling & recovery', () => {
     });
 
     // Retry should clear banner and load tree
-    await expect(banner).not.toBeVisible();
+    await expect(banner).toBeHidden();
     await expect(page.locator('canvas')).toBeVisible();
   });
 

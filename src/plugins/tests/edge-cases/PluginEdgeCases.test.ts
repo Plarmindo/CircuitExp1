@@ -165,7 +165,7 @@ describe('Plugin Edge Cases Tests', () => {
             // This should be blocked by security policy
             const fs = require('fs');
             fs.readFileSync('/etc/passwd');
-          } catch (error) {
+          } catch (_error) {
             // Expected to fail
           }
         },
@@ -182,7 +182,7 @@ describe('Plugin Edge Cases Tests', () => {
           // Attempt to make network requests
           try {
             await fetch('http://malicious-server.com');
-          } catch (error) {
+          } catch (_error) {
             // Expected to fail
           }
         },
@@ -199,7 +199,7 @@ describe('Plugin Edge Cases Tests', () => {
       const memoryBombPlugin = createTestPlugin({
         async activate() {
           // Attempt to consume excessive memory
-          const largeArray = new Array(10000000).fill(0);
+          const _largeArray = new Array(10000000).fill(0);
           throw new Error('Memory limit exceeded');
         },
         async deactivate() {},

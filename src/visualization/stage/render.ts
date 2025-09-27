@@ -2,7 +2,8 @@ import { Application, Container, Graphics, Text } from 'pixi.js';
 import { drawOrthogonalRoute, type RouteCommand } from '../line-routing';
 import type { LayoutPointV2 } from '../layout-v2';
 import type { GraphAdapter } from '../graph-adapter';
-import type { MetroDebugWindow } from './debug-api';
+// Unused type import - keeping for future use
+// import type { MetroDebugWindow } from './debug-api';
 
 export interface RenderSceneParams {
   app: Application;
@@ -24,12 +25,40 @@ export interface RenderSceneParams {
   spriteLabels: { current: Map<string, Text> };
   reuseStatsRef: { current: { totalAllocated: number; reusedPct: number } };
   lastCulledCountRef: { current: number };
+  // Optional depth cap (LOD) — when set, nodes with depth greater than this are culled
+  depthCap?: number | null;
   onNodeSpriteCreate?: (sprite: Graphics, key: string) => void; // allow caller to attach event handlers
 }
 
 interface RouteCollected {
   key: string;
   commands: RouteCommand[];
+}
+
+// Utility to convert millimeters to CSS pixels, cached for performance
+let __pxPerMMCache: number | null = null;
+function getPxPerMM(): number {
+  if (__pxPerMMCache && Number.isFinite(__pxPerMMCache)) return __pxPerMMCache;
+  try {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const div = document.createElement('div');
+      div.style.width = '100mm';
+      div.style.height = '0';
+      div.style.position = 'absolute';
+      div.style.visibility = 'hidden';
+      document.body.appendChild(div);
+      const px = div.getBoundingClientRect().width;
+      document.body.removeChild(div);
+      if (Number.isFinite(px) && px > 0) {
+        __pxPerMMCache = px / 100;
+        return __pxPerMMCache;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  __pxPerMMCache = 96 / 25.4; // CSS px per mm fallback
+  return __pxPerMMCache;
 }
 
 export function renderScene(p: RenderSceneParams) {
@@ -51,10 +80,11 @@ export function renderScene(p: RenderSceneParams) {
     spriteLabels,
     reuseStatsRef,
     lastCulledCountRef,
+    depthCap,
     onNodeSpriteCreate,
   } = p;
 
-  if (import.meta.env.DEV && (!layoutNodes || layoutNodes.length === 0)) {
+  if (import.meta.env?.DEV && (!layoutNodes || layoutNodes.length === 0)) {
     type AdapterWithDebug = GraphAdapter & { debugRootCount?: () => number };
     const rootCount = (adapter as AdapterWithDebug).debugRootCount
       ? (adapter as AdapterWithDebug).debugRootCount!()
@@ -119,13 +149,30 @@ export function renderScene(p: RenderSceneParams) {
   };
   const collectedRoutes: RouteCollected[] = [];
 
+  // Precompute desired screen-space sizes and current scale
+  const __pxPerMM = getPxPerMM();
+  const __nodeDiameterMM = 2.5; // requirement: nodes 2.5mm (diameter)
+  const __nodeRadiusPx = (__nodeDiameterMM * __pxPerMM) / 2; // screen-space radius in px
+  const __textMM = 2; // requirement: text 2mm
+  const __textPx = __textMM * __pxPerMM; // screen-space font size in px
+
   for (const lp of layoutNodes) {
     if (lp.aggregated) continue;
     const node = adapter.getNode(lp.path);
     if (!node || !node.parentPath) continue;
     if (pixiFailed) continue;
+    // Obtain parent point for depth checks and routing
+    const parentPoint =
+      nodeIndex.get(node.parentPath) ||
+      nodeIndex.get(node.parentPath.replace(/\\/g, '/')) ||
+      nodeIndex.get(node.parentPath.replace(/\//g, String.raw`\\`));
+    if (!parentPoint) continue;
+    // Depth cap culling for lines: skip if either endpoint is beyond depth cap
+    if (depthCap != null && (lp.depth > depthCap || parentPoint.depth > depthCap)) {
+      continue;
+    }
     // DEBUG: log primeira dezena para diagnosticar ausência de linhas
-    if (import.meta.env.DEV && collectedRoutes.length < 10) {
+    if (import.meta.env?.DEV && collectedRoutes.length < 10) {
       try {
         console.log(
           '[renderScene][debug-line] parent->child candidate',
@@ -137,22 +184,10 @@ export function renderScene(p: RenderSceneParams) {
         /* ignore */
       }
     }
-    const parentPoint =
-      nodeIndex.get(node.parentPath) ||
-      nodeIndex.get(node.parentPath.replace(/\\/g, '/')) ||
-      nodeIndex.get(node.parentPath.replace(/\//g, '\\'));
-    if (!parentPoint) continue;
-    const parentNode = adapter.getNode(node.parentPath);
-    const parentRadius = parentPoint.aggregated
-      ? style.stationRadius.aggregated
-      : parentNode?.kind === 'file'
-        ? style.stationRadius.file
-        : style.stationRadius.directory;
-    const childRadius = lp.aggregated
-      ? style.stationRadius.aggregated
-      : node.kind === 'file'
-        ? style.stationRadius.file
-        : style.stationRadius.directory;
+    const _parentNode = adapter.getNode(node.parentPath);
+    // Compute world-space radii that yield a constant screen-space size
+    const parentRadius = __nodeRadiusPx / Math.max(1e-6, p.scaleRef.current);
+    const childRadius = __nodeRadiusPx / Math.max(1e-6, p.scaleRef.current);
     const lineKey = `${node.parentPath}__${lp.path}`;
     const lg = getLineSprite(lineKey);
     lg.visible = true; // garantir que não fica oculto por algum estado anterior
@@ -174,13 +209,19 @@ export function renderScene(p: RenderSceneParams) {
     seenLineKeys.add(lineKey);
   }
 
-  if (typeof window !== 'undefined' && (window as Window & MetroDebugWindow).__metroDebug) {
-    (window as Window & MetroDebugWindow).__metroDebug.lastRoutes = collectedRoutes.slice(0, 50);
+  if (typeof window !== 'undefined' && (window as any).__metroDebug) {
+    (window as any).__metroDebug.lastRoutes = collectedRoutes.slice(0, 50);
   }
 
   const scaleNow = scaleRef.current;
   let culled = 0;
   for (const lp of layoutNodes) {
+    // Depth cap culling for nodes
+    if (depthCap != null && lp.depth > depthCap) {
+      // Do not create/update sprites; treat as culled and let cleanup remove prior sprites
+      culled++;
+      continue;
+    }
     const node = adapter.getNode(lp.path);
     const key = lp.path;
     if (pixiFailed) {
@@ -193,22 +234,22 @@ export function renderScene(p: RenderSceneParams) {
     }
     const g = getNodeSprite(key);
     g.clear();
-    let radius = style.stationRadius.directory;
+    // Fixed visual size: compute world-space radius from desired screen-space px
+    const radiusWorld = __nodeRadiusPx / Math.max(1e-6, scaleNow);
     let fill = style.palette.directory;
     if (lp.aggregated) {
-      radius = style.stationRadius.aggregated;
       fill = style.palette.aggregated;
     } else if (node?.kind === 'file') {
-      radius = style.stationRadius.file;
       fill = style.palette.file;
     }
     nodeColorRef.current.set(key, fill);
-    const projectedRadius = radius * scaleNow;
+    // With fixed screen-space nodes, projected radius is constant in px
+    const projectedRadius = __nodeRadiusPx;
     const cullThreshold = 0.5;
     if (!disableCullingRef.current && projectedRadius < cullThreshold) {
       if (lp.aggregated) {
         g.visible = true;
-        const pxSize = 2 / scaleNow;
+        const pxSize = 2 / Math.max(1e-6, scaleNow);
         g.beginFill(style.palette.aggregated, 1);
         g.drawRect(-pxSize / 2, -pxSize / 2, pxSize, pxSize);
         g.endFill();
@@ -217,7 +258,7 @@ export function renderScene(p: RenderSceneParams) {
         const label =
           count > 999 ? '1k+' : count > 99 ? `${Math.floor(count / 100)}00+` : `${count}`;
         if (!badge) {
-          badge = new Text({ text: label, style: { fill: '#ffffff', fontSize: 10 } });
+          badge = new Text({ text: label, style: { fill: '#ffffff', fontSize: __textPx } });
           badge.anchor.set(0.5);
           spriteBadges.current.set(key, badge);
           app.stage.addChild(badge);
@@ -226,8 +267,8 @@ export function renderScene(p: RenderSceneParams) {
         }
         badge.visible = true;
         badge.x = lp.x;
-        badge.y = lp.y - 6 / scaleNow;
-        badge.scale.set(1 / scaleNow);
+        badge.y = lp.y - 6 / Math.max(1e-6, scaleNow);
+        badge.scale.set(1 / Math.max(1e-6, scaleNow));
       } else {
         const existing = spriteBadges.current.get(key);
         if (existing) existing.visible = false;
@@ -258,23 +299,28 @@ export function renderScene(p: RenderSceneParams) {
     const halo = isHovered && !isSelected;
     if (halo) {
       g.beginFill(style.palette.hover, 0.18);
-      g.drawCircle(0, 0, radius + 10);
+      // Halo radius: node radius plus 10px, converted to world-space
+      g.drawCircle(0, 0, (__nodeRadiusPx + 10) / Math.max(1e-6, scaleNow));
       g.endFill();
     }
     g.beginFill(fill, 1);
-    g.drawCircle(0, 0, radius);
+    g.drawCircle(0, 0, radiusWorld);
     g.endFill();
     if (lp.aggregated && lp.aggregatedExpanded) {
       g.lineStyle(2, style.palette.selected, 0.8);
-      g.moveTo(-radius + 4, 0);
-      g.lineTo(radius - 4, 0);
-      g.moveTo(0, -radius + 4);
-      g.lineTo(0, radius - 4);
+      // Use 4px padding converted to world-space
+      const pad = 4 / Math.max(1e-6, scaleNow);
+      g.moveTo(-radiusWorld + pad, 0);
+      g.lineTo(radiusWorld - pad, 0);
+      g.moveTo(0, -radiusWorld + pad);
+      g.lineTo(0, radiusWorld - pad);
       g.lineStyle();
     }
     if (strokeWidth > 0) {
       g.lineStyle(strokeWidth, strokeColor, 0.95);
-      g.drawCircle(0, 0, radius + (isSelected ? 2 : -4));
+      // Outer ring offset: +/- 2px converted to world-space
+      const delta = (isSelected ? 2 : -4) / Math.max(1e-6, scaleNow);
+      g.drawCircle(0, 0, radiusWorld + delta);
       g.lineStyle();
     }
     g.x = lp.x;
@@ -284,8 +330,8 @@ export function renderScene(p: RenderSceneParams) {
       let label = spriteLabels.current.get(key);
       if (!label) {
         label = new Text({
-          text: node.name || key.split(/[\\/]/).pop() || key,
-          style: { fill: '#444', fontSize: 12 },
+          text: node.name || key.split([/[/\\]/] as any).pop() || key,
+          style: { fill: '#444', fontSize: __textPx },
         });
         label.anchor.set(0.5, -0.2);
         spriteLabels.current.set(key, label);
@@ -294,7 +340,8 @@ export function renderScene(p: RenderSceneParams) {
       label.text = node.name || label.text;
       label.x = lp.x;
       label.y = lp.y;
-      label.scale.set(Math.min(1.2, Math.max(0.35, 1 / scaleNow)));
+      // Keep text visually constant by inversely scaling with zoom
+      label.scale.set(1 / Math.max(1e-6, scaleNow));
       label.visible = g.visible;
     } else {
       const existing = spriteLabels.current.get(key);
@@ -336,7 +383,7 @@ export function renderScene(p: RenderSceneParams) {
     }
   }
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     try {
       const linesLayer = app.stage.children[0] as Container;
       const drawnLines = linesLayer.children.length;
@@ -357,6 +404,27 @@ export function renderScene(p: RenderSceneParams) {
     } catch {
       /* ignore */
     }
+  }
+
+  // Dispatch LOD stats for HUD consumers
+  try {
+    const totalNodes = layoutNodes.length;
+    const renderedCount = totalNodes - culled;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('metro:lodStats', {
+          detail: {
+            scale: scaleNow,
+            depthCap: depthCap ?? null,
+            rendered: renderedCount,
+            total: totalNodes,
+            culled,
+          },
+        })
+      );
+    }
+  } catch {
+    /* ignore */
   }
 
   return { culled };

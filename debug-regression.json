@@ -1,0 +1,21 @@
+{
+  "baseline": {
+    "name": "avg_duration",
+    "value": 0.0029666666666040933,
+    "unit": "ms",
+    "timestamp": 1758981669718
+  },
+  "current": {
+    "name": "avg_duration",
+    "value": 70.0897333333334,
+    "unit": "ms",
+    "timestamp": 1758981669983
+  },
+  "comparison": {
+    "regression": true,
+    "improvement": false,
+    "percentageChange": 2362475.28094871,
+    "details": "2362475.28% change from baseline"
+  },
+  "threshold": 2
+}

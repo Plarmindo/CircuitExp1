@@ -8,6 +8,12 @@ export default defineConfig({
     include: ['tests/**/*.{test,spec}.ts', 'tests/**/*.{test,spec}.tsx'],
     // Exclude e2e, setup, and empty placeholder tests
     exclude: ['node_modules/**', 'tests/e2e/**', 'tests/setup.ts', 'tests/ollama-integration.test.ts'],
+    // Add timeouts and isolation
+    testTimeout: 10000,
+    hookTimeout: 10000,
+    teardownTimeout: 10000,
+    isolate: true,
+    pool: 'forks',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'lcov'],

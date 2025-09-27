@@ -1,24 +1,21 @@
 import { expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
+import { CSPManager } from '../../src/security/csp-manager';
 
 // SEC-1 static test: ensures production CSP string hardened (no 'unsafe-inline') and required directives present.
-// This does not execute Electron runtime; it scans the main process source.
+// This tests both the CSP manager implementation and the main process integration.
 
 test('SEC-1 production CSP hardened (no unsafe-inline, directives present)', () => {
-  const mainPath = path.join(__dirname, '..', '..', 'electron-main.cjs');
-  const src = fs.readFileSync(mainPath, 'utf8');
-  // Extract the CSP assembly block (array join) then flatten into single line for assertions.
-  const lines = src.split(/\n/);
-  const idx = lines.findIndex((l) => l.includes("Content-Security-Policy': [csp]"));
-  expect(idx).toBeGreaterThan(-1);
-  // Reconstruct csp variable assignment region
-  const cspAssignIdx = lines.findIndex((l) => l.includes('const csp = ['));
-  expect(cspAssignIdx).toBeGreaterThan(-1);
-  const region = lines.slice(cspAssignIdx, cspAssignIdx + 30).join(' ');
-  const flattened = region.replace(/\s+/g, ' ');
-  expect(flattened.includes('unsafe-inline')).toBe(false);
-  const directives = [
+  // Test 1: Verify CSP Manager produces hardened production CSP
+  const cspManager = new CSPManager();
+  const prodCSP = cspManager.getProductionCSP();
+
+  // Ensure no unsafe-inline in production CSP
+  expect(prodCSP.includes('unsafe-inline')).toBe(false);
+
+  // Verify required security directives are present
+  const requiredDirectives = [
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self'",
@@ -28,7 +25,19 @@ test('SEC-1 production CSP hardened (no unsafe-inline, directives present)', () 
     "frame-ancestors 'none'",
     "base-uri 'self'",
   ];
-  for (const d of directives) {
-    expect(flattened).toContain(d);
+
+  for (const directive of requiredDirectives) {
+    expect(prodCSP).toContain(directive);
   }
+
+  // Test 2: Verify main process uses CSP manager
+  const mainPath = path.join(__dirname, '..', '..', 'electron-main.cjs');
+  const src = fs.readFileSync(mainPath, 'utf8');
+
+  // Verify CSP manager is imported and used
+  expect(src).toContain('csp-manager');
+  expect(src).toContain('cspManager.getSecurityHeaders');
+
+  // Verify old hardcoded CSP array is removed
+  expect(src.includes('const csp = [')).toBe(false);
 });

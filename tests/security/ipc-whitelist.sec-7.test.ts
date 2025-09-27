@@ -7,27 +7,11 @@ import path from 'path';
  * Update this list deliberately when adding new features.
  */
 const allowedChannels = [
-  'select-and-scan-folder',
-  'open-path',
-  'rename-path',
-  'delete-path',
-  'toggle-favorite',
-  'window:getBounds',
-  'window:maximize',
-  'window:unmaximize',
-  'window:isMaximized',
-  'favorites:list',
-  'favorites:add',
-  'favorites:remove',
-  'show-properties',
-  'scan:start',
-  'recent:list',
-  'recent:clear',
-  'settings:get',
-  'settings:update',
-  'scan:cancel',
-  'scan:state',
-  'logs:recent',
+  'favorites:add', 'favorites:list', 'favorites:remove',
+  'logs:recent', 'recent:clear', 'recent:list',
+  'scan:cancel', 'scan:start', 'scan:state',
+  'select-and-scan-folder', 'settings:get', 'settings:update',
+  'window:getBounds', 'window:isMaximized', 'window:maximize', 'window:unmaximize'
 ] as const;
 
 type Channel = (typeof allowedChannels)[number];
@@ -56,7 +40,7 @@ describe('Security ▸ IPC channel whitelist', () => {
       }
 
       // Equality check: both sets must contain exactly the same members.
-      expect(new Set(allowedChannels)).toEqual(discovered);
+      expect(discovered).toEqual(new Set(allowedChannels));
     });
   }
 });

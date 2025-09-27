@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AIService, ChatRequest } from '../services/ai';
+import { AIService } from '../services/ai';
 import { ValidationService } from '../services/validation';
 import { MetricsService } from '../services/metrics';
 import { LoggerService } from '../services/logger';
@@ -16,7 +16,7 @@ export class ChatController {
     const startTime = Date.now();
 
     try {
-      const { message, context, conversationId, systemPrompt } = req.body;
+      const { message, context, conversationId, systemPrompt: _systemPrompt } = req.body;
 
       // Validate input
       const validation = this.validationService.sanitizeAndValidate(
@@ -79,7 +79,7 @@ export class ChatController {
     const startTime = Date.now();
 
     try {
-      const { message, context, conversationId, systemPrompt } = req.body;
+      const { message, context, conversationId, systemPrompt: _systemPrompt } = req.body;
 
       // Validate input
       const validation = this.validationService.sanitizeAndValidate(

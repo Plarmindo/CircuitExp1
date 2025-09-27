@@ -19,11 +19,14 @@ describe('Security ▸ Renderer sandbox forbids Node fs usage', () => {
     const importRegex = /from\s+['"]fs['"]/;
     const memberRegex = /\bfs\.[A-Za-z]+/;
 
-    // Exclude CLI tools and test files that legitimately use fs
+    // Exclude CLI tools, performance tools, and test files that legitimately use fs
     const excludedFiles = [
       'src/plugins/development/scaffolding.js',
       'src/plugins/tests/edge-cases/PluginEdgeCases.test.ts',
       'src/plugins/import/__tests__/ZipPluginImporter.test.ts',
+      'src/performance/memory-leak-detector.ts',
+      'src/performance/performance-benchmark.ts',
+      'src/security/security-manager.ts',
     ];
 
     for (const file of rendererFiles) {

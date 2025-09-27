@@ -56,7 +56,7 @@ export class CompletionController {
         return;
       }
 
-      const { prompt, provider, model, temperature, maxTokens } = req.body;
+      const { prompt: _prompt, provider: _provider, model: _model, temperature: _temperature, maxTokens: _maxTokens } = req.body;
 
       res.writeHead(200, {
         'Content-Type': 'text/plain',

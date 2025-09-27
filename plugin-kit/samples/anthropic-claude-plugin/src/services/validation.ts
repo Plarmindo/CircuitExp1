@@ -94,7 +94,7 @@ export class ValidationService {
       };
     }
 
-    const { error, value } = schema.validate(data, {
+    const { error, value: _value } = schema.validate(data, {
       abortEarly: false,
       stripUnknown: true,
     });

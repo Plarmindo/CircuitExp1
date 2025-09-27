@@ -79,10 +79,12 @@ jest.mock('fs', () => {
 
 // TypeScript declarations
 declare global {
-  var testUtils: {
-    createTempDir: () => string;
-    cleanupTempDir: (dir: string) => void;
-    readFixture: (filename: string) => string;
-    writeFixture: (filename: string, content: string) => void;
-  };
+  interface Global {
+    testUtils: {
+      createTempDir: () => string;
+      cleanupTempDir: (dir: string) => void;
+      readFixture: (filename: string) => string;
+      writeFixture: (filename: string, content: string) => void;
+    };
+  }
 }

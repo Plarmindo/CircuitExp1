@@ -219,7 +219,7 @@ class AnthropicClaudePlugin {
 
     // Global error handler
     this.app.use(
-      (error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      (error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
         this.logger.error('Unhandled error', error, {
           path: req.path,
           method: req.method,

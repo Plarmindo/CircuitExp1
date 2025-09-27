@@ -14,13 +14,15 @@ export interface EventListenerConfig {
     zoomOut?: () => void;
     [key: string]: unknown;
   } | null>;
+  // Optional callback to propagate depth cap override into the stage
+  onDepthCapChange?: (cap: number | null) => void;
 }
 
 /**
  * Sets up global event listeners for metro stage interactions
  */
 export function setupEventListeners(config: EventListenerConfig): () => void {
-  const { interactionHandlers, interactionsApiRef } = config;
+  const { interactionHandlers, interactionsApiRef, onDepthCapChange } = config;
 
   // Zoom in handler
   const onZoomIn = (): void => {
@@ -41,9 +43,18 @@ export function setupEventListeners(config: EventListenerConfig): () => void {
     interactionHandlers.handleFitToView();
   };
 
-  // Export PNG handler
+  // Export PNG handler: dispatch a global event that MetroStage listens to
   const onExport = (): void => {
-    interactionHandlers.handleExportPNG();
+    dispatchMetroEvent('metro:exportPNG');
+  };
+
+  // Depth cap override handlers
+  const onSetDepthCapOverride = (e: Event): void => {
+    const detail = (e as CustomEvent<{ depthCap?: number | null }>).detail;
+    if (onDepthCapChange) onDepthCapChange(detail?.depthCap ?? null);
+  };
+  const onClearDepthCapOverride = (): void => {
+    if (onDepthCapChange) onDepthCapChange(null);
   };
 
   // Global event listeners
@@ -52,7 +63,9 @@ export function setupEventListeners(config: EventListenerConfig): () => void {
       window.addEventListener('metro:zoomIn', onZoomIn);
       window.addEventListener('metro:zoomOut', onZoomOut);
       window.addEventListener('metro:fit', onFit);
-      window.addEventListener('metro:exportPNG', onExport);
+      // Note: do NOT listen to 'metro:exportPNG' here to avoid recursive dispatch loops.
+      window.addEventListener('metro:setDepthCapOverride', onSetDepthCapOverride as EventListener);
+      window.addEventListener('metro:clearDepthCapOverride', onClearDepthCapOverride as EventListener);
     }
   };
 
@@ -61,7 +74,9 @@ export function setupEventListeners(config: EventListenerConfig): () => void {
       window.removeEventListener('metro:zoomIn', onZoomIn);
       window.removeEventListener('metro:zoomOut', onZoomOut);
       window.removeEventListener('metro:fit', onFit);
-      window.removeEventListener('metro:exportPNG', onExport);
+      // Note: matching addGlobalListeners, no 'metro:exportPNG' removal needed here.
+      window.removeEventListener('metro:setDepthCapOverride', onSetDepthCapOverride as EventListener);
+      window.removeEventListener('metro:clearDepthCapOverride', onClearDepthCapOverride as EventListener);
     }
   };
 

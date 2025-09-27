@@ -97,7 +97,7 @@ export class ExportManager {
    * @param width New canvas width
    * @param height New canvas height
    */
-  updateCanvasSize(width: number, height: number): void {
+  updateCanvasSize(_width: number, _height: number): void {
     // Currently, export logic reads dimensions directly from the canvas.
     // This method is provided for future compatibility if size-dependent caching is introduced.
     // No operation needed for now.

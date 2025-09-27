@@ -112,7 +112,7 @@ describe('ZipPluginImporter', () => {
   describe('installDependencies', () => {
     it('should install dependencies from requirements.txt', async () => {
       const requirements = 'requests>=2.25.0\npillow>=8.0.0';
-      const pluginDir = '/home/user/plugins/test-plugin-1.0.0';
+      const _pluginDir = '/home/user/plugins/test-plugin-1.0.0';
 
       const result = await importer['installDependencies'](requirements, pluginDir);
 
@@ -132,7 +132,7 @@ describe('ZipPluginImporter', () => {
     it('should create backup of existing plugin', async () => {
       const pluginId = 'test-plugin';
       const version = '1.0.0';
-      const pluginDir = '/home/user/plugins/test-plugin-1.0.0';
+      const _pluginDir = '/home/user/plugins/test-plugin-1.0.0';
 
       mockFs.existsSync.mockReturnValue(true);
 

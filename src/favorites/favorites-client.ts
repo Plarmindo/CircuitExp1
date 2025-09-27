@@ -14,7 +14,7 @@ interface ElectronAPIExpose {
   ) => Promise<{ success: boolean; favorites: string[]; error?: string }>;
 }
 const api: ElectronAPIExpose =
-  (window as unknown as { electronAPI?: ElectronAPIExpose }).electronAPI || {};
+  (typeof window !== 'undefined' ? (window as unknown as { electronAPI?: ElectronAPIExpose }).electronAPI : undefined) || {};
 
 let cache: string[] | null = null;
 

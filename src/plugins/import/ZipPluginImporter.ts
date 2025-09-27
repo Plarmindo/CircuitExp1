@@ -221,7 +221,7 @@ export class ZipPluginImporter {
     try {
       const content = await metadataFile.async('text');
       return JSON.parse(content);
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }
@@ -240,7 +240,7 @@ export class ZipPluginImporter {
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line && !line.startsWith('#'));
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

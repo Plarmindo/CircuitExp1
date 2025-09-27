@@ -238,7 +238,7 @@ export class PluginValidator {
     }
 
     // Check for deprecated APIs
-    const deprecatedPatterns = [
+    const _deprecatedPatterns = [
       { pattern: /PluginAPI\.deprecatedMethod/g, message: 'Uses deprecated API method' },
     ];
 

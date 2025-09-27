@@ -1,0 +1,75 @@
+{
+  "testName": "zero-iterations",
+  "timestamp": 1758126737773,
+  "config": {
+    "threshold": 5,
+    "iterations": 0,
+    "warmupIterations": 0,
+    "gcBeforeSnapshot": true,
+    "snapshotInterval": 10
+  },
+  "result": {
+    "leakDetected": false,
+    "leakRate": null,
+    "totalGrowth": 0.02356719970703125,
+    "snapshots": [
+      {
+        "timestamp": 1758126737772,
+        "heapUsed": 15451376,
+        "heapTotal": 22343680,
+        "external": 3898720,
+        "arrayBuffers": 143158,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      },
+      {
+        "timestamp": 1758126737773,
+        "heapUsed": 15476088,
+        "heapTotal": 22343680,
+        "external": 3899238,
+        "arrayBuffers": 144807,
+        "heapDetails": {},
+        "objectCounts": {
+          "Array": 1,
+          "Object": 1,
+          "Function": 1,
+          "String": 1,
+          "Number": 1,
+          "Date": 7,
+          "RegExp": 2
+        },
+        "leakSuspects": []
+      }
+    ],
+    "analysis": {
+      "suspectObjects": [],
+      "suspectFunctions": [],
+      "suspectModules": [],
+      "recommendations": [
+        "Consistent memory leak detected - check for unclosed resources",
+        "Check for: unclosed event listeners, unreleased file handles, circular references, global variable accumulation, unreleased timers/intervals, unclosed database connections"
+      ]
+    },
+    "report": {
+      "summary": "No memory leak detected in zero-iterations: 0.02MB total change",
+      "details": [
+        "Test: zero-iterations",
+        "Total memory growth: 0.02MB",
+        "Leak rate: InfinityMB per iteration",
+        "Iterations: 0",
+        "Severity: CRITICAL",
+        "Snapshots: 2"
+      ],
+      "severity": "critical"
+    }
+  }
+}

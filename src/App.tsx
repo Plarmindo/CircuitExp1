@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { MetroUIInner } from './components/MetroUI';
-import SimpleMetroUI from './components/SimpleMetroUI';
-import MetroPrototypeDemo from './components/MetroPrototypeDemo';
-import MetroLineDemo from './components/MetroLineDemo';
 import { SettingsProvider } from './settings/SettingsProvider';
 import { ErrorHandler } from './components/ErrorHandler';
 import { MonitoringDashboard } from './components/MonitoringDashboard';
@@ -39,7 +36,6 @@ interface ScanDone {
 function App() {
   const [errors, setErrors] = useState<ErrorInfo[]>([]);
   const [showMonitoring, setShowMonitoring] = useState(false);
-  const [viewMode, setViewMode] = useState<'demo' | 'prototype' | 'full' | 'line'>('demo'); // Start with demo view
   const [scanId, setScanId] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [scanNodes, setScanNodes] = useState<NodeEntry[]>([]);
@@ -47,6 +43,7 @@ function App() {
   const [scanDone, setScanDone] = useState<ScanDone | null>(null);
   const [rootPath, setRootPath] = useState<string | null>(null);
 
+  // Remove demo mode forcing; production UI is always active
   const resetScanState = () => {
     setScanId(null);
     setScanProgress(null);
@@ -130,30 +127,11 @@ function App() {
     });
   };
 
-  const cycleViewMode = () => {
-    const modes: Array<'demo' | 'prototype' | 'full' | 'line'> = ['demo', 'prototype', 'full', 'line'];
-    const currentIndex = modes.indexOf(viewMode);
-    const nextMode = modes[(currentIndex + 1) % modes.length];
-    setViewMode(nextMode);
-
-    auditLogger.logSystemEvent('application', 'cycle_view_mode', {
-      from: viewMode,
-      to: nextMode,
-    });
-  };
-
   return (
     <SettingsProvider>
       <div className="App">
         <div className="app-header">
-          <button
-            onClick={cycleViewMode}
-            className="view-mode-toggle"
-            title={`Current: ${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} - Click to cycle`}
-            style={{ marginRight: '10px' }}
-          >
-            {viewMode === 'demo' ? '🚇 Metro Demo' : viewMode === 'prototype' ? '🎯 Prototype' : viewMode === 'full' ? '🏗️ Full App' : '📍 Line Demo'}
-          </button>
+          {/* Production build: only Monitoring toggle remains */}
           <button
             onClick={toggleMonitoring}
             className="monitoring-toggle"
@@ -165,12 +143,6 @@ function App() {
 
         {showMonitoring ? (
           <MonitoringDashboard />
-        ) : viewMode === 'demo' ? (
-          <MetroPrototypeDemo />
-        ) : viewMode === 'prototype' ? (
-          <SimpleMetroUI width={1000} height={700} />
-        ) : viewMode === 'line' ? (
-          <MetroLineDemo />
         ) : (
           <ModeProvider>
             <MetroUIInner

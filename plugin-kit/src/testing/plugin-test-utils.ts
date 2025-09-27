@@ -87,7 +87,7 @@ export class PluginTestRunner extends EventEmitter {
       this.emit('test:result', { name: test.name, result: testResult });
 
       return testResult;
-    } catch (error) {
+    } catch (_error) {
       const duration = Date.now() - startTime;
       const testResult: TestResult = {
         success: false,
@@ -150,7 +150,7 @@ export class PluginTestRunner extends EventEmitter {
         try {
           await fn();
           throw new Error(message || 'Expected function to throw');
-        } catch (error) {
+        } catch (_error) {
           // Expected
         }
       },

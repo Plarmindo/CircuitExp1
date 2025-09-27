@@ -4,8 +4,7 @@ import path from 'path';
 import os from 'os';
 
 // Import CommonJS module via dynamic import for lint compatibility.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
+// @ts-expect-error - CommonJS module import may not have proper TypeScript types
 import createRecentScansStoreModule from '../recent-scans-store.cjs';
 // Some bundlers treat CJS default export differently; handle both.
 

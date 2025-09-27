@@ -20,15 +20,15 @@ export class CacheService {
       useClones: false,
     });
 
-    this.cache.on('set', (key, value) => {
+    this.cache.on('set', (key, _value) => {
       this.logger.debug(`Cache set: ${key}`, { keys: this.cache.keys().length });
     });
 
-    this.cache.on('del', (key, value) => {
+    this.cache.on('del', (key, _value) => {
       this.logger.debug(`Cache deleted: ${key}`);
     });
 
-    this.cache.on('expired', (key, value) => {
+    this.cache.on('expired', (key, _value) => {
       this.logger.debug(`Cache expired: ${key}`);
     });
   }
