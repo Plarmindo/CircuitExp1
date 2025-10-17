@@ -1,0 +1,87 @@
+.draggable-window {
+  background: var(--bg-secondary, #1e1e2e);
+  border: 1px solid var(--border-color, #3a3a4a);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  max-width: 600px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.draggable-window.dragging {
+  opacity: 0.9;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.draggable-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-tertiary, #252530);
+  border-bottom: 1px solid var(--border-color, #3a3a4a);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary, #ffffff);
+}
+
+.draggable-window-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draggable-window-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #888);
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.draggable-window-close:hover {
+  background: var(--bg-hover, #3a3a4a);
+  color: var(--text-primary, #ffffff);
+}
+
+.draggable-window-close:active {
+  transform: scale(0.95);
+}
+
+.draggable-window-content {
+  padding: 12px;
+  overflow: auto;
+  max-height: 600px;
+}
+
+/* Specific styles for minimap window */
+.draggable-window.minimap-window .draggable-window-content {
+  padding: 0;
+  background: #1a1a2e;
+}
+
+/* Specific styles for performance window */
+.draggable-window.performance-window .draggable-window-content {
+  padding: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .draggable-window {
+    max-width: calc(100vw - 40px);
+  }
+}

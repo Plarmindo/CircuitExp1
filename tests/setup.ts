@@ -1,6 +1,10 @@
 // Global test setup for Node-based unit tests (non-plugin)
-import { vi, afterEach } from 'vitest';
+import { vi, afterEach, expect } from 'vitest';
 import { EventEmitter } from 'events';
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+// Extend Vitest's expect with jest-dom matchers
+expect.extend(matchers);
 
 // Ensure Node environment-like globals exist
 if (typeof global !== 'undefined') {

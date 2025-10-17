@@ -185,6 +185,10 @@ class InputValidator {
           errors.push(sanitized.error);
         } else {
           input = sanitized.value;
+          // Check if sanitization resulted in empty string when nonEmpty is required
+          if (schema.nonEmpty && (!input || input.trim().length === 0)) {
+            errors.push('Value becomes empty after sanitization');
+          }
         }
       }
 

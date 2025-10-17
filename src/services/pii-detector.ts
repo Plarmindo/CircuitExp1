@@ -74,7 +74,7 @@ export class PIIDetector {
     if (!this.config.enabled) return [];
 
     const results: PIIDetectionResult[] = [];
-    const pathParts = filePath.split(/[\\/]/);
+    const pathParts = filePath.split(/[/\\]/);
 
     pathParts.forEach((part, index) => {
       const detections = this.scanText(part, `path_part_${index}`);

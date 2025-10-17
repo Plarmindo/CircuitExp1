@@ -1,0 +1,47 @@
+.plugin-manager {
+  padding: 24px;
+}
+
+.plugin-manager-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plugin-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.plugin-card {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  padding: 16px;
+  background-color: var(--card-bg, #ffffff);
+}
+
+.plugin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.plugin-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.plugin-description {
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+.plugin-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

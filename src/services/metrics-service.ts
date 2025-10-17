@@ -3,6 +3,18 @@
  * Tracks performance, usage patterns, and system health
  */
 import { createLogger } from '../logger/central-logger';
+
+// Performance API with memory extension (Chrome/Electron)
+interface PerformanceMemory {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
+
 // Simple browser-compatible EventEmitter for renderer process
 class BrowserEventEmitter {
   private listeners: Map<string, Array<(...args: unknown[]) => void>> = new Map();
@@ -144,17 +156,17 @@ class MetricsService extends EventEmitter {
       if (result.status !== 'healthy') {
         log.warn('Health check failed', { name, status: result.status, message: result.message });
       }
-    } catch {
+    } catch (err) {
       const failedCheck: HealthCheck = {
         name,
         status: 'unhealthy',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: err instanceof Error ? err.message : 'Unknown error',
         lastCheck: Date.now(),
       };
       this.healthChecks.set(name, failedCheck);
       log.error('Health check error', {
         name,
-        error: error instanceof Error ? error.message : error,
+        error: err instanceof Error ? err.message : err,
       });
     }
   }
@@ -261,20 +273,50 @@ class MetricsService extends EventEmitter {
 
     // Memory health check
     this.registerHealthCheck('memory', async () => {
-      const memUsage = process.memoryUsage();
-      const heapUsedMB = memUsage.heapUsed / 1024 / 1024;
-      const heapLimitMB = require('v8').getHeapStatistics().heap_size_limit / 1024 / 1024;
-      const usagePercent = (heapUsedMB / heapLimitMB) * 100;
+      // Check if we're in a Node.js environment (main process) or browser (renderer)
+      const isNodeEnvironment = typeof process !== 'undefined' && process.versions && process.versions.node;
 
+      let heapUsedMB = 0;
+      let heapLimitMB = 0;
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-      let message = `Memory usage: ${heapUsedMB.toFixed(1)}MB (${usagePercent.toFixed(1)}%)`;
+      let message = '';
 
-      if (usagePercent > 90) {
-        status = 'unhealthy';
-        message += ' - Critical memory usage';
-      } else if (usagePercent > 75) {
-        status = 'degraded';
-        message += ' - High memory usage';
+      if (isNodeEnvironment) {
+        // Node.js environment (main process)
+        const memUsage = process.memoryUsage();
+        heapUsedMB = memUsage.heapUsed / 1024 / 1024;
+        heapLimitMB = require('v8').getHeapStatistics().heap_size_limit / 1024 / 1024;
+        const usagePercent = (heapUsedMB / heapLimitMB) * 100;
+
+        message = `Memory usage: ${heapUsedMB.toFixed(1)}MB (${usagePercent.toFixed(1)}%)`;
+
+        if (usagePercent > 90) {
+          status = 'unhealthy';
+          message += ' - Critical memory usage';
+        } else if (usagePercent > 75) {
+          status = 'degraded';
+          message += ' - High memory usage';
+        }
+      } else if (typeof performance !== 'undefined' && 'memory' in performance) {
+        // Renderer process with performance.memory API (Chrome/Electron)
+        const perfMemory = (performance as PerformanceWithMemory).memory;
+        heapUsedMB = perfMemory.usedJSHeapSize / 1024 / 1024;
+        heapLimitMB = perfMemory.jsHeapSizeLimit / 1024 / 1024;
+        const usagePercent = (heapUsedMB / heapLimitMB) * 100;
+
+        message = `Memory usage: ${heapUsedMB.toFixed(1)}MB (${usagePercent.toFixed(1)}%)`;
+
+        if (usagePercent > 90) {
+          status = 'unhealthy';
+          message += ' - Critical memory usage';
+        } else if (usagePercent > 75) {
+          status = 'degraded';
+          message += ' - High memory usage';
+        }
+      } else {
+        // No memory API available
+        message = 'Memory monitoring not available in this environment';
+        status = 'healthy';
       }
 
       return {

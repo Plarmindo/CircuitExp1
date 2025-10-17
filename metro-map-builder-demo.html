@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Metro Map Builder - Professional Transit Map Creation</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(30,30,40,0.95);
+      padding: 15px 20px;
+      border-bottom: 2px solid #4a90e2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      color: #4a90e2;
+      margin: 0;
+      font-size: 1.6em;
+    }
+
+    .project-info {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .project-stat {
+      background: #2a2a3e;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #4a90e2;
+      text-align: center;
+      font-size: 0.9em;
+    }
+
+    .toolbar {
+      background: rgba(40,40,50,0.95);
+      padding: 10px 20px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .tool-group {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 5px 10px;
+      background: rgba(50,50,60,0.8);
+      border-radius: 6px;
+    }
+
+    .tool-group label {
+      font-size: 0.85em;
+      color: #ccc;
+      margin-right: 8px;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+    }
+
+    .canvas-section {
+      flex: 1;
+      padding: 20px;
+      position: relative;
+      background: rgba(20,20,30,0.3);
+    }
+
+    .map-canvas {
+      width: 100%;
+      height: 600px;
+      background: #ffffff;
+      border-radius: 8px;
+      border: 2px solid #333;
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    .map-canvas.line-mode {
+      cursor: crosshair;
+    }
+
+    .map-canvas.station-mode {
+      cursor: copy;
+    }
+
+    .map-canvas.select-mode {
+      cursor: default;
+    }
+
+    .sidebar {
+      width: 320px;
+      background: rgba(30,30,40,0.95);
+      border-left: 2px solid #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 15px;
+      border-bottom: 1px solid #333;
+    }
+
+    .sidebar-section h3 {
+      color: #4a90e2;
+      margin: 0 0 12px 0;
+      font-size: 1.1em;
+    }
+
+    .btn {
+      background: #4a90e2;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+      font-size: 0.9em;
+    }
+
+    .btn:hover {
+      background: #5ba0f2;
+    }
+
+    .btn.active {
+      background: #357abd;
+    }
+
+    .btn-small {
+      padding: 4px 12px;
+      font-size: 0.8em;
+    }
+
+    .btn-success {
+      background: #27ae60;
+    }
+
+    .btn-success:hover {
+      background: #2ecc71;
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
+    .line-item {
+      background: rgba(40,40,50,0.8);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border-left: 4px solid;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .line-controls {
+      display: flex;
+      gap: 5px;
+    }
+
+    .station-item {
+      background: rgba(40,40,50,0.8);
+      padding: 8px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9em;
+    }
+
+    .color-picker {
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .input-field {
+      background: #333;
+      border: 1px solid #555;
+      border-radius: 4px;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 0.9em;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+
+    .export-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .map-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.1;
+      pointer-events: none;
+    }
+
+    .map-station {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .map-station.selected {
+      border-color: #4a90e2;
+      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3);
+    }
+
+    .map-station.interchange {
+      width: 20px;
+      height: 20px;
+      border-width: 4px;
+    }
+
+    .station-label {
+      position: absolute;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 11;
+    }
+
+    .map-line {
+      position: absolute;
+      height: 6px;
+      border-radius: 3px;
+      z-index: 5;
+    }
+
+    .construction-indicator {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 12px;
+      height: 12px;
+      background: #f39c12;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      font-size: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: rgba(30,30,40,0.95);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 2px solid #4a90e2;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      font-size: 0.85em;
+      max-width: 200px;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+
+    .properties-panel {
+      background: rgba(50,50,60,0.8);
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+
+    .properties-panel h4 {
+      margin: 0 0 8px 0;
+      color: #4a90e2;
+      font-size: 0.95em;
+    }
+
+    .property-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .property-row label {
+      font-size: 0.85em;
+      color: #ccc;
+    }
+
+    .property-row input, .property-row select {
+      background: #333;
+      border: 1px solid #555;
+      border-radius: 3px;
+      color: #fff;
+      padding: 4px 8px;
+      font-size: 0.8em;
+      width: 80px;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 100;
+    }
+
+    .zoom-btn {
+      width: 40px;
+      height: 40px;
+      background: rgba(74, 144, 226, 0.9);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .zoom-btn:hover {
+      background: rgba(74, 144, 226, 1);
+    }
+  </style>
+</head>
+<body>
+  <div class='header'>
+    <h1>🚇 Metro Map Builder Pro</h1>
+    <div class='project-info'>
+      <div class='project-stat'>
+        <strong>Downtown Transit</strong><br>
+        <span style='color: #4a90e2'>3 lines</span> • 12 stations
+      </div>
+      <div class='project-stat'>
+        <strong>Last Saved</strong><br>
+        <span style='color: #27ae60'>2 min ago</span><br>
+        <small>Auto-saved</small>
+      </div>
+      <div class='project-stat'>
+        <strong>Export Ready</strong><br>
+        <span style='color: #f39c12'>Print Quality</span><br>
+        <small>300 DPI</small>
+      </div>
+    </div>
+  </div>
+
+  <div class='toolbar'>
+    <div class='tool-group'>
+      <label>Mode:</label>
+      <button class='btn btn-small active' id='select-mode'>Select</button>
+      <button class='btn btn-small' id='station-mode'>Add Station</button>
+      <button class='btn btn-small' id='line-mode'>Draw Line</button>
+    </div>
+
+    <div class='tool-group'>
+      <label>Snap:</label>
+      <button class='btn btn-small active' id='snap-grid'>Grid</button>
+      <button class='btn btn-small' id='snap-station'>Stations</button>
+    </div>
+
+    <div class='tool-group'>
+      <label>View:</label>
+      <button class='btn btn-small' id='show-grid'>Grid</button>
+      <button class='btn btn-small active' id='show-labels'>Labels</button>
+      <button class='btn btn-small' id='show-zones'>Zones</button>
+    </div>
+
+    <div class='tool-group'>
+      <label>Actions:</label>
+      <button class='btn btn-small btn-success' id='save-map'>Save</button>
+      <button class='btn btn-small' id='undo'>Undo</button>
+      <button class='btn btn-small' id='redo'>Redo</button>
+    </div>
+  </div>
+
+  <div class='main-container'>
+    <div class='canvas-section'>
+      <div class='map-canvas' id='map-canvas'>
+        <!-- Grid overlay -->
+        <svg class='map-grid' id='grid-overlay'>
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#333" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+
+        <!-- Sample metro lines and stations -->
+        <div class='map-line' style='left: 100px; top: 200px; width: 300px; background: #e74c3c; transform: rotate(0deg);'></div>
+        <div class='map-line' style='left: 200px; top: 150px; width: 200px; background: #3498db; transform: rotate(45deg);'></div>
+        <div class='map-line' style='left: 150px; top: 300px; width: 250px; background: #27ae60; transform: rotate(-30deg);'></div>
+
+        <!-- Sample stations -->
+        <div class='map-station' style='left: 94px; top: 194px; background: #e74c3c;' data-station='central'></div>
+        <div class='station-label' style='left: 94px; top: 175px;'>Central</div>
+
+        <div class='map-station interchange' style='left: 244px; top: 194px; background: #e74c3c;' data-station='downtown'></div>
+        <div class='station-label' style='left: 244px; top: 175px;'>Downtown</div>
+
+        <div class='map-station' style='left: 394px; top: 194px; background: #e74c3c;' data-station='eastside'></div>
+        <div class='station-label' style='left: 394px; top: 175px;'>Eastside</div>
+
+        <div class='map-station' style='left: 244px; top: 144px; background: #3498db;' data-station='north'></div>
+        <div class='station-label' style='left: 244px; top: 125px;'>North Plaza</div>
+
+        <div class='map-station' style='left: 294px; top: 194px; background: #3498db;' data-station='university'></div>
+        <div class='station-label' style='left: 294px; top: 175px;'>University</div>
+
+        <div class='map-station' style='left: 194px; top: 294px; background: #27ae60;' data-station='south'></div>
+        <div class='station-label' style='left: 194px; top: 275px;'>South Bay</div>
+        <div class='construction-indicator' style='left: 194px; top: 294px;'>🚧</div>
+
+        <div class='map-station' style='left: 344px; top: 244px; background: #27ae60;' data-station='airport'></div>
+        <div class='station-label' style='left: 344px; top: 225px;'>Airport</div>
+      </div>
+
+      <div class='zoom-controls'>
+        <button class='zoom-btn' id='zoom-in'>+</button>
+        <button class='zoom-btn' id='zoom-out'>−</button>
+        <button class='zoom-btn' id='zoom-fit' style='font-size: 12px;'>⌂</button>
+      </div>
+
+      <div class='tooltip' id='tooltip'></div>
+    </div>
+
+    <div class='sidebar'>
+      <div class='sidebar-section'>
+        <h3>🎨 Design Tools</h3>
+        <div class='mode-selector'>
+          <button class='btn btn-small active'>Select</button>
+          <button class='btn btn-small'>Station</button>
+          <button class='btn btn-small'>Line</button>
+          <button class='btn btn-small'>Text</button>
+        </div>
+
+        <div class='properties-panel' id='properties-panel'>
+          <h4>Station Properties</h4>
+          <div class='property-row'>
+            <label>Name:</label>
+            <input type='text' value='Downtown' class='input-field' style='width: 120px;'>
+          </div>
+          <div class='property-row'>
+            <label>Type:</label>
+            <select style='width: 120px;'>
+              <option>Regular</option>
+              <option selected>Interchange</option>
+              <option>Terminal</option>
+            </select>
+          </div>
+          <div class='property-row'>
+            <label>Status:</label>
+            <select style='width: 120px;'>
+              <option selected>Operational</option>
+              <option>Under Construction</option>
+              <option>Planned</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>🚇 Transit Lines</h3>
+
+        <div class='line-item' style='border-left-color: #e74c3c;'>
+          <div>
+            <strong>Red Line</strong><br>
+            <small>Central ↔ Eastside</small>
+          </div>
+          <div class='line-controls'>
+            <input type='color' class='color-picker' value='#e74c3c'>
+            <button class='btn btn-small'>Edit</button>
+          </div>
+        </div>
+
+        <div class='line-item' style='border-left-color: #3498db;'>
+          <div>
+            <strong>Blue Line</strong><br>
+            <small>North Plaza ↔ University</small>
+          </div>
+          <div class='line-controls'>
+            <input type='color' class='color-picker' value='#3498db'>
+            <button class='btn btn-small'>Edit</button>
+          </div>
+        </div>
+
+        <div class='line-item' style='border-left-color: #27ae60;'>
+          <div>
+            <strong>Green Line</strong><br>
+            <small>South Bay ↔ Airport</small>
+          </div>
+          <div class='line-controls'>
+            <input type='color' class='color-picker' value='#27ae60'>
+            <button class='btn btn-small'>Edit</button>
+          </div>
+        </div>
+
+        <button class='btn' style='width: 100%; margin-top: 10px;'>+ Add New Line</button>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>🏢 Stations</h3>
+
+        <div class='station-item'>
+          <span>Central Station</span>
+          <button class='btn btn-small'>Edit</button>
+        </div>
+
+        <div class='station-item'>
+          <span>Downtown (Interchange)</span>
+          <button class='btn btn-small'>Edit</button>
+        </div>
+
+        <div class='station-item'>
+          <span>North Plaza</span>
+          <button class='btn btn-small'>Edit</button>
+        </div>
+
+        <div class='station-item'>
+          <span>University</span>
+          <button class='btn btn-small'>Edit</button>
+        </div>
+
+        <div class='station-item'>
+          <span>South Bay 🚧</span>
+          <button class='btn btn-small'>Edit</button>
+        </div>
+
+        <div class='station-item'>
+          <span>Airport</span>
+          <button class='btn btn-small'>Edit</button>
+        </div>
+
+        <button class='btn' style='width: 100%; margin-top: 10px;'>+ Add Station</button>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>📤 Export & Share</h3>
+
+        <div class='export-options'>
+          <button class='btn btn-small btn-success'>PDF Print</button>
+          <button class='btn btn-small btn-success'>PNG Image</button>
+          <button class='btn btn-small'>SVG Vector</button>
+          <button class='btn btn-small'>Web Embed</button>
+        </div>
+
+        <div style='margin-top: 15px;'>
+          <h4 style='color: #4a90e2; margin: 0 0 8px 0; font-size: 0.95em;'>🎯 Quick Actions</h4>
+          <button class='btn btn-small' style='width: 100%; margin-bottom: 5px;'>Import GTFS Data</button>
+          <button class='btn btn-small' style='width: 100%; margin-bottom: 5px;'>Generate QR Code</button>
+          <button class='btn btn-small' style='width: 100%; margin-bottom: 5px;'>Share Preview Link</button>
+          <button class='btn btn-small btn-danger' style='width: 100%;'>Reset Map</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentMode = 'select';
+    let selectedElement = null;
+    let isDrawing = false;
+    let zoomLevel = 1;
+
+    // Mode switching
+    document.querySelectorAll('[id$="-mode"]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('[id$="-mode"]').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentMode = this.id.replace('-mode', '');
+
+        const canvas = document.getElementById('map-canvas');
+        canvas.className = 'map-canvas ' + currentMode + '-mode';
+      });
+    });
+
+    // Station interactions
+    document.querySelectorAll('.map-station').forEach(station => {
+      station.addEventListener('click', function(e) {
+        e.stopPropagation();
+
+        if (currentMode === 'select') {
+          // Deselect all stations
+          document.querySelectorAll('.map-station').forEach(s => s.classList.remove('selected'));
+          // Select this station
+          this.classList.add('selected');
+          selectedElement = this;
+
+          // Update properties panel
+          updatePropertiesPanel(this);
+        }
+      });
+
+      station.addEventListener('mouseenter', function(e) {
+        showTooltip(e, {
+          name: this.dataset.station,
+          type: this.classList.contains('interchange') ? 'Interchange' : 'Regular',
+          lines: getStationLines(this),
+          status: this.querySelector('.construction-indicator') ? 'Under Construction' : 'Operational'
+        });
+      });
+
+      station.addEventListener('mouseleave', hideTooltip);
+    });
+
+    // Canvas interactions
+    document.getElementById('map-canvas').addEventListener('click', function(e) {
+      if (currentMode === 'station') {
+        // Add new station
+        const rect = this.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        createStation(x, y);
+      } else if (currentMode === 'select') {
+        // Deselect all
+        document.querySelectorAll('.map-station').forEach(s => s.classList.remove('selected'));
+        selectedElement = null;
+        updatePropertiesPanel(null);
+      }
+    });
+
+    // Zoom controls
+    document.getElementById('zoom-in').addEventListener('click', () => {
+      zoomLevel = Math.min(3, zoomLevel * 1.2);
+      applyZoom();
+    });
+
+    document.getElementById('zoom-out').addEventListener('click', () => {
+      zoomLevel = Math.max(0.3, zoomLevel / 1.2);
+      applyZoom();
+    });
+
+    document.getElementById('zoom-fit').addEventListener('click', () => {
+      zoomLevel = 1;
+      applyZoom();
+    });
+
+    // Export functions
+    document.querySelector('.btn-success').addEventListener('click', function() {
+      if (this.textContent === 'PDF Print') {
+        alert('Exporting high-resolution PDF for professional printing...\n\n✅ 300 DPI resolution\n✅ CMYK color profile\n✅ Print-ready format');
+      } else if (this.textContent === 'PNG Image') {
+        alert('Exporting PNG image...\n\n✅ High resolution (2400x1800)\n✅ Transparent background option\n✅ Web-ready format');
+      }
+    });
+
+    // Utility functions
+    function createStation(x, y) {
+      const station = document.createElement('div');
+      station.className = 'map-station';
+      station.style.left = (x - 8) + 'px';
+      station.style.top = (y - 8) + 'px';
+      station.style.background = '#9b59b6';
+      station.dataset.station = 'new-station';
+
+      const label = document.createElement('div');
+      label.className = 'station-label';
+      label.style.left = (x - 8) + 'px';
+      label.style.top = (y - 25) + 'px';
+      label.textContent = 'New Station';
+
+      document.getElementById('map-canvas').appendChild(station);
+      document.getElementById('map-canvas').appendChild(label);
+
+      // Add event listeners to new station
+      station.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.map-station').forEach(s => s.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedElement = this;
+        updatePropertiesPanel(this);
+      });
+    }
+
+    function updatePropertiesPanel(station) {
+      const panel = document.getElementById('properties-panel');
+
+      if (!station) {
+        panel.innerHTML = '<h4>No Selection</h4><p style="color: #999; font-size: 0.85em;">Select a station or line to edit properties</p>';
+        return;
+      }
+
+      const stationName = station.dataset.station || 'Unknown';
+      const isInterchange = station.classList.contains('interchange');
+      const hasConstruction = station.querySelector('.construction-indicator');
+
+      panel.innerHTML = `
+        <h4>Station Properties</h4>
+        <div class='property-row'>
+          <label>Name:</label>
+          <input type='text' value='${stationName}' class='input-field' style='width: 120px;'>
+        </div>
+        <div class='property-row'>
+          <label>Type:</label>
+          <select style='width: 120px;'>
+            <option ${!isInterchange ? 'selected' : ''}>Regular</option>
+            <option ${isInterchange ? 'selected' : ''}>Interchange</option>
+            <option>Terminal</option>
+          </select>
+        </div>
+        <div class='property-row'>
+          <label>Status:</label>
+          <select style='width: 120px;'>
+            <option ${!hasConstruction ? 'selected' : ''}>Operational</option>
+            <option ${hasConstruction ? 'selected' : ''}>Under Construction</option>
+            <option>Planned</option>
+          </select>
+        </div>
+        <div class='property-row'>
+          <label>Color:</label>
+          <input type='color' value='${rgbToHex(station.style.background)}' style='width: 120px; height: 30px;'>
+        </div>
+      `;
+    }
+
+    function showTooltip(event, data) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `
+        <strong>${data.name}</strong><br>
+        <strong>Type:</strong> ${data.type}<br>
+        <strong>Status:</strong> ${data.status}<br>
+        <strong>Lines:</strong> ${data.lines}
+      `;
+
+      tooltip.style.left = (event.pageX + 15) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    function getStationLines(station) {
+      // Mock function to determine which lines serve this station
+      const stationName = station.dataset.station;
+      const lineMap = {
+        'central': 'Red Line',
+        'downtown': 'Red Line, Blue Line',
+        'eastside': 'Red Line',
+        'north': 'Blue Line',
+        'university': 'Blue Line',
+        'south': 'Green Line',
+        'airport': 'Green Line'
+      };
+      return lineMap[stationName] || 'Unknown';
+    }
+
+    function applyZoom() {
+      const canvas = document.getElementById('map-canvas');
+      canvas.style.transform = `scale(${zoomLevel})`;
+      canvas.style.transformOrigin = 'center center';
+    }
+
+    function rgbToHex(rgb) {
+      // Convert RGB color to hex (simplified)
+      if (rgb.includes('#')) return rgb;
+      const result = rgb.match(/\d+/g);
+      if (!result) return '#9b59b6';
+      return '#' + result.map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case 's':
+            e.preventDefault();
+            alert('Map saved successfully! ✅');
+            break;
+          case 'z':
+            e.preventDefault();
+            alert('Undo last action');
+            break;
+          case 'y':
+            e.preventDefault();
+            alert('Redo last action');
+            break;
+        }
+      }
+
+      // Mode switching shortcuts
+      switch(e.key) {
+        case '1':
+          document.getElementById('select-mode').click();
+          break;
+        case '2':
+          document.getElementById('station-mode').click();
+          break;
+        case '3':
+          document.getElementById('line-mode').click();
+          break;
+      }
+    });
+
+    // Initialize
+    updatePropertiesPanel(null);
+
+    // Add some interactive feedback
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (this.textContent.includes('Add')) {
+          this.style.background = '#27ae60';
+          this.textContent = this.textContent.replace('Add', 'Added');
+          setTimeout(() => {
+            this.style.background = '';
+            this.textContent = this.textContent.replace('Added', 'Add');
+          }, 1000);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

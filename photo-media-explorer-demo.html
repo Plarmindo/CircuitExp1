@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Metro Photo Collection Explorer - Demo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #2c1810 0%, #1a1a2e 100%);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(30,30,40,0.95);
+      padding: 20px;
+      border-bottom: 2px solid #e17055;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      color: #e17055;
+      margin: 0;
+      font-size: 1.8em;
+    }
+
+    .collection-info {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .collection-stat {
+      background: #2a2a3e;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #e17055;
+      text-align: center;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+    }
+
+    .metro-section {
+      flex: 1;
+      padding: 20px;
+      position: relative;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #e17055;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #e88b73;
+    }
+
+    .btn.active {
+      background: #d63031;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9em;
+    }
+
+    .legend-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .metro-map {
+      width: 100%;
+      height: 500px;
+      background: rgba(20,20,30,0.8);
+      border-radius: 12px;
+      border: 2px solid #333;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 400px;
+      background: rgba(30,30,40,0.95);
+      border-left: 2px solid #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid #333;
+    }
+
+    .sidebar-section h3 {
+      color: #e17055;
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+    }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .photo-thumbnail {
+      width: 100%;
+      height: 80px;
+      background: #333;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      background-size: cover;
+      background-position: center;
+      border: 2px solid transparent;
+    }
+
+    .photo-thumbnail:hover {
+      transform: scale(1.05);
+      border-color: #e17055;
+    }
+
+    .folder-item {
+      background: rgba(40,40,50,0.8);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #e17055;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .folder-item:hover {
+      background: rgba(50,50,60,0.8);
+    }
+
+    .folder-item h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .folder-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+
+    .folder-item p {
+      margin: 0;
+      font-size: 0.9em;
+      color: #ccc;
+    }
+
+    .folder-item .meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 0.8em;
+      color: #999;
+    }
+
+    .duplicate-indicator {
+      background: #ff6b35;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      margin-left: auto;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: rgba(30,30,40,0.95);
+      color: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #e17055;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      max-width: 300px;
+    }
+
+    .tooltip img {
+      width: 150px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .year-indicator {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #6c5ce7;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .photo-count-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #00b894;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    .organization-suggestion {
+      background: rgba(40,40,50,0.8);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #00b894;
+    }
+
+    .organization-suggestion h4 {
+      margin: 0 0 5px 0;
+      color: #00b894;
+      font-size: 1em;
+    }
+
+    .organization-suggestion p {
+      margin: 0;
+      font-size: 0.9em;
+      color: #ccc;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-small {
+      background: #6c5ce7;
+      color: white;
+      border: none;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8em;
+    }
+
+    .btn-organize {
+      background: #00b894;
+    }
+
+    .btn-delete {
+      background: #ff4757;
+    }
+
+    .timeline-view {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+    }
+
+    .timeline-bar {
+      flex: 1;
+      height: 20px;
+      background: #333;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .timeline-segment {
+      height: 100%;
+      float: left;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .timeline-segment:hover {
+      opacity: 0.8;
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 8px 12px;
+      background: #333;
+      border: 1px solid #555;
+      border-radius: 6px;
+      color: #fff;
+      margin-bottom: 15px;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: #e17055;
+    }
+  </style>
+</head>
+<body>
+  <div class='header'>
+    <h1>📸 Metro Photo Collection Explorer</h1>
+    <div class='collection-info'>
+      <div class='collection-stat'>
+        <strong>Total Photos</strong><br>
+        <span style='color: #e17055'>12,847 photos</span><br>
+        <small>156.7 GB</small>
+      </div>
+      <div class='collection-stat'>
+        <strong>Date Range</strong><br>
+        <span style='color: #6c5ce7'>2018 - 2024</span><br>
+        <small>6 years</small>
+      </div>
+      <div class='collection-stat'>
+        <strong>Duplicates Found</strong><br>
+        <span style='color: #ff6b35'>1,247 photos</span><br>
+        <small>8.7 GB wasted</small>
+      </div>
+      <div class='collection-stat'>
+        <strong>Organization</strong><br>
+        <span style='color: #00b894'>73% organized</span><br>
+        <small>Good structure</small>
+      </div>
+    </div>
+  </div>
+
+  <div class='main-container'>
+    <div class='metro-section'>
+      <div class='controls'>
+        <div class='view-controls'>
+          <button class='btn active'>Folder View</button>
+          <button class='btn'>Timeline View</button>
+          <button class='btn'>Event View</button>
+          <button class='btn'>Duplicate View</button>
+        </div>
+        <div class='legend'>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #e17055'></div>
+            <span>Recent (2024)</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #6c5ce7'></div>
+            <span>2022-2023</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #00b894'></div>
+            <span>2020-2021</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #ffa502'></div>
+            <span>2018-2019</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #ff4757'></div>
+            <span>Duplicates</span>
+          </div>
+        </div>
+      </div>
+
+      <div class='metro-map' id='metro-map'>
+        <svg width='100%' height='100%' viewBox='0 0 800 500'></svg>
+      </div>
+
+      <div class='tooltip' id='tooltip'></div>
+    </div>
+
+    <div class='sidebar'>
+      <div class='sidebar-section'>
+        <h3>📁 Selected: Vacation Photos 2023</h3>
+        <input type='text' class='search-box' placeholder='Search photos in this folder...'>
+
+        <div class='timeline-view'>
+          <span>Jan</span>
+          <div class='timeline-bar'>
+            <div class='timeline-segment' style='width: 15%; background: #e17055;' title='January: 45 photos'></div>
+            <div class='timeline-segment' style='width: 8%; background: #333;' title='February: 12 photos'></div>
+            <div class='timeline-segment' style='width: 25%; background: #6c5ce7;' title='March: 78 photos'></div>
+            <div class='timeline-segment' style='width: 12%; background: #333;' title='April: 23 photos'></div>
+            <div class='timeline-segment' style='width: 30%; background: #00b894;' title='May: 156 photos'></div>
+            <div class='timeline-segment' style='width: 10%; background: #ffa502;' title='June: 34 photos'></div>
+          </div>
+          <span>Dec</span>
+        </div>
+
+        <div class='photo-grid'>
+          <div class='photo-thumbnail' style='background-image: url("https://picsum.photos/120/80?random=1")' onclick='viewPhoto(1)'></div>
+          <div class='photo-thumbnail' style='background-image: url("https://picsum.photos/120/80?random=2")' onclick='viewPhoto(2)'></div>
+          <div class='photo-thumbnail' style='background-image: url("https://picsum.photos/120/80?random=3")' onclick='viewPhoto(3)'></div>
+          <div class='photo-thumbnail' style='background-image: url("https://picsum.photos/120/80?random=4")' onclick='viewPhoto(4)'></div>
+          <div class='photo-thumbnail' style='background-image: url("https://picsum.photos/120/80?random=5")' onclick='viewPhoto(5)'></div>
+          <div class='photo-thumbnail' style='background-image: url("https://picsum.photos/120/80?random=6")' onclick='viewPhoto(6)'></div>
+        </div>
+
+        <div class='folder-item'>
+          <h4>
+            <div class='folder-icon' style='background: #e17055'></div>
+            Beach Trip - May 2023
+          </h4>
+          <p>156 photos • 2.3 GB</p>
+          <div class='meta'>
+            <span>May 15-22, 2023</span>
+            <span>iPhone 14 Pro</span>
+          </div>
+        </div>
+
+        <div class='folder-item'>
+          <h4>
+            <div class='folder-icon' style='background: #6c5ce7'></div>
+            Mountain Hiking - March 2023
+            <span class='duplicate-indicator'>3 dupes</span>
+          </h4>
+          <p>78 photos • 1.1 GB</p>
+          <div class='meta'>
+            <span>March 8-10, 2023</span>
+            <span>Canon EOS R5</span>
+          </div>
+        </div>
+
+        <div class='folder-item'>
+          <h4>
+            <div class='folder-icon' style='background: #00b894'></div>
+            City Weekend - January 2023
+          </h4>
+          <p>45 photos • 567 MB</p>
+          <div class='meta'>
+            <span>January 14-15, 2023</span>
+            <span>iPhone 14 Pro</span>
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>🎯 Organization Suggestions</h3>
+
+        <div class='organization-suggestion'>
+          <h4>📅 Auto-organize by Date</h4>
+          <p>Found 234 photos in mixed folders that could be organized by date</p>
+          <div class='action-buttons'>
+            <button class='btn-small btn-organize'>Auto-organize</button>
+            <button class='btn-small'>Preview</button>
+          </div>
+        </div>
+
+        <div class='organization-suggestion'>
+          <h4>🗑️ Remove Duplicates</h4>
+          <p>Found 1,247 duplicate photos wasting 8.7 GB of space</p>
+          <div class='action-buttons'>
+            <button class='btn-small btn-delete'>Remove Duplicates</button>
+            <button class='btn-small'>Review First</button>
+          </div>
+        </div>
+
+        <div class='organization-suggestion'>
+          <h4>📱 Separate by Device</h4>
+          <p>Mix of iPhone, Canon, and Samsung photos in same folders</p>
+          <div class='action-buttons'>
+            <button class='btn-small btn-organize'>Separate</button>
+            <button class='btn-small'>Skip</button>
+          </div>
+        </div>
+
+        <div class='organization-suggestion'>
+          <h4>🏷️ Create Event Albums</h4>
+          <p>Detected potential events: "Birthday Party", "Wedding", "Graduation"</p>
+          <div class='action-buttons'>
+            <button class='btn-small btn-organize'>Create Albums</button>
+            <button class='btn-small'>Review Events</button>
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>📊 Collection Insights</h3>
+
+        <div style='margin-bottom: 15px;'>
+          <h4 style='color: #e17055; margin: 0 0 8px 0;'>📈 Most Active Periods</h4>
+          <div style='font-size: 0.9em;'>
+            <div style='display: flex; justify-content: space-between; margin-bottom: 5px;'>
+              <span>Summer 2023</span>
+              <span style='color: #e17055;'>2,847 photos</span>
+            </div>
+            <div style='display: flex; justify-content: space-between; margin-bottom: 5px;'>
+              <span>Holiday 2022</span>
+              <span style='color: #6c5ce7;'>1,923 photos</span>
+            </div>
+            <div style='display: flex; justify-content: space-between;'>
+              <span>Spring 2024</span>
+              <span style='color: #00b894;'>1,456 photos</span>
+            </div>
+          </div>
+        </div>
+
+        <div style='margin-bottom: 15px;'>
+          <h4 style='color: #e17055; margin: 0 0 8px 0;'>📷 Camera Usage</h4>
+          <div style='font-size: 0.9em;'>
+            <div style='background: rgba(225,112,85,0.2); padding: 8px; border-radius: 6px; margin-bottom: 5px;'>
+              <strong>iPhone 14 Pro</strong><br>
+              <span style='color: #e17055;'>8,234 photos (64%)</span>
+            </div>
+            <div style='background: rgba(108,92,231,0.2); padding: 8px; border-radius: 6px; margin-bottom: 5px;'>
+              <strong>Canon EOS R5</strong><br>
+              <span style='color: #6c5ce7;'>3,456 photos (27%)</span>
+            </div>
+            <div style='background: rgba(0,184,148,0.2); padding: 8px; border-radius: 6px;'>
+              <strong>Samsung Galaxy S23</strong><br>
+              <span style='color: #00b894;'>1,157 photos (9%)</span>
+            </div>
+          </div>
+        </div>
+
+        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;'>
+          <div>
+            <strong>Largest Folder:</strong><br>
+            <span style='color: #e17055'>Summer 2023</span><br>
+            <small>23.4 GB</small>
+          </div>
+          <div>
+            <strong>Oldest Photo:</strong><br>
+            <span style='color: #ffa502'>June 2018</span><br>
+            <small>6 years ago</small>
+          </div>
+          <div>
+            <strong>RAW Files:</strong><br>
+            <span style='color: #6c5ce7'>2,847 files</span><br>
+            <small>67.2 GB</small>
+          </div>
+          <div>
+            <strong>Screenshots:</strong><br>
+            <span style='color: #ff4757'>456 files</span><br>
+            <small>Should organize</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock data for photo collection visualization
+    const photoData = [
+      {x: 120, y: 180, size: 70, label: 'Vacation 2023', type: 'recent', photos: 2847, sizeGB: 23.4, year: '2023', color: '#e17055', duplicates: 45},
+      {x: 280, y: 140, size: 55, label: 'Family Events', type: 'mixed', photos: 1923, sizeGB: 18.7, year: '2022-2023', color: '#6c5ce7', duplicates: 123},
+      {x: 450, y: 200, size: 60, label: 'Travel Photos', type: 'old', photos: 1456, sizeGB: 15.2, year: '2020-2021', color: '#00b894', duplicates: 67},
+      {x: 600, y: 160, size: 45, label: 'Phone Camera', type: 'recent', photos: 3421, sizeGB: 28.9, year: '2024', color: '#e17055', duplicates: 234},
+      {x: 200, y: 320, size: 40, label: 'Screenshots', type: 'misc', photos: 456, sizeGB: 2.1, year: '2023-2024', color: '#ff4757', duplicates: 89},
+      {x: 380, y: 350, size: 50, label: 'Professional', type: 'old', photos: 892, sizeGB: 45.6, year: '2019-2020', color: '#ffa502', duplicates: 12},
+      {x: 520, y: 320, size: 35, label: 'Social Media', type: 'misc', photos: 234, sizeGB: 1.8, year: '2023', color: '#a4b0be', duplicates: 156},
+      {x: 100, y: 350, size: 65, label: 'Wedding 2022', type: 'event', photos: 1847, sizeGB: 67.3, year: '2022', color: '#6c5ce7', duplicates: 23}
+    ];
+
+    const connections = [
+      [0, 1], [1, 2], [0, 4], [3, 0], [2, 5], [4, 6], [1, 7], [5, 6]
+    ];
+
+    function renderPhotoMap() {
+      const svg = document.querySelector('#metro-map svg');
+      svg.innerHTML = '';
+
+      // Draw connections (photo relationships/chronology)
+      connections.forEach(([from, to]) => {
+        const fromNode = photoData[from];
+        const toNode = photoData[to];
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', fromNode.x);
+        line.setAttribute('y1', fromNode.y);
+        line.setAttribute('x2', toNode.x);
+        line.setAttribute('y2', toNode.y);
+        line.setAttribute('stroke', '#555');
+        line.setAttribute('stroke-width', '4');
+        line.setAttribute('opacity', '0.6');
+        svg.appendChild(line);
+      });
+
+      // Draw nodes (photo collections)
+      photoData.forEach((node, index) => {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.style.cursor = 'pointer';
+
+        // Main circle (size represents number of photos)
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', node.x);
+        circle.setAttribute('cy', node.y);
+        circle.setAttribute('r', node.size / 2);
+        circle.setAttribute('fill', node.color);
+        circle.setAttribute('stroke', '#fff');
+        circle.setAttribute('stroke-width', '3');
+        circle.setAttribute('opacity', '0.8');
+
+        group.appendChild(circle);
+
+        // Photo count badge
+        if (node.photos > 1000) {
+          const badge = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          badge.setAttribute('cx', node.x + node.size/3);
+          badge.setAttribute('cy', node.y - node.size/3);
+          badge.setAttribute('r', '12');
+          badge.setAttribute('fill', '#00b894');
+          badge.setAttribute('stroke', '#fff');
+          badge.setAttribute('stroke-width', '2');
+          group.appendChild(badge);
+
+          const badgeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          badgeText.setAttribute('x', node.x + node.size/3);
+          badgeText.setAttribute('y', node.y - node.size/3 + 3);
+          badgeText.setAttribute('text-anchor', 'middle');
+          badgeText.setAttribute('fill', '#fff');
+          badgeText.setAttribute('font-size', '8px');
+          badgeText.setAttribute('font-weight', 'bold');
+          badgeText.textContent = Math.floor(node.photos / 1000) + 'k';
+          group.appendChild(badgeText);
+        }
+
+        // Duplicate indicator
+        if (node.duplicates > 50) {
+          const dupIndicator = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          dupIndicator.setAttribute('cx', node.x - node.size/3);
+          dupIndicator.setAttribute('cy', node.y - node.size/3);
+          dupIndicator.setAttribute('r', '8');
+          dupIndicator.setAttribute('fill', '#ff4757');
+          dupIndicator.setAttribute('stroke', '#fff');
+          dupIndicator.setAttribute('stroke-width', '2');
+          group.appendChild(dupIndicator);
+
+          const dupText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          dupText.setAttribute('x', node.x - node.size/3);
+          dupText.setAttribute('y', node.y - node.size/3 + 3);
+          dupText.setAttribute('text-anchor', 'middle');
+          dupText.setAttribute('fill', '#fff');
+          dupText.setAttribute('font-size', '8px');
+          dupText.setAttribute('font-weight', 'bold');
+          dupText.textContent = '!';
+          group.appendChild(dupText);
+        }
+
+        // Year indicator
+        const yearBadge = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        yearBadge.setAttribute('x', node.x - 15);
+        yearBadge.setAttribute('y', node.y + node.size/2 + 8);
+        yearBadge.setAttribute('width', '30');
+        yearBadge.setAttribute('height', '14');
+        yearBadge.setAttribute('fill', '#6c5ce7');
+        yearBadge.setAttribute('rx', '7');
+        group.appendChild(yearBadge);
+
+        const yearText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        yearText.setAttribute('x', node.x);
+        yearText.setAttribute('y', node.y + node.size/2 + 18);
+        yearText.setAttribute('text-anchor', 'middle');
+        yearText.setAttribute('fill', '#fff');
+        yearText.setAttribute('font-size', '9px');
+        yearText.setAttribute('font-weight', 'bold');
+        yearText.textContent = node.year.split('-')[0];
+        group.appendChild(yearText);
+
+        // Label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x);
+        text.setAttribute('y', node.y + node.size/2 + 35);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', '#fff');
+        text.setAttribute('font-size', '12px');
+        text.setAttribute('font-weight', 'bold');
+        text.textContent = node.label;
+        group.appendChild(text);
+
+        // Photo count
+        const photoCount = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        photoCount.setAttribute('x', node.x);
+        photoCount.setAttribute('y', node.y + node.size/2 + 50);
+        photoCount.setAttribute('text-anchor', 'middle');
+        photoCount.setAttribute('fill', node.color);
+        photoCount.setAttribute('font-size', '10px');
+        photoCount.setAttribute('font-weight', 'bold');
+        photoCount.textContent = `${node.photos.toLocaleString()} photos`;
+        group.appendChild(photoCount);
+
+        // Add hover and click events
+        group.addEventListener('mouseenter', (e) => showTooltip(e, node));
+        group.addEventListener('mouseleave', hideTooltip);
+        group.addEventListener('click', () => selectCollection(node));
+
+        svg.appendChild(group);
+      });
+    }
+
+    function showTooltip(event, node) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `
+        <img src="https://picsum.photos/150/100?random=${Math.floor(Math.random() * 100)}" alt="Sample photo">
+        <strong>${node.label}</strong><br>
+        <strong>Photos:</strong> ${node.photos.toLocaleString()}<br>
+        <strong>Size:</strong> ${node.sizeGB} GB<br>
+        <strong>Period:</strong> ${node.year}<br>
+        <strong>Duplicates:</strong> ${node.duplicates} photos<br>
+        <br>
+        <em>Click to explore this collection</em>
+      `;
+
+      tooltip.style.left = (event.pageX + 15) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    function selectCollection(node) {
+      // Update sidebar with collection-specific info
+      const sidebarTitle = document.querySelector('.sidebar-section h3');
+      sidebarTitle.textContent = `📁 Selected: ${node.label}`;
+
+      // Update photo grid with new random images
+      const thumbnails = document.querySelectorAll('.photo-thumbnail');
+      thumbnails.forEach((thumb, index) => {
+        thumb.style.backgroundImage = `url("https://picsum.photos/120/80?random=${Math.floor(Math.random() * 1000)}")`;
+      });
+
+      console.log(`Selected collection: ${node.label}`);
+    }
+
+    function viewPhoto(photoId) {
+      // This would normally open a photo viewer
+      alert(`Opening photo viewer for photo ${photoId}`);
+    }
+
+    // Initialize the visualization
+    renderPhotoMap();
+
+    // Add interactivity to organization buttons
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-organize')) {
+        const suggestion = e.target.closest('.organization-suggestion');
+        const title = suggestion.querySelector('h4').textContent;
+
+        if (confirm(`Apply suggestion: ${title}?`)) {
+          suggestion.style.opacity = '0.5';
+          e.target.textContent = 'Applied ✓';
+          e.target.disabled = true;
+
+          // Update organization percentage
+          const orgElement = document.querySelector('.collection-info .collection-stat:last-child span');
+          const currentOrg = parseInt(orgElement.textContent);
+          orgElement.textContent = `${Math.min(100, currentOrg + Math.floor(Math.random() * 15 + 5))}% organized`;
+        }
+      }
+
+      if (e.target.classList.contains('btn-delete')) {
+        if (confirm('Are you sure you want to remove duplicate photos? This action cannot be undone.')) {
+          e.target.closest('.organization-suggestion').style.opacity = '0.5';
+          e.target.textContent = 'Removed ✓';
+          e.target.disabled = true;
+
+          // Update duplicate count
+          const dupElement = document.querySelector('.collection-info .collection-stat:nth-child(3) span');
+          dupElement.textContent = '0 photos';
+          dupElement.parentElement.querySelector('small').textContent = '0 GB saved';
+        }
+      }
+    });
+
+    // Add timeline segment interactivity
+    document.querySelectorAll('.timeline-segment').forEach(segment => {
+      segment.addEventListener('click', function() {
+        const period = this.title;
+        alert(`Filtering photos for: ${period}`);
+      });
+    });
+  </script>
+</body>
+</html>

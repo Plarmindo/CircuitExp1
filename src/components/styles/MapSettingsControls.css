@@ -1,0 +1,452 @@
+/* MapSettingsControls.css - Styling for always-visible settings panel */
+
+.map-settings-controls {
+  position: absolute;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 179, 0, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  min-width: 280px;
+  max-width: 320px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #ffffff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Position variants */
+.map-settings-controls.top-left {
+  top: 20px;
+  left: 20px;
+}
+
+.map-settings-controls.top-right {
+  top: 20px;
+  right: 20px;
+}
+
+.map-settings-controls.bottom-left {
+  bottom: 20px;
+  left: 20px;
+}
+
+.map-settings-controls.bottom-right {
+  bottom: 20px;
+  right: 20px;
+}
+
+/* Collapsed state */
+.map-settings-controls.collapsed {
+  min-width: auto;
+  max-width: 200px;
+}
+
+.map-settings-controls.collapsed .map-settings-body {
+  display: none;
+}
+
+/* Header */
+.map-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 179, 0, 0.2);
+  background: rgba(255, 179, 0, 0.1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.map-settings-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #ffb300;
+}
+
+.collapse-toggle {
+  background: transparent;
+  border: none;
+  color: #ffb300;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-toggle:hover {
+  background: rgba(255, 179, 0, 0.2);
+}
+
+.collapse-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Body */
+.map-settings-body {
+  padding: 16px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+.map-settings-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.map-settings-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.map-settings-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 179, 0, 0.3);
+  border-radius: 4px;
+}
+
+.map-settings-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 179, 0, 0.5);
+}
+
+/* Section */
+.settings-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #29b6f6;
+}
+
+.section-header svg {
+  flex-shrink: 0;
+}
+
+.section-header span {
+  flex: 1;
+}
+
+/* Control Row */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.control-row:last-child {
+  margin-bottom: 0;
+}
+
+.control-row label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.control-row .value {
+  font-size: 11px;
+  color: #ffb300;
+  min-width: 40px;
+  text-align: right;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Range Slider */
+.control-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.control-row input[type="range"]:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* WebKit (Chrome, Safari) */
+.control-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ffb300;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.control-row input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.6);
+}
+
+.control-row input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
+/* Mozilla (Firefox) */
+.control-row input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #ffb300;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.control-row input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.6);
+}
+
+.control-row input[type="range"]::-moz-range-thumb:active {
+  transform: scale(1.1);
+}
+
+/* Button Group */
+.button-group {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.button-group button {
+  flex: 1;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.button-group button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 179, 0, 0.3);
+  color: #ffffff;
+}
+
+.button-group button.active {
+  background: #ffb300;
+  border-color: #ffb300;
+  color: #000000;
+  font-weight: 600;
+}
+
+.button-group button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  width: 42px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  flex-shrink: 0;
+}
+
+.toggle-switch input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-switch .slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-switch input[type="checkbox"]:checked ~ .slider {
+  transform: translateX(22px);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .slider,
+.toggle-switch:has(input[type="checkbox"]:checked) {
+  background: #ffb300;
+}
+
+.toggle-switch:has(input[type="checkbox"]:checked) .slider {
+  background: #000000;
+}
+
+/* Footer */
+.settings-footer {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reset-button {
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(255, 179, 0, 0.1);
+  border: 1px solid rgba(255, 179, 0, 0.3);
+  border-radius: 6px;
+  color: #ffb300;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.reset-button:hover {
+  background: rgba(255, 179, 0, 0.2);
+  border-color: rgba(255, 179, 0, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.reset-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .map-settings-controls {
+    min-width: 260px;
+    max-width: 280px;
+  }
+
+  .map-settings-controls.bottom-left,
+  .map-settings-controls.bottom-right {
+    bottom: 10px;
+  }
+
+  .map-settings-controls.top-left,
+  .map-settings-controls.top-right {
+    top: 10px;
+  }
+
+  .map-settings-controls.bottom-left,
+  .map-settings-controls.top-left {
+    left: 10px;
+  }
+
+  .map-settings-controls.bottom-right,
+  .map-settings-controls.top-right {
+    right: 10px;
+  }
+
+  .control-row label {
+    min-width: 60px;
+    font-size: 11px;
+  }
+
+  .button-group button {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+}
+
+/* Accessibility */
+.map-settings-controls:focus-within {
+  outline: 2px solid #ffb300;
+  outline-offset: 2px;
+}
+
+.collapse-toggle:focus-visible {
+  outline: 2px solid #ffb300;
+  outline-offset: 2px;
+}
+
+.button-group button:focus-visible {
+  outline: 2px solid #ffb300;
+  outline-offset: 2px;
+}
+
+.reset-button:focus-visible {
+  outline: 2px solid #ffb300;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .map-settings-controls {
+    border-width: 2px;
+  }
+
+  .button-group button.active {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .map-settings-controls,
+  .collapse-toggle,
+  .button-group button,
+  .toggle-switch,
+  .toggle-switch .slider,
+  .reset-button {
+    transition: none;
+  }
+
+  @keyframes slideDown {
+    from, to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}

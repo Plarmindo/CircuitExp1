@@ -1,0 +1,145 @@
+.dashboard {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.metric-card {
+  padding: 20px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.metric-title {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.metric-value.success {
+  color: #22c55e;
+}
+
+.metric-value.error {
+  color: #ef4444;
+}
+
+.metric-trend {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.health-status {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.health-status.healthy {
+  background-color: #22c55e;
+  color: white;
+}
+
+.health-status.warning {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.health-status.critical {
+  background-color: #ef4444;
+  color: white;
+}
+
+.check-list {
+  margin-top: 16px;
+}
+
+.check-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.check-item:last-child {
+  border-bottom: none;
+}
+
+.check-name {
+  font-weight: 500;
+}
+
+.check-status {
+  font-weight: 500;
+}
+
+.check-status.healthy {
+  color: #22c55e;
+}
+
+.check-status.warning {
+  color: #f59e0b;
+}
+
+.check-status.critical {
+  color: #ef4444;
+}
+
+.events-list {
+  margin-top: 24px;
+}
+
+.event-item {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.event-item.critical {
+  background-color: #fef2f2;
+}
+
+.event-item.warning {
+  background-color: #fffbeb;
+}
+
+.event-item.info {
+  background-color: #f0f9ff;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.event-title {
+  font-weight: 500;
+}
+
+.event-timestamp {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.event-description {
+  color: var(--text-secondary);
+  font-size: 14px;
+}

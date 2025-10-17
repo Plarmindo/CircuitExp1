@@ -1,5 +1,5 @@
 {
-  "ok": true,
+  "ok": false,
   "steps": [
     {
       "name": "node_modules present",
@@ -12,10 +12,6 @@
       "detail": "using C:\\Program Files\\nodejs\\npx.cmd vite --port 5175 --strictPort"
     },
     {
-      "name": "vite programmatic fallback",
-      "ok": true
-    },
-    {
       "name": "vite dev server reachable",
       "ok": true,
       "detail": null
@@ -23,6 +19,16 @@
     {
       "name": "/@vite/client served",
       "ok": true
+    },
+    {
+      "name": "electron spawn",
+      "ok": true,
+      "detail": "using D:\\Users\\paulo\\Documents\\GitHub\\CircuitExp1\\node_modules\\electron\\dist\\electron.exe"
+    },
+    {
+      "name": "electron launch (dev)",
+      "ok": false,
+      "detail": "no loadURL evidence"
     }
   ]
 }

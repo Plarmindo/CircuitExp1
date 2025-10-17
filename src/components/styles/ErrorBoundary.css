@@ -1,0 +1,24 @@
+.error-details {
+  white-space: pre-wrap;
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 0.375rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #991b1b;
+}
+
+.error-message {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #dc2626;
+  margin-bottom: 0.5rem;
+}
+
+.error-stack {
+  font-size: 0.875rem;
+  color: #7f1d1d;
+  margin-top: 0.5rem;
+}

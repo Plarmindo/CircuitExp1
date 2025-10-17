@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Metro Disk Space Analyzer - Demo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(30,30,40,0.95);
+      padding: 20px;
+      border-bottom: 2px solid #ff6b35;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      color: #ff6b35;
+      margin: 0;
+      font-size: 1.8em;
+    }
+
+    .disk-info {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .disk-usage {
+      background: #2a2a3e;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #ff6b35;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+    }
+
+    .metro-section {
+      flex: 1;
+      padding: 20px;
+      position: relative;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #ff6b35;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #ff8c5a;
+    }
+
+    .btn.active {
+      background: #e55a2b;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9em;
+    }
+
+    .legend-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .metro-map {
+      width: 100%;
+      height: 500px;
+      background: rgba(20,20,30,0.8);
+      border-radius: 12px;
+      border: 2px solid #333;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 350px;
+      background: rgba(30,30,40,0.95);
+      border-left: 2px solid #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid #333;
+    }
+
+    .sidebar-section h3 {
+      color: #ff6b35;
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+    }
+
+    .cleanup-item {
+      background: rgba(40,40,50,0.8);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #ff6b35;
+    }
+
+    .cleanup-item h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+      font-size: 1em;
+    }
+
+    .cleanup-item p {
+      margin: 0;
+      font-size: 0.9em;
+      color: #ccc;
+    }
+
+    .cleanup-item .size {
+      color: #ff6b35;
+      font-weight: bold;
+    }
+
+    .cleanup-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-small {
+      background: #4a9eff;
+      color: white;
+      border: none;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8em;
+    }
+
+    .btn-danger {
+      background: #ff4757;
+    }
+
+    .file-details {
+      background: rgba(40,40,50,0.8);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: rgba(30,30,40,0.95);
+      color: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #ff6b35;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      max-width: 250px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 5px 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6b35, #ff8c5a);
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class='header'>
+    <h1>🚇 Metro Disk Space Analyzer</h1>
+    <div class='disk-info'>
+      <div class='disk-usage'>
+        <strong>C:\ Drive</strong><br>
+        <span style='color: #ff6b35'>487 GB used</span> / 1 TB total
+        <div class='progress-bar'>
+          <div class='progress-fill' style='width: 48.7%'></div>
+        </div>
+      </div>
+      <div class='disk-usage'>
+        <strong>Space Saved</strong><br>
+        <span style='color: #4a9eff'>23.4 GB</span> cleaned up
+      </div>
+    </div>
+  </div>
+
+  <div class='main-container'>
+    <div class='metro-section'>
+      <div class='controls'>
+        <div class='view-controls'>
+          <button class='btn active'>Size View</button>
+          <button class='btn'>Type View</button>
+          <button class='btn'>Age View</button>
+        </div>
+        <div class='legend'>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #ff4757'></div>
+            <span>Videos (Large)</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #4a9eff'></div>
+            <span>Documents</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #2ed573'></div>
+            <span>Images</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #ffa502'></div>
+            <span>Programs</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #a4b0be'></div>
+            <span>System/Other</span>
+          </div>
+        </div>
+      </div>
+
+      <div class='metro-map' id='metro-map'>
+        <svg width='100%' height='100%' viewBox='0 0 800 500'></svg>
+      </div>
+
+      <div class='tooltip' id='tooltip'></div>
+    </div>
+
+    <div class='sidebar'>
+      <div class='sidebar-section'>
+        <h3>🎯 Cleanup Suggestions</h3>
+
+        <div class='cleanup-item'>
+          <h4>Large Video Files</h4>
+          <p>Found <span class='size'>47.2 GB</span> in old movie files</p>
+          <p style='font-size: 0.8em; color: #999;'>Downloads/Movies/ • Last accessed: 6 months ago</p>
+          <div class='cleanup-actions'>
+            <button class='btn-small'>Move to External</button>
+            <button class='btn-small btn-danger'>Delete</button>
+          </div>
+        </div>
+
+        <div class='cleanup-item'>
+          <h4>Duplicate Photos</h4>
+          <p>Found <span class='size'>8.7 GB</span> in duplicate images</p>
+          <p style='font-size: 0.8em; color: #999;'>Pictures/ • 1,247 duplicate files</p>
+          <div class='cleanup-actions'>
+            <button class='btn-small'>Review Duplicates</button>
+            <button class='btn-small btn-danger'>Delete Duplicates</button>
+          </div>
+        </div>
+
+        <div class='cleanup-item'>
+          <h4>Old Downloads</h4>
+          <p>Found <span class='size'>12.1 GB</span> in old downloads</p>
+          <p style='font-size: 0.8em; color: #999;'>Downloads/ • Files older than 90 days</p>
+          <div class='cleanup-actions'>
+            <button class='btn-small'>Archive</button>
+            <button class='btn-small btn-danger'>Clean Up</button>
+          </div>
+        </div>
+
+        <div class='cleanup-item'>
+          <h4>Cache & Temp Files</h4>
+          <p>Found <span class='size'>3.8 GB</span> in temporary files</p>
+          <p style='font-size: 0.8em; color: #999;'>System cache, browser data, temp folders</p>
+          <div class='cleanup-actions'>
+            <button class='btn-small btn-danger'>Clear Cache</button>
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>📁 Selected Folder</h3>
+        <div class='file-details' id='selected-details'>
+          <h4>Downloads</h4>
+          <p><strong>Size:</strong> 67.3 GB</p>
+          <p><strong>Files:</strong> 2,847 files</p>
+          <p><strong>Subfolders:</strong> 23 folders</p>
+          <p><strong>Largest:</strong> movie_collection.zip (12.4 GB)</p>
+          <p><strong>Oldest:</strong> setup_old.exe (2 years ago)</p>
+          <div class='cleanup-actions' style='margin-top: 10px;'>
+            <button class='btn-small'>Open Folder</button>
+            <button class='btn-small'>Analyze Deeper</button>
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>📊 Quick Stats</h3>
+        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;'>
+          <div>
+            <strong>Videos:</strong><br>
+            <span style='color: #ff4757'>156.7 GB</span>
+          </div>
+          <div>
+            <strong>Documents:</strong><br>
+            <span style='color: #4a9eff'>23.4 GB</span>
+          </div>
+          <div>
+            <strong>Images:</strong><br>
+            <span style='color: #2ed573'>45.2 GB</span>
+          </div>
+          <div>
+            <strong>Programs:</strong><br>
+            <span style='color: #ffa502'>89.1 GB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock data for disk space visualization
+    const diskData = [
+      {x: 100, y: 200, size: 80, label: 'Downloads', type: 'mixed', sizeGB: 67.3, files: 2847, color: '#ff4757'},
+      {x: 250, y: 150, size: 60, label: 'Documents', type: 'docs', sizeGB: 23.4, files: 1205, color: '#4a9eff'},
+      {x: 400, y: 200, size: 70, label: 'Pictures', type: 'images', sizeGB: 45.2, files: 3421, color: '#2ed573'},
+      {x: 550, y: 120, size: 90, label: 'Program Files', type: 'programs', sizeGB: 89.1, files: 567, color: '#ffa502'},
+      {x: 300, y: 300, size: 50, label: 'Videos', type: 'videos', sizeGB: 156.7, files: 89, color: '#ff4757'},
+      {x: 500, y: 350, size: 40, label: 'Music', type: 'audio', sizeGB: 12.8, files: 892, color: '#9c88ff'},
+      {x: 150, y: 350, size: 30, label: 'Desktop', type: 'mixed', sizeGB: 5.2, files: 45, color: '#a4b0be'},
+      {x: 650, y: 250, size: 35, label: 'AppData', type: 'system', sizeGB: 8.9, files: 1234, color: '#a4b0be'}
+    ];
+
+    const connections = [
+      [0, 1], [1, 2], [2, 3], [0, 6], [4, 5], [3, 7]
+    ];
+
+    function renderMetroMap() {
+      const svg = document.querySelector('#metro-map svg');
+      svg.innerHTML = '';
+
+      // Draw connections (metro lines)
+      connections.forEach(([from, to]) => {
+        const fromNode = diskData[from];
+        const toNode = diskData[to];
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', fromNode.x);
+        line.setAttribute('y1', fromNode.y);
+        line.setAttribute('x2', toNode.x);
+        line.setAttribute('y2', toNode.y);
+        line.setAttribute('stroke', '#555');
+        line.setAttribute('stroke-width', '4');
+        line.setAttribute('opacity', '0.6');
+        svg.appendChild(line);
+      });
+
+      // Draw nodes (folders)
+      diskData.forEach((node, index) => {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+        // Main circle (size represents disk usage)
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', node.x);
+        circle.setAttribute('cy', node.y);
+        circle.setAttribute('r', node.size / 2);
+        circle.setAttribute('fill', node.color);
+        circle.setAttribute('stroke', '#fff');
+        circle.setAttribute('stroke-width', '3');
+        circle.setAttribute('opacity', '0.8');
+        circle.style.cursor = 'pointer';
+
+        // Add hover effects
+        circle.addEventListener('mouseenter', (e) => showTooltip(e, node));
+        circle.addEventListener('mouseleave', hideTooltip);
+        circle.addEventListener('click', () => selectFolder(node));
+
+        group.appendChild(circle);
+
+        // Label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x);
+        text.setAttribute('y', node.y + node.size/2 + 20);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', '#fff');
+        text.setAttribute('font-size', '12px');
+        text.setAttribute('font-weight', 'bold');
+        text.textContent = node.label;
+        group.appendChild(text);
+
+        // Size indicator
+        const sizeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sizeText.setAttribute('x', node.x);
+        sizeText.setAttribute('y', node.y + node.size/2 + 35);
+        sizeText.setAttribute('text-anchor', 'middle');
+        sizeText.setAttribute('fill', node.color);
+        sizeText.setAttribute('font-size', '10px');
+        sizeText.setAttribute('font-weight', 'bold');
+        sizeText.textContent = `${node.sizeGB} GB`;
+        group.appendChild(sizeText);
+
+        svg.appendChild(group);
+      });
+    }
+
+    function showTooltip(event, node) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `
+        <strong>${node.label}</strong><br>
+        <strong>Size:</strong> ${node.sizeGB} GB<br>
+        <strong>Files:</strong> ${node.files.toLocaleString()}<br>
+        <strong>Type:</strong> ${node.type}<br>
+        <br>
+        <em>Click to analyze this folder</em>
+      `;
+
+      tooltip.style.left = (event.pageX + 15) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    function selectFolder(node) {
+      const details = document.getElementById('selected-details');
+      details.innerHTML = `
+        <h4>${node.label}</h4>
+        <p><strong>Size:</strong> ${node.sizeGB} GB</p>
+        <p><strong>Files:</strong> ${node.files.toLocaleString()} files</p>
+        <p><strong>Type:</strong> ${node.type}</p>
+        <p><strong>% of Drive:</strong> ${((node.sizeGB / 487) * 100).toFixed(1)}%</p>
+        <div class='cleanup-actions' style='margin-top: 10px;'>
+          <button class='btn-small'>Open Folder</button>
+          <button class='btn-small'>Analyze Deeper</button>
+          <button class='btn-small btn-danger'>Clean Up</button>
+        </div>
+      `;
+    }
+
+    // Initialize the visualization
+    renderMetroMap();
+
+    // Add some interactivity to cleanup buttons
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-danger')) {
+        if (confirm('Are you sure you want to delete these files? They will be moved to Recycle Bin.')) {
+          e.target.closest('.cleanup-item').style.opacity = '0.5';
+          e.target.textContent = 'Deleted ✓';
+          e.target.disabled = true;
+
+          // Update the space saved counter
+          const savedElement = document.querySelector('.disk-info .disk-usage:last-child span');
+          const currentSaved = parseFloat(savedElement.textContent);
+          savedElement.textContent = `${(currentSaved + Math.random() * 10 + 5).toFixed(1)} GB`;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,201 +1,215 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
+import './styles/MiniMap.css';
 
-// Minimap interativo com clique e arraste para navegar
-export const MiniMap: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [size, setSize] = useState({ w: 200, h: 120 });
-  const draggingView = useRef(false);
-  const dragResize = useRef(false);
-  const lastPointer = useRef<{ x: number; y: number } | null>(null);
-  const bboxRef = useRef<{ minX: number; minY: number; maxX: number; maxY: number } | null>(null);
+interface LayoutNode {
+  id: string;
+  x: number;
+  y: number;
+  isDirectory?: boolean;
+  // ... other properties
+}
 
-  // Desenho contínuo
+interface ViewportBounds {
+  centerX: number;
+  centerY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+interface MiniMapProps {
+  layout?: LayoutNode[];
+  viewportBounds?: ViewportBounds;
+  onViewportChange?: (worldX: number, worldY: number) => void;
+}
+
+export const MiniMap: React.FC<MiniMapProps> = ({
+  layout = [],
+  viewportBounds,
+  onViewportChange,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDragging = useRef(false);
+
+  // Render the minimap
   useEffect(() => {
-    let frame: number;
-    const draw = () => {
-      const dbg = (window as unknown as { __metroDebug?: Record<string, unknown> })
-        .__metroDebug as any;
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        frame = requestAnimationFrame(draw);
-        return;
+    const canvas = canvasRef.current;
+    if (!canvas || !layout || layout.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size for high DPI
+    const pixelRatio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * pixelRatio;
+    canvas.height = rect.height * pixelRatio;
+    ctx.scale(pixelRatio, pixelRatio);
+
+    // Clear
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+
+    // Calculate bounds of ALL nodes
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    layout.forEach(node => {
+      minX = Math.min(minX, node.x);
+      maxX = Math.max(maxX, node.x);
+      minY = Math.min(minY, node.y);
+      maxY = Math.max(maxY, node.y);
+    });
+
+    // Add padding
+    const padding = 50;
+    minX -= padding;
+    maxX += padding;
+    minY -= padding;
+    maxY += padding;
+
+    const worldWidth = maxX - minX;
+    const worldHeight = maxY - minY;
+
+    // Calculate scale to fit all nodes
+    const scaleX = rect.width / worldWidth;
+    const scaleY = rect.height / worldHeight;
+    const minimapScale = Math.min(scaleX, scaleY) * 0.9;
+
+    // Center offset
+    const offsetX = (rect.width - worldWidth * minimapScale) / 2;
+    const offsetY = (rect.height - worldHeight * minimapScale) / 2;
+
+    // Transform world to minimap coordinates
+    const worldToMinimap = (x: number, y: number) => ({
+      x: (x - minX) * minimapScale + offsetX,
+      y: (y - minY) * minimapScale + offsetY
+    });
+
+    // Draw ALL nodes (small dots)
+    layout.forEach(node => {
+      const pos = worldToMinimap(node.x, node.y);
+      
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 2, 0, Math.PI * 2);
+      
+      if (node.isDirectory) {
+        ctx.fillStyle = '#29b6f688';
+      } else {
+        ctx.fillStyle = '#66bb6a88';
       }
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        frame = requestAnimationFrame(draw);
-        return;
-      }
-      canvas.width = size.w * devicePixelRatio;
-      canvas.height = size.h * devicePixelRatio;
-      canvas.style.width = size.w + 'px';
-      canvas.style.height = size.h + 'px';
-      ctx.scale(devicePixelRatio, devicePixelRatio);
-      ctx.clearRect(0, 0, size.w, size.h);
-      const nodes = dbg?.getNodes ? dbg.getNodes() : [];
-      if (!nodes || !nodes.length) {
-        ctx.fillStyle = '#555';
-        ctx.font = '10px sans-serif';
-        ctx.fillText('No data', 6, 14);
-        frame = requestAnimationFrame(draw);
-        return;
-      }
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      for (const n of nodes) {
-        if (n.x < minX) minX = n.x;
-        if (n.y < minY) minY = n.y;
-        if (n.x > maxX) maxX = n.x;
-        if (n.y > maxY) maxY = n.y;
-      }
-      if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
-        frame = requestAnimationFrame(draw);
-        return;
-      }
-      bboxRef.current = { minX, minY, maxX, maxY };
-      const spanX = maxX - minX || 1;
-      const spanY = maxY - minY || 1;
-      const pad = 4;
-      for (const n of nodes) {
-        const nx = (n.x - minX) / spanX;
-        const ny = (n.y - minY) / spanY;
-        const sz = n.aggregated ? 3 : 2;
-        ctx.fillStyle = n.aggregated ? '#f59e0b' : '#60a5fa';
-        ctx.fillRect(
-          pad + nx * (size.w - pad * 2) - sz / 2,
-          pad + ny * (size.h - pad * 2) - sz / 2,
-          sz,
-          sz
-        );
-      }
-      // viewport retângulo
-      try {
-        const vp = dbg?.getViewport?.();
-        if (vp && bboxRef.current) {
-          const scaleFactorX = (size.w - pad * 2) / spanX;
-          const scaleFactorY = (size.h - pad * 2) / spanY;
+      ctx.fill();
+    });
 
-          // Ensure viewport calculations produce finite values
-          const scale = vp.scale || 1;
-          if (!Number.isFinite(scale) || scale <= 0) return;
+    // Draw viewport rectangle if we have viewport bounds
+    if (viewportBounds) {
+      const { centerX, centerY, viewportWidth, viewportHeight } = viewportBounds;
+      
+      const topLeft = worldToMinimap(centerX - viewportWidth, centerY - viewportHeight);
+      const bottomRight = worldToMinimap(centerX + viewportWidth, centerY + viewportHeight);
 
-          const viewW = (window.innerWidth / scale) * scaleFactorX;
-          const viewH = (window.innerHeight / scale) * scaleFactorY;
+      ctx.strokeStyle = '#ffb300';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        topLeft.x,
+        topLeft.y,
+        bottomRight.x - topLeft.x,
+        bottomRight.y - topLeft.y
+      );
 
-          // Ensure calculated dimensions are finite and positive
-          if (!Number.isFinite(viewW) || !Number.isFinite(viewH) || viewW <= 0 || viewH <= 0)
-            return;
+      // Fill with semi-transparent color
+      ctx.fillStyle = '#ffb30033';
+      ctx.fillRect(
+        topLeft.x,
+        topLeft.y,
+        bottomRight.x - topLeft.x,
+        bottomRight.y - topLeft.y
+      );
+    }
+  }, [layout, viewportBounds]);
 
-          const worldCenterX = -(vp.x - window.innerWidth / 2) / scale;
-          const worldCenterY = -(vp.y - window.innerHeight / 2) / scale;
+  // Handle minimap interaction
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !layout || layout.length === 0 || !onViewportChange) return;
 
-          // Ensure center positions are finite
-          if (!Number.isFinite(worldCenterX) || !Number.isFinite(worldCenterY)) return;
-
-          const nx = (worldCenterX - minX) / spanX;
-          const ny = (worldCenterY - minY) / spanY;
-
-          // Ensure normalized positions are finite
-          if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
-
-          ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(
-            pad + nx * (size.w - pad * 2) - viewW / 2,
-            pad + ny * (size.h - pad * 2) - viewH / 2,
-            viewW,
-            viewH
-          );
-        }
-      } catch {
-        /* ignore viewport drawing errors */
-      }
-      frame = requestAnimationFrame(draw);
+    const handleMouseDown = (e: MouseEvent) => {
+      isDragging.current = true;
+      updateViewport(e);
     };
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
-  }, [size]);
 
-  const centerAt = (clientX: number, clientY: number) => {
-    const dbg = (window as unknown as { __metroDebug?: Record<string, unknown> })
-      .__metroDebug as any;
-    if (!dbg?.centerViewportAt || !bboxRef.current) return;
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const { minX, minY, maxX, maxY } = bboxRef.current;
-    const spanX = maxX - minX || 1;
-    const spanY = maxY - minY || 1;
-    const pad = 4;
-    const nx = (clientX - rect.left - pad) / (rect.width - pad * 2);
-    const ny = (clientY - rect.top - pad) / (rect.height - pad * 2);
-    const worldX = minX + nx * spanX;
-    const worldY = minY + ny * spanY;
-    dbg.centerViewportAt(worldX, worldY);
-  };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging.current) {
+        updateViewport(e);
+      }
+    };
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.dataset.resizer === '1') {
-      dragResize.current = true;
-      lastPointer.current = { x: e.clientX, y: e.clientY };
-      e.preventDefault();
-      return;
-    }
-    draggingView.current = true;
-    centerAt(e.clientX, e.clientY);
-    e.preventDefault();
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (dragResize.current && lastPointer.current) {
-      const dx = e.clientX - lastPointer.current.x;
-      const dy = e.clientY - lastPointer.current.y;
-      lastPointer.current = { x: e.clientX, y: e.clientY };
-      setSize((s) => ({ w: Math.max(120, s.w + dx), h: Math.max(80, s.h + dy) }));
-      return;
-    }
-    if (!draggingView.current) return;
-    centerAt(e.clientX, e.clientY);
-  };
-  const onPointerUp = () => {
-    draggingView.current = false;
-    dragResize.current = false;
-    lastPointer.current = null;
-  };
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      canvas.style.cursor = 'grab';
+    };
+
+    const updateViewport = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const minimapX = e.clientX - rect.left;
+      const minimapY = e.clientY - rect.top;
+
+      // Calculate bounds of ALL nodes (same as render)
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      
+      layout.forEach(node => {
+        minX = Math.min(minX, node.x);
+        maxX = Math.max(maxX, node.x);
+        minY = Math.min(minY, node.y);
+        maxY = Math.max(maxY, node.y);
+      });
+
+      const padding = 50;
+      minX -= padding;
+      maxX += padding;
+      minY -= padding;
+      maxY += padding;
+
+      const worldWidth = maxX - minX;
+      const worldHeight = maxY - minY;
+
+      const scaleX = rect.width / worldWidth;
+      const scaleY = rect.height / worldHeight;
+      const minimapScale = Math.min(scaleX, scaleY) * 0.9;
+
+      const offsetX = (rect.width - worldWidth * minimapScale) / 2;
+      const offsetY = (rect.height - worldHeight * minimapScale) / 2;
+
+      // Convert minimap coordinates to world coordinates
+      const worldX = (minimapX - offsetX) / minimapScale + minX;
+      const worldY = (minimapY - offsetY) / minimapScale + minY;
+      
+      onViewportChange(worldX, worldY);
+      canvas.style.cursor = 'grabbing';
+    };
+
+    canvas.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [layout, onViewportChange]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ position: 'relative', width: size.w, height: size.h }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-    >
-      <canvas
-        ref={canvasRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          cursor: dragResize.current ? 'nwse-resize' : 'pointer',
-          borderRadius: 4,
-        }}
-      />
-      <div
-        data-resizer="1"
-        style={{
-          position: 'absolute',
-          width: 14,
-          height: 14,
-          right: 2,
-          bottom: 2,
-          background: 'rgba(255,255,255,0.35)',
-          border: '1px solid rgba(0,0,0,0.4)',
-          borderRadius: 3,
-          cursor: 'nwse-resize',
-        }}
-        title="Redimensionar"
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="minimap-canvas"
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        cursor: 'grab',
+        backgroundColor: '#1a1a2e'
+      }}
+    />
   );
 };
 

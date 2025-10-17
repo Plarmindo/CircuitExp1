@@ -133,8 +133,20 @@ function validateInner(schema, value, path, errors) {
   return true;
 }
 
-const { InputValidator } = require('./electron/input-validator.cjs');
-const { SecurityLogger } = require('./electron/security-config.cjs');
+// Lazy load to avoid circular dependencies
+let InputValidator, SecurityLogger;
+function getInputValidator() {
+  if (!InputValidator) {
+    InputValidator = require('./electron/input-validator.cjs').InputValidator;
+  }
+  return InputValidator;
+}
+function getSecurityLogger() {
+  if (!SecurityLogger) {
+    SecurityLogger = require('./electron/security-config.cjs').SecurityLogger;
+  }
+  return SecurityLogger;
+}
 
 function validateSchema(schemas, values) {
   // Expect arrays: schemas: Array<schema>, values: Array<any>
@@ -142,30 +154,37 @@ function validateSchema(schemas, values) {
   try {
     const sArr = Array.isArray(schemas) ? schemas : [schemas];
     const vArr = Array.isArray(values) ? values : [values];
-    
+
     for (let i = 0; i < sArr.length; i++) {
       const schema = sArr[i];
       const val = vArr[i];
-      
+
       // optional short-circuit
       if (schema && schema.optional && (val === undefined)) continue;
       // If schema absent, skip
       if (!schema) continue;
 
-      // Handle explicit non-empty string requirement
-      if (schema.nonEmpty && typeof val === 'string' && val.trim().length === 0) {
-        addError(errors, [String(i)], 'value must be non-empty');
-        continue;
+      // Handle explicit non-empty string requirement with security checks
+      if (schema.nonEmpty && schema.type === 'string') {
+        if (typeof val !== 'string' || val.trim().length === 0 || val.includes('\x00')) {
+          addError(errors, [String(i)], 'value must be non-empty and valid');
+          continue;
+        }
+        // Reject obvious attack patterns when nonEmpty is used (implies user input validation)
+        if (/<script|javascript:|DROP\s+TABLE|<\s*img/i.test(val)) {
+          addError(errors, [String(i)], 'potentially dangerous content detected');
+          continue;
+        }
       }
 
       // Delegate complex schema types back to internal validator
-      if (schema.type === 'tuple' || schema.type === 'record') {
+      if (schema.type === 'tuple' || schema.type === 'record' || schema.type === 'object') {
         validateInner(schema, val, [String(i)], errors);
         continue;
       }
 
       // Use comprehensive input validation for enhanced security
-      const result = InputValidator.validate(val, schema);
+      const result = getInputValidator().validate(val, schema);
       if (!result.valid) {
         addError(errors, [String(i)], result.error);
         continue;
@@ -181,10 +200,10 @@ function validateSchema(schemas, values) {
       }
     }
   } catch (err) {
-    SecurityLogger.logSecurityEvent('validation_error', { error: err.message });
+    getSecurityLogger().logSecurityEvent('validation_error', { error: err.message });
     errors.push({ path: '<internal>', msg: String(err && err.stack ? err.stack : err) });
   }
-  
+
   if (errors.length === 0) return { ok: true };
   // Return errors as strings for simple consumption by callers/tests
   return { ok: false, errors: errors.map(e => (typeof e === 'string' ? e : (e && e.msg) ? e.msg : String(e))) };
@@ -207,7 +226,7 @@ function noTraversal(p) {
 
   // Standardise separators (convert backslashes to forward slashes, collapse repeats)
   const uniform = trimmed.replace(/[\\/]+/g, '/');
-  
+
   // Reject lingering single-dot traversal patterns like '/./'
   if (uniform.includes('/./')) return false;
 
@@ -241,13 +260,13 @@ function isSafePath(p, basePath = process.cwd()) {
 
   // For relative paths, ensure no traversal sequences
   if (!noTraversal(p)) return false;
-  
+
   try {
 
     // Resolve relative to base path for further validation
     const resolvedPath = path.resolve(basePath, p);
     const resolvedBase = path.resolve(basePath);
-    
+
     // Ensure the resolved path is within the base path
     return resolvedPath.startsWith(resolvedBase);
   } catch (e) {
@@ -266,7 +285,7 @@ function sanitizePath(p) {
     drivePrefix = driveMatch[0].slice(0, 2); // "C:"
     p = p.slice(2); // remove drive part from the remaining path for sanitisation
   }
-  
+
   // Decode URL-encoded characters first to catch encoded traversal
   try {
     p = decodeURIComponent(p);
@@ -274,33 +293,34 @@ function sanitizePath(p) {
     // If decoding fails, treat as potentially malicious
     return null;
   }
-  
-  // Remove potentially dangerous characters (colon already handled)
-  let sanitized = p.replace(/[<>:"|?*\x00-\x1f]/g, '');
-  
+
+  // Remove potentially dangerous characters including shell metacharacters
+  // Characters like ; & | ` $ ( ) < > : " | ? * and control chars are removed
+  let sanitized = p.replace(/[<>:"|?*;&|`$()[\]\x00-\x1f]/g, '');
+
   // Trim whitespace
   sanitized = sanitized.trim();
-  
-  // Reject dangerous shell metacharacters that could enable command injection
-  // Characters like ; & | ` $ ( ) are not permissible in sanitized paths
-  if (/[;&|`$()]/.test(sanitized)) return null;
-  
+
   // Ensure no double slashes or backslashes, convert to forward slashes for consistency
   sanitized = sanitized.replace(/[\\/]+/g, '/');
-  
+
   // Reattach drive prefix if present, ensuring a leading slash after the drive (e.g., "C:/path")
   if (drivePrefix) {
     sanitized = `${drivePrefix}/${sanitized.replace(/^\/+/, '')}`;
   }
-  
+
   // Apply path traversal protection (ignore drive for traversal check)
   let traversalCheckPath = drivePrefix ? sanitized.slice(2) : sanitized; // remove "C:" when checking
   // Remove leading slash for Windows absolute paths to treat as relative during traversal check
   if (drivePrefix && traversalCheckPath.startsWith('/')) {
     traversalCheckPath = traversalCheckPath.slice(1);
   }
+  // Special case: Drive root (e.g., "C:/") results in empty path after drive removal, which is valid
+  if (drivePrefix && traversalCheckPath.length === 0) {
+    return sanitized; // Drive root is safe
+  }
   if (!noTraversal(traversalCheckPath)) return null;
-  
+
   return sanitized;
 }
 
@@ -310,20 +330,20 @@ function validatePathSecurity(schema, value) {
     if (typeof value !== 'string') {
       return { valid: false, error: 'expected string for secure path' };
     }
-    
+
     // Apply comprehensive path validation
     const sanitized = sanitizePath(value);
     if (sanitized === null) {
       return { valid: false, error: 'path traversal detected' };
     }
-    
+
     if (!isSafePath(sanitized)) {
       return { valid: false, error: 'path traversal detected' };
     }
-    
+
     return { valid: true, value: sanitized };
   }
-  
+
   return { valid: true, value };
 }
 
@@ -333,10 +353,10 @@ module.exports.noTraversal = noTraversal;
 module.exports.isSafePath = isSafePath;
 module.exports.sanitizePath = sanitizePath;
 module.exports.validatePathSecurity = validatePathSecurity;
-module.exports.default = { 
-  validateSchema, 
-  noTraversal, 
-  isSafePath, 
-  sanitizePath, 
-  validatePathSecurity 
+module.exports.default = {
+  validateSchema,
+  noTraversal,
+  isSafePath,
+  sanitizePath,
+  validatePathSecurity
 };

@@ -77,7 +77,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
     } catch (error) {
       console.error('Failed to collect performance metrics:', error);
     }
-  };
+  }, []);
 
   const checkPerformanceAlerts = (metric: PerformanceMetric) => {
     const newAlerts: PerformanceAlert[] = [];
@@ -127,7 +127,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
     }
 
     setAlerts((prev) => [...newAlerts, ...prev].slice(-10));
-  }, []);
+  };
 
   useEffect(() => {
     if (realTimeMonitoring && isVisible) {
@@ -193,12 +193,16 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
                 className={`px-3 py-1 rounded text-sm ${
                   realTimeMonitoring ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'
                 }`}
+                title={realTimeMonitoring ? 'Pause real-time monitoring' : 'Enable real-time monitoring'}
+                aria-label={realTimeMonitoring ? 'Pause monitoring' : 'Enable monitoring'}
               >
                 {realTimeMonitoring ? 'Live' : 'Paused'}
               </button>
               <button
                 onClick={onClose}
                 className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                title="Close Performance Dashboard"
+                aria-label="Close dashboard"
               >
                 Close
               </button>

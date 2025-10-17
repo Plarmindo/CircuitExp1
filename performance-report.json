@@ -1,0 +1,121 @@
+{
+  "timestamp": "2025-10-09T19:08:02.598Z",
+  "results": [
+    {
+      "name": "Small",
+      "files": 140,
+      "directories": 20,
+      "totalNodes": 160,
+      "totalSize": 1750,
+      "maxDepth": 1,
+      "duration": 26,
+      "expectedTime": 1000,
+      "passed": true,
+      "memory": {
+        "start": {
+          "rss": 60358656,
+          "heapTotal": 16347136,
+          "heapUsed": 9639656,
+          "external": 3739353,
+          "arrayBuffers": 1906755
+        },
+        "end": {
+          "rss": 60391424,
+          "heapTotal": 16347136,
+          "heapUsed": 10259328,
+          "external": 3771593,
+          "arrayBuffers": 1938955
+        },
+        "delta": {
+          "heapUsed": 619672,
+          "heapTotal": 0,
+          "external": 32240,
+          "rss": 32768
+        }
+      },
+      "performance": {
+        "nodesPerSecond": 6153,
+        "mbPerSecond": "0.06"
+      }
+    },
+    {
+      "name": "Medium",
+      "files": 14000,
+      "directories": 2000,
+      "totalNodes": 16000,
+      "totalSize": 190890,
+      "maxDepth": 1,
+      "duration": 2076,
+      "expectedTime": 10000,
+      "passed": true,
+      "memory": {
+        "start": {
+          "rss": 60420096,
+          "heapTotal": 16609280,
+          "heapUsed": 10303288,
+          "external": 3771593,
+          "arrayBuffers": 1938955
+        },
+        "end": {
+          "rss": 67268608,
+          "heapTotal": 25522176,
+          "heapUsed": 6469480,
+          "external": 1895305,
+          "arrayBuffers": 62667
+        },
+        "delta": {
+          "heapUsed": -3833808,
+          "heapTotal": 8912896,
+          "external": -1876288,
+          "rss": 6848512
+        }
+      },
+      "performance": {
+        "nodesPerSecond": 7707,
+        "mbPerSecond": "0.09"
+      }
+    },
+    {
+      "name": "Large",
+      "files": 140000,
+      "directories": 20000,
+      "totalNodes": 160000,
+      "totalSize": 1988890,
+      "maxDepth": 1,
+      "duration": 21545,
+      "expectedTime": 120000,
+      "passed": true,
+      "memory": {
+        "start": {
+          "rss": 67268608,
+          "heapTotal": 25522176,
+          "heapUsed": 6489824,
+          "external": 1895305,
+          "arrayBuffers": 62667
+        },
+        "end": {
+          "rss": 88653824,
+          "heapTotal": 49922048,
+          "heapUsed": 16151816,
+          "external": 1959705,
+          "arrayBuffers": 127067
+        },
+        "delta": {
+          "heapUsed": 9661992,
+          "heapTotal": 24399872,
+          "external": 64400,
+          "rss": 21385216
+        }
+      },
+      "performance": {
+        "nodesPerSecond": 7426,
+        "mbPerSecond": "0.09"
+      }
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}

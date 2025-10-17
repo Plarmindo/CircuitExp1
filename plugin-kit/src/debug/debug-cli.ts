@@ -124,7 +124,7 @@ class DebugCli {
     if (command) {
       try {
         await command.handler(args);
-      } catch (_error) {
+      } catch {
         console.error(`Error: ${error.message}`);
       }
     } else {
@@ -181,7 +181,7 @@ class DebugCli {
       const _results = await this.currentTestRunner.runTestSuite(testSuite);
 
       console.log('\n' + this.currentTestRunner.generateReport());
-    } catch (_error) {
+    } catch {
       console.error(`Test execution failed: ${error.message}`);
     }
   }
@@ -239,7 +239,7 @@ class DebugCli {
       const metrics = this.profiler.getMetrics();
       console.log('Profile Results:');
       console.log(JSON.stringify(metrics, null, 2));
-    } catch (_error) {
+    } catch {
       console.error(`Profiling failed: ${error.message}`);
     }
   }
@@ -396,7 +396,7 @@ class DebugCli {
         if (!manifest.version) errors.push('Manifest missing "version" field');
         if (!manifest.main) errors.push('Manifest missing "main" field');
         if (!manifest.apiVersion) errors.push('Manifest missing "apiVersion" field');
-      } catch (_error) {
+      } catch {
         errors.push('Invalid manifest.json format');
       }
     }

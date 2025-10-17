@@ -14,32 +14,11 @@
     <meta name="supported-color-schemes" content="light dark" />
     
     <title>CircuitExp1</title>
-    <!-- Production CSP with nonce -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-{{CSP_NONCE}}'; style-src 'self' 'nonce-{{CSP_NONCE}}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests; block-all-mixed-content">
+    <!-- Development CSP (includes unsafe-eval for WebGL shader compilation in PixiJS) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss: http://localhost:* https://localhost:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- **NEW**: HTML5 feature detection script -->
-    <script>
-      // Detect HTML5 support and log compatibility status
-      (function() {
-        var html5Support = {
-          canvas: !!document.createElement('canvas').getContext,
-          webgl: !!window.WebGLRenderingContext,
-          svg: !!document.createElementNS && !!document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect,
-          localStorage: !!window.localStorage,
-          sessionStorage: !!window.sessionStorage
-        };
-        
-        // Log HTML5 compatibility for debugging
-        if (window.console && window.console.log) {
-          console.log('HTML5 Feature Support:', html5Support);
-        }
-        
-        // Store for application use
-        window.HTML5_SUPPORT = html5Support;
-      })();
-    </script>
   </body>
 </html>

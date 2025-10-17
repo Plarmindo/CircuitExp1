@@ -3,10 +3,14 @@ import './App.css';
 import { MetroUIInner } from './components/MetroUI';
 import { SettingsProvider } from './settings/SettingsProvider';
 import { ErrorHandler } from './components/ErrorHandler';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MonitoringDashboard } from './components/MonitoringDashboard';
+import { RecentScansPanel } from './components/RecentScansPanel';
+import { useProgressiveScanLoading } from './hooks/useProgressiveLoading';
 import { errorReporter } from './services/error-reporter';
 import { auditLogger } from './services/audit-logger';
 import { ModeProvider } from './visualization/modes/ModeProvider';
+import { ZoomProvider } from './contexts/ZoomContext';
 
 interface ErrorInfo {
   id: string;
@@ -38,16 +42,22 @@ function App() {
   const [showMonitoring, setShowMonitoring] = useState(false);
   const [scanId, setScanId] = useState<string | null>(null);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
-  const [scanNodes, setScanNodes] = useState<NodeEntry[]>([]);
-  const [receivedNodes, setReceivedNodes] = useState<number>(0);
   const [scanDone, setScanDone] = useState<ScanDone | null>(null);
   const [rootPath, setRootPath] = useState<string | null>(null);
+  
+  // Use progressive loading for smooth rendering of large datasets
+  const { renderedNodes, state: _progressiveState, progress: _progressiveProgress } = useProgressiveScanLoading<NodeEntry>({
+    batchSize: 100, // Render 100 nodes per batch
+    batchDelay: 16, // ~60fps
+  });
+  
+  // Track total received nodes for metrics
+  const [receivedNodes, setReceivedNodes] = useState<number>(0);
 
   // Remove demo mode forcing; production UI is always active
   const resetScanState = () => {
     setScanId(null);
     setScanProgress(null);
-    setScanNodes([]);
     setReceivedNodes(0);
     setScanDone(null);
     setRootPath(null);
@@ -80,7 +90,8 @@ function App() {
     const handleScanPartial = (event: CustomEvent) => {
       const { scanId: id, nodes: newNodes } = event.detail;
       if (id === scanId || !scanId) {
-        setScanNodes((prev) => [...prev, ...newNodes]);
+        // Progressive loading hook automatically handles scan:partial events
+        // Just track the count for metrics
         setReceivedNodes((prev) => prev + newNodes.length);
       }
     };
@@ -118,6 +129,25 @@ function App() {
     setErrors((prev) => prev.filter((error) => error.id !== errorId));
   };
 
+  const handleScanFromRecent = async (path: string) => {
+    try {
+      // Use UnifiedNavigation to start scan
+      const { UnifiedNavigation } = await import('./navigation/unified-navigation');
+      await UnifiedNavigation.scan.start(path);
+      
+      auditLogger.logSystemEvent('application', 'scan_from_recent', {
+        path,
+      });
+    } catch (error) {
+      console.error('Failed to start scan from recent:', error);
+      const errorInfo = errorReporter.reportError(
+        error instanceof Error ? error : new Error('Failed to start scan'),
+        'scan-start'
+      );
+      setErrors((prev) => [...prev, errorInfo]);
+    }
+  };
+
   const toggleMonitoring = () => {
     const newState = !showMonitoring;
     setShowMonitoring(newState);
@@ -129,35 +159,46 @@ function App() {
 
   return (
     <SettingsProvider>
-      <div className="App">
-        <div className="app-header">
-          {/* Production build: only Monitoring toggle remains */}
-          <button
-            onClick={toggleMonitoring}
-            className="monitoring-toggle"
-            title={showMonitoring ? 'Hide Monitoring Dashboard' : 'Show Monitoring Dashboard'}
-          >
-            {showMonitoring ? '📊' : '📈'}
-          </button>
+      <ZoomProvider>
+        <div className="App">
+          <div className="app-header">
+            {/* Production build: only Monitoring toggle remains */}
+            <button
+              onClick={toggleMonitoring}
+              className="monitoring-toggle"
+              title={showMonitoring ? 'Hide Monitoring Dashboard' : 'Show Monitoring Dashboard'}
+            >
+              {showMonitoring ? '📊' : '📈'}
+            </button>
+          </div>
+
+          {/* Recent Scans Panel - positioned in left sidebar */}
+          {!showMonitoring && (
+            <div className="app-sidebar">
+              <RecentScansPanel onScan={handleScanFromRecent} />
+            </div>
+          )}
+
+          {showMonitoring ? (
+            <MonitoringDashboard />
+          ) : (
+            <ModeProvider>
+              <ErrorBoundary>
+                <MetroUIInner
+                  scanId={scanId}
+                  progress={scanProgress}
+                  nodes={renderedNodes}
+                  receivedNodes={receivedNodes}
+                  done={scanDone}
+                  rootPath={rootPath}
+                />
+              </ErrorBoundary>
+            </ModeProvider>
+          )}
+
+          <ErrorHandler errors={errors} onDismiss={handleErrorDismiss} />
         </div>
-
-        {showMonitoring ? (
-          <MonitoringDashboard />
-        ) : (
-          <ModeProvider>
-            <MetroUIInner
-              scanId={scanId}
-              progress={scanProgress}
-              nodes={scanNodes}
-              receivedNodes={receivedNodes}
-              done={scanDone}
-              rootPath={rootPath}
-            />
-          </ModeProvider>
-        )}
-
-        <ErrorHandler errors={errors} onDismiss={handleErrorDismiss} />
-      </div>
+      </ZoomProvider>
     </SettingsProvider>
   );
 }

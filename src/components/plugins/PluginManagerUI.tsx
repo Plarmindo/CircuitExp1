@@ -4,6 +4,7 @@ import { PlusOutlined as _PlusOutlined, ImportOutlined, ReloadOutlined, DeleteOu
 import { PluginManager } from '../../plugins/core/PluginSystem';
 import { PluginImportModal } from './PluginImportModal';
 import { ImportResult } from '../../plugins/import/ZipPluginImporter';
+import '../styles/PluginManagerUI.css';
 
 interface PluginManagerUIProps {
   pluginManager: PluginManager;
@@ -169,7 +170,7 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
   }, [loadPlugins]);
 
   return (
-    <div style={{ padding: 24 }}>
+    <div className="plugin-manager">
       <Card
         title="Plugin Manager"
         extra={
@@ -187,23 +188,26 @@ export const PluginManagerUI: React.FC<PluginManagerUIProps> = ({ pluginManager 
           </Space>
         }
       >
-        <Table
-          columns={columns}
-          dataSource={plugins}
-          loading={loading}
-          rowKey="id"
-          pagination={{
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `Total ${total} plugins`,
-          }}
-        />
+        <div className="plugin-manager-content">
+          <Table
+            columns={columns}
+            dataSource={plugins}
+            loading={loading}
+            rowKey="id"
+            pagination={{
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total) => `Total ${total} plugins`,
+            }}
+          />
+        </div>
       </Card>
 
       <PluginImportModal
         visible={importModalVisible}
-        onClose={() => setImportModalVisible(false)}
-        onImportSuccess={handleImportSuccess}
+        onCancel={() => setImportModalVisible(false)}
+        onSuccess={handleImportSuccess}
+        pluginManager={pluginManager}
       />
     </div>
   );

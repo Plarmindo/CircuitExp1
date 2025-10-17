@@ -221,7 +221,7 @@ export class MemoryLeakDetector extends EventEmitter {
         mapSpace: heapStats.total_map_space_size,
         largeObjectSpace: heapStats.total_large_object_space_size,
       };
-    } catch (_e) {
+    } catch {
       // Fallback if v8 not available
     }
 
@@ -273,7 +273,7 @@ export class MemoryLeakDetector extends EventEmitter {
           }
         }
       }
-    } catch (_e) {
+    } catch {
       // Ignore errors in counting
     }
 
@@ -297,7 +297,7 @@ export class MemoryLeakDetector extends EventEmitter {
       return handles.filter((handle: any) =>
         handle && (handle.constructor?.name === 'Timeout' || handle.constructor?.name === 'Immediate')
       ).length;
-    } catch (_e) {
+    } catch {
       // Fallback: return 0 if we can't count
       return 0;
     }

@@ -1,24 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ResponsiveMetroStage from '../../components/ResponsiveMetroStage';
-import type { LayoutNodeLite, RouteCommand } from '../stage/types';
+import { MapControls } from '../../components/MapControls';
+import { MapSettingsControls } from '../../components/MapSettingsControls';
+import { useCommonZoom } from './use-common-zoom';
+import type { CommonModeProps } from './common-mode-interface';
 
-export interface SplitViewModeProps {
-  layout?: LayoutNodeLite[];
-  routes?: RouteCommand[];
-  onNodeClick?: (path: string) => void;
-  onNodeHover?: (path: string | null) => void;
-  onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
-  theme?: any;
-  debug?: boolean;
-}
+// SplitViewMode uses standard CommonModeProps
+export type SplitViewModeProps = CommonModeProps;
 
 // Lightweight sync via global events; both stages listen to metro:centerOnPath
 const SplitViewMode: React.FC<SplitViewModeProps> = (props) => {
+  // Use common zoom hook (standardized across all modes)
+  const { scale, isWindowZoomMode, handleZoomIn, handleZoomOut, handleResetView, handleToggleWindowZoom } = useCommonZoom();
+
   const [split, setSplit] = useState<number>(50); // percentage width for left pane
   const [dragging, setDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [_selected, _setSelected] = useState<string | null>(null);
-  const [_hovered, _setHovered] = useState<string | null>(null);
+  const [_selected, setSelected] = useState<string | null>(null);
+  const [_hovered, setHovered] = useState<string | null>(null);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -62,11 +61,13 @@ const SplitViewMode: React.FC<SplitViewModeProps> = (props) => {
   const leftStyle: React.CSSProperties = useMemo(() => ({
     minWidth: 0,
     width: `${split}%`,
+    height: '100%',
   }), [split]);
 
   const rightStyle: React.CSSProperties = useMemo(() => ({
     minWidth: 0,
     width: `${100 - split}%`,
+    height: '100%',
   }), [split]);
 
   const barStyle: React.CSSProperties = {
@@ -76,12 +77,29 @@ const SplitViewMode: React.FC<SplitViewModeProps> = (props) => {
   };
 
   return (
-    <div ref={containerRef} style={{ display: 'flex', width: '100%', height: '100%' }}>
+    <div ref={containerRef} style={{ display: 'flex', width: '100%', height: '100%', position: 'relative' }}>
+      {/* Single shared MapControls for both panes - centralized zoom with CAD functions */}
+      <MapControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetView={handleResetView}
+        onToggleWindowZoom={handleToggleWindowZoom}
+        zoomLevel={scale}
+        isWindowZoomActive={isWindowZoomMode}
+      />
+
+      {/* Map Settings Controls - always visible */}
+      <MapSettingsControls
+        position="bottom-left"
+        compact={false}
+      />
+
       <div style={leftStyle}>
         <ResponsiveMetroStage
           {...props}
           onNodeClick={handleNodeClick}
           onNodeHover={handleNodeHover}
+          lineWidthMm={1}
         />
       </div>
       <div role="separator" aria-orientation="vertical" tabIndex={0} style={barStyle} onMouseDown={onMouseDown} />
@@ -90,6 +108,7 @@ const SplitViewMode: React.FC<SplitViewModeProps> = (props) => {
           {...props}
           onNodeClick={handleNodeClick}
           onNodeHover={handleNodeHover}
+          lineWidthMm={1}
         />
       </div>
     </div>

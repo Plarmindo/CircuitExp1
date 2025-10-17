@@ -200,7 +200,7 @@ describe('SecurityConfigUtils', () => {
       const content = '<script>alert("XSS")</script>';
       const result = SecurityConfigUtils.validateFileContent(content, 'test.html');
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Suspicious content detected');
+      expect(result.error).toBe('Suspicious content detected - potentially malicious code');
     });
   });
 

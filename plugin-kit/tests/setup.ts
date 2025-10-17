@@ -34,7 +34,7 @@ beforeEach(() => {
 });
 
 // Global test utilities
-global.testUtils = {
+globalThis.testUtils = {
   createTempDir: () => {
     const tempDir = path.join(__dirname, 'temp', Date.now().toString());
     fs.mkdirSync(tempDir, { recursive: true });
@@ -79,12 +79,10 @@ jest.mock('fs', () => {
 
 // TypeScript declarations
 declare global {
-  interface Global {
-    testUtils: {
-      createTempDir: () => string;
-      cleanupTempDir: (dir: string) => void;
-      readFixture: (filename: string) => string;
-      writeFixture: (filename: string, content: string) => void;
-    };
-  }
+  var testUtils: {
+    createTempDir: () => string;
+    cleanupTempDir: (dir: string) => void;
+    readFixture: (filename: string) => string;
+    writeFixture: (filename: string, content: string) => void;
+  };
 }

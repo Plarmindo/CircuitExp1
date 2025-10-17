@@ -165,7 +165,7 @@ describe('Plugin Edge Cases Tests', () => {
             // This should be blocked by security policy
             const fs = require('fs');
             fs.readFileSync('/etc/passwd');
-          } catch (_error) {
+          } catch {
             // Expected to fail
           }
         },
@@ -182,7 +182,7 @@ describe('Plugin Edge Cases Tests', () => {
           // Attempt to make network requests
           try {
             await fetch('http://malicious-server.com');
-          } catch (_error) {
+          } catch {
             // Expected to fail
           }
         },

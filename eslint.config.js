@@ -92,5 +92,12 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
       'prefer-const': 'off',
     },
+  },
+  {
+    // Plugin Kit intentionally uses flexible types for extensibility
+    files: ['plugin-kit/**/*.ts', 'plugin-kit/**/*.d.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
   }
 );

@@ -1,67 +1,67 @@
 {
   "baseline-test": {
     "version": "0.0.0",
-    "timestamp": 1758981669701,
+    "timestamp": 1760302058202,
     "results": [
       {
         "testName": "baseline-test",
         "metrics": [
           {
             "name": "avg_duration",
-            "value": 0.01630000000007688,
+            "value": 0.0053666666666837655,
             "unit": "ms",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "min_duration",
-            "value": 0.013500000000021828,
+            "value": 0.00479999999993197,
             "unit": "ms",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "max_duration",
-            "value": 0.019800000000032014,
+            "value": 0.006499999999959982,
             "unit": "ms",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "std_dev",
-            "value": 0.00261916017073249,
+            "value": 0.0008013876853043665,
             "unit": "ms",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "throughput",
-            "value": 61349.693251244375,
+            "value": 186335.4037261144,
             "unit": "ops/sec",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "heap_used",
-            "value": 24.18829345703125,
+            "value": 24.75249481201172,
             "unit": "MB",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "heap_total",
-            "value": 39.4609375,
+            "value": 40.3984375,
             "unit": "MB",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           },
           {
             "name": "memory_leak",
             "value": 0.001922607421875,
             "unit": "MB",
-            "timestamp": 1758981669699
+            "timestamp": 1760302058200
           }
         ],
-        "duration": 0.12269999999989523,
+        "duration": 0.04140000000006694,
         "memoryUsage": {
-          "rss": 69517312,
-          "heapTotal": 41377792,
-          "heapUsed": 25363264,
-          "external": 3889362,
-          "arrayBuffers": 112108
+          "rss": 78376960,
+          "heapTotal": 42360832,
+          "heapUsed": 25954872,
+          "external": 3889203,
+          "arrayBuffers": 112003
         }
       }
     ],
@@ -75,67 +75,67 @@
   },
   "regression-test": {
     "version": "0.0.0",
-    "timestamp": 1758981669718,
+    "timestamp": 1760302058243,
     "results": [
       {
         "testName": "regression-test",
         "metrics": [
           {
             "name": "avg_duration",
-            "value": 0.0029666666666040933,
+            "value": 0.0025333333333037444,
             "unit": "ms",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "min_duration",
-            "value": 0.002100000000154978,
+            "value": 0.0014999999998508429,
             "unit": "ms",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "max_duration",
-            "value": 0.0045999999997548,
+            "value": 0.004400000000032378,
             "unit": "ms",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "std_dev",
-            "value": 0.0011556623880912842,
+            "value": 0.0013224556283733574,
             "unit": "ms",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "throughput",
-            "value": 337078.65169250296,
+            "value": 394736.8421098736,
             "unit": "ops/sec",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "heap_used",
-            "value": 24.375083923339844,
+            "value": 24.93572235107422,
             "unit": "MB",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "heap_total",
-            "value": 39.4609375,
+            "value": 40.3984375,
             "unit": "MB",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           },
           {
             "name": "memory_leak",
             "value": 0.001922607421875,
             "unit": "MB",
-            "timestamp": 1758981669718
+            "timestamp": 1760302058243
           }
         ],
-        "duration": 0.03789999999980864,
+        "duration": 0.03350000000000364,
         "memoryUsage": {
-          "rss": 69545984,
-          "heapTotal": 41377792,
-          "heapUsed": 25559128,
-          "external": 3890222,
-          "arrayBuffers": 114899
+          "rss": 78385152,
+          "heapTotal": 42360832,
+          "heapUsed": 26147000,
+          "external": 3890063,
+          "arrayBuffers": 114798
         }
       }
     ],
@@ -149,67 +149,67 @@
   },
   "critical-regression-test": {
     "version": "0.0.0",
-    "timestamp": 1758981670194,
+    "timestamp": 1760302058835,
     "results": [
       {
         "testName": "critical-regression-test",
         "metrics": [
           {
             "name": "avg_duration",
-            "value": 0.004699999999957072,
+            "value": 0.005933333333359769,
             "unit": "ms",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "min_duration",
-            "value": 0.0032999999998537533,
+            "value": 0.003200000000106229,
             "unit": "ms",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "max_duration",
-            "value": 0.007500000000163709,
+            "value": 0.010999999999967258,
             "unit": "ms",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "std_dev",
-            "value": 0.0019798989874684476,
+            "value": 0.003586394041639736,
             "unit": "ms",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "throughput",
-            "value": 212765.95744875184,
+            "value": 168539.3258419457,
             "unit": "ops/sec",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "heap_used",
-            "value": 26.169578552246094,
+            "value": 26.44244384765625,
             "unit": "MB",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "heap_total",
-            "value": 39.7109375,
+            "value": 40.3984375,
             "unit": "MB",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           },
           {
             "name": "memory_leak",
-            "value": 0.001922607421875,
+            "value": 0.00180816650390625,
             "unit": "MB",
-            "timestamp": 1758981670194
+            "timestamp": 1760302058835
           }
         ],
-        "duration": 0.03459999999995489,
+        "duration": 0.044499999999970896,
         "memoryUsage": {
-          "rss": 70209536,
-          "heapTotal": 41639936,
-          "heapUsed": 27440792,
-          "external": 3906762,
-          "arrayBuffers": 95603
+          "rss": 79622144,
+          "heapTotal": 42360832,
+          "heapUsed": 27726912,
+          "external": 3900083,
+          "arrayBuffers": 105107
         }
       }
     ],

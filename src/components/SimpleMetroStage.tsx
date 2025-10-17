@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Application } from 'pixi.js';
 import { SimpleMetroRenderer } from '../visualization/simple-metro-renderer';
 import { generateThreeFolderMock, generateExtendedMock } from '../visualization/mock-data-generator';
-import type { LayoutNodeLite as _LayoutNodeLite, RouteCommand } from '../visualization/stage/types';
+import type { LayoutNodeLite as _LayoutNodeLite } from '../visualization/stage/types';
 
 export interface SimpleMetroStageProps {
   width?: number;
@@ -43,8 +43,8 @@ export const SimpleMetroStage: React.FC<SimpleMetroStageProps> = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Default theme
-  const defaultTheme = {
+  // Default theme - memoized to prevent unnecessary re-renders when used in callback dependencies
+  const defaultTheme = React.useMemo(() => ({
     background: '#1a1a2e',
     text: '#ffffff',
     folder: '#4CAF50',
@@ -53,7 +53,7 @@ export const SimpleMetroStage: React.FC<SimpleMetroStageProps> = ({
     selectedOutline: '#FF6B35',
     hoveredOutline: '#4ECDC4',
     ...theme,
-  };
+  }), [theme]);
 
   // Generate mock data
   const mockData = extended ? generateExtendedMock() : generateThreeFolderMock();
@@ -99,6 +99,8 @@ export const SimpleMetroStage: React.FC<SimpleMetroStageProps> = ({
       console.error('Failed to initialize PixiJS:', err);
       setError(err instanceof Error ? err.message : 'Failed to initialize graphics');
     }
+    // setupInteractions is intentionally omitted - it's called within this callback and shouldn't be a dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, defaultTheme, mockData, selectedPath, hoveredPath]);
 
   // Set up mouse interactions
@@ -289,6 +291,8 @@ export const SimpleMetroStage: React.FC<SimpleMetroStageProps> = ({
               borderRadius: '4px',
               cursor: 'pointer',
             }}
+            title="Retry initializing graphics"
+            aria-label="Retry initialization"
           >
             Retry
           </button>

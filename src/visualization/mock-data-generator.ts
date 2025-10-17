@@ -115,8 +115,8 @@ export function generateThreeFolderMock(): MockDataResult {
     },
     {
       type: 'Q', // Quadratic curve
-      x1: 250, // Control point
-      y1: 120,
+      cx: 250, // Control point
+      cy: 120,
       x: folders[1].x + 60, // End at Projects folder
       y: folders[1].y + 20,
     },
@@ -129,8 +129,8 @@ export function generateThreeFolderMock(): MockDataResult {
     },
     {
       type: 'Q', // Quadratic curve
-      x1: 550, // Control point
-      y1: 120,
+      cx: 550, // Control point
+      cy: 120,
       x: folders[2].x + 60, // End at Images folder
       y: folders[2].y + 20,
     },
@@ -143,8 +143,8 @@ export function generateThreeFolderMock(): MockDataResult {
     },
     {
       type: 'Q', // Quadratic curve
-      x1: 400, // Control point
-      y1: 320,
+      cx: 400, // Control point
+      cy: 320,
       x: folders[0].x + 60, // End at Documents folder
       y: folders[0].y + 20,
     },
@@ -282,8 +282,8 @@ export function createLinearRoute(
     { type: 'M', x: startX, y: startY },
     {
       type: 'Q',
-      x1: midX,
-      y1: midY,
+      cx: midX,
+      cy: midY,
       x: endX,
       y: endY,
     },

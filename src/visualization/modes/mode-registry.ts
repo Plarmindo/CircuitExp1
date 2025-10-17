@@ -6,6 +6,7 @@ export enum VisualizationMode {
   Drawer = 'drawer',
   SemanticZoom = 'zoom',
   SplitView = 'split',
+  GoogleMap = 'map',
 }
 
 // Optional capability flags to describe each mode's UI affordances
@@ -26,6 +27,12 @@ export interface ModeComponentProps {
   onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
   theme?: Record<string, unknown>;
   debug?: boolean;
+  /**
+   * Allow modes to accept additional configuration without forcing every consumer
+   * to re-declare props. This keeps backward compatibility for existing modes
+   * while enabling richer map controls.
+   */
+  [extra: string]: unknown;
 }
 
 export interface ModeDefinition {
@@ -108,6 +115,15 @@ class ModeRegistryImpl {
       load: () => import('./SplitViewMode'),
     });
 
+    // Register Google Map Style
+    this.register({
+      id: VisualizationMode.GoogleMap,
+      label: 'Google Map',
+      description: 'Google Maps-style zoom with constant 4mm nodes and 2mm text. LOD based on zoom level.',
+      capabilities: ['semantic-zoom', 'minimap'],
+      load: () => import('./GoogleMapMode'),
+    });
+
     this.initialized = true;
   }
 }
@@ -118,7 +134,7 @@ export const ModeRegistry = new ModeRegistryImpl();
 ModeRegistry.ensureDefaults();
 
 // Resolve default mode from a provided env bag; exported for unit testing
-export function resolveDefaultModeFromEnv(env: Record<string, any> | undefined | null): VisualizationMode | null {
+export function resolveDefaultModeFromEnv(env: Record<string, unknown> | undefined | null): VisualizationMode | null {
   try {
     const raw = (env?.VITE_VIZ_DEFAULT_MODE ?? env?.VITE_DEFAULT_MODE ?? env?.VIZ_DEFAULT_MODE ?? env?.DEFAULT_MODE ?? '').toString().trim().toLowerCase();
     switch (raw) {
@@ -131,6 +147,11 @@ export function resolveDefaultModeFromEnv(env: Record<string, any> | undefined |
       case 'split-view':
       case 'splitview':
         return VisualizationMode.SplitView;
+      case VisualizationMode.GoogleMap:
+      case 'google-map':
+      case 'googlemap':
+      case 'map':
+        return VisualizationMode.GoogleMap;
       default:
         return null;
     }
@@ -141,7 +162,11 @@ export function resolveDefaultModeFromEnv(env: Record<string, any> | undefined |
 
 // Helper: choose a conservative default mode (Split View recommended for discoverability)
 export function getDefaultVisualizationMode(): VisualizationMode {
-  const envBag = (import.meta as any)?.env ?? (typeof process !== 'undefined' ? (process as any).env : undefined);
+  const envBag =
+    (import.meta as unknown as { env?: Record<string, unknown> })?.env ??
+    (typeof process !== 'undefined'
+      ? (process as unknown as { env?: Record<string, unknown> }).env
+      : undefined);
   const envDefault = resolveDefaultModeFromEnv(envBag ?? undefined);
   if (envDefault) return envDefault;
   return VisualizationMode.SplitView;

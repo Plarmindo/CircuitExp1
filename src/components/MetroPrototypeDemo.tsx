@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import './styles/MetroPrototypeDemo.css';
 import CanvasMetroMap, { type MetroNode } from './CanvasMetroMap';
 
 export const MetroPrototypeDemo: React.FC = () => {
@@ -210,3 +211,135 @@ export const MetroPrototypeDemo: React.FC = () => {
 };
 
 export default MetroPrototypeDemo;
+
+export function MetroPrototypeDemo() {
+  const [selectedNode, setSelectedNode] = useState<MetroNode | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<MetroNode | null>(null);
+  const [rootPath, setRootPath] = useState('/root');
+
+  const handleNodeClick = (node: MetroNode) => {
+    setSelectedNode(node);
+    console.log('Node clicked:', node);
+  };
+
+  const handleNodeHover = (node: MetroNode | null) => {
+    setHoveredNode(node);
+  };
+
+  const resetSelection = () => {
+    setSelectedNode(null);
+    setHoveredNode(null);
+  };
+
+  const sampleRootPaths = [
+    '/root',
+    '/Users/john',
+    '/home/user',
+    '/C:/Users/Admin',
+  ];
+
+  return (
+    <div className="metro-prototype">
+      <div className="prototype-header">
+        <h1 className="header-title">🚦 Metro Line Sequence Demo</h1>
+        <p className="header-subtitle">
+          Single-line metro sequence with adjustable stations, spacing, angle, and color
+        </p>
+      </div>
+
+      <div className="controls-section">
+        <div className="control-group">
+          <label className="control-label">Root Path</label>
+          <select
+            value={rootPath}
+            onChange={(e) => setRootPath(e.target.value)}
+            className="control-select"
+          >
+            {sampleRootPaths.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Line Name</label>
+          <input
+            value={lineName}
+            onChange={(e) => setLineName(e.target.value)}
+            className="control-input"
+          />
+        </div>
+
+        <div className="control-group">
+          <label className="control-label">Line Color</label>
+          <input
+            type="color"
+            value={lineColor}
+            onChange={(e) => setLineColor(e.target.value)}
+            className="control-input"
+          />
+        </div>
+
+        <div className="stats-section">
+          {/* Add stats content here */}
+        </div>
+      </div>
+
+      <div className="info-section">
+        <div className="info-grid">
+          <div className="info-block">
+            <div className="info-title selected">Selected Station</div>
+            <div className="info-content">
+              {selectedNode ? (
+                <>
+                  <div>Name: {selectedNode.name}</div>
+                  <div>Type: {selectedNode.type}</div>
+                  <div>Path: {selectedNode.path}</div>
+                </>
+              ) : (
+                <span className="info-empty">None</span>
+              )}
+            </div>
+          </div>
+
+          <div className="info-block">
+            <div className="info-title hovered">Hovered Station</div>
+            <div className="info-content">
+              {hoveredNode ? (
+                <>
+                  <div>Name: {hoveredNode.name}</div>
+                  <div>Type: {hoveredNode.type}</div>
+                  <div>Path: {hoveredNode.path}</div>
+                </>
+              ) : (
+                <span className="info-empty">None</span>
+              )}
+            </div>
+          </div>
+
+          <div className="info-block">
+            <div className="info-title features">Map Features</div>
+            <div className="info-content">
+              <div>• {lineStations} stations</div>
+              <div>• Angle: {lineAngleDeg}°</div>
+              <div>• Color: {lineColor}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="visualization-section">
+        {/* Add visualization content here */}
+      </div>
+
+      <div className="footer-section">
+        <div>Metro Line Sequence Demo</div>
+        <div className="footer-note">
+          Click stations to select, hover for info, adjust controls to modify the line
+        </div>
+      </div>
+    </div>
+  );
+}

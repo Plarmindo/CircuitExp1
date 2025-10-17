@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>Metro Project Explorer - Demo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(30,30,40,0.95);
+      padding: 20px;
+      border-bottom: 2px solid #00d4aa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      color: #00d4aa;
+      margin: 0;
+      font-size: 1.8em;
+    }
+
+    .project-info {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .project-stat {
+      background: #2a2a3e;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #00d4aa;
+      text-align: center;
+    }
+
+    .main-container {
+      display: flex;
+      flex: 1;
+    }
+
+    .metro-section {
+      flex: 1;
+      padding: 20px;
+      position: relative;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      background: #00d4aa;
+      color: #0f0f23;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: #00e6c0;
+    }
+
+    .btn.active {
+      background: #00b894;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9em;
+    }
+
+    .legend-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+
+    .metro-map {
+      width: 100%;
+      height: 500px;
+      background: rgba(20,20,30,0.8);
+      border-radius: 12px;
+      border: 2px solid #333;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 380px;
+      background: rgba(30,30,40,0.95);
+      border-left: 2px solid #333;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 20px;
+      border-bottom: 1px solid #333;
+    }
+
+    .sidebar-section h3 {
+      color: #00d4aa;
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+    }
+
+    .file-item {
+      background: rgba(40,40,50,0.8);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid #00d4aa;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .file-item:hover {
+      background: rgba(50,50,60,0.8);
+    }
+
+    .file-item h4 {
+      margin: 0 0 5px 0;
+      color: #fff;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+    }
+
+    .file-item p {
+      margin: 0;
+      font-size: 0.9em;
+      color: #ccc;
+    }
+
+    .file-item .meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 0.8em;
+      color: #999;
+    }
+
+    .code-preview {
+      background: #1e1e2e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.85em;
+      color: #f8f8f2;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: rgba(30,30,40,0.95);
+      color: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #00d4aa;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      max-width: 300px;
+    }
+
+    .dependency-line {
+      stroke-dasharray: 5,5;
+      animation: dash 1s linear infinite;
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -10;
+      }
+    }
+
+    .modified-indicator {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 12px;
+      height: 12px;
+      background: #ff6b35;
+      border-radius: 50%;
+      border: 2px solid #fff;
+    }
+
+    .complexity-indicator {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffa502;
+      color: #000;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .git-status {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+
+    .git-stat {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .git-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div class='header'>
+    <h1>🚇 Metro Project Explorer</h1>
+    <div class='project-info'>
+      <div class='project-stat'>
+        <strong>React E-commerce App</strong><br>
+        <span style='color: #00d4aa'>247 files</span> • 52.3k LOC
+      </div>
+      <div class='project-stat'>
+        <strong>Last Commit</strong><br>
+        <span style='color: #ffa502'>2 hours ago</span><br>
+        <small>feat: add payment flow</small>
+      </div>
+      <div class='project-stat'>
+        <strong>Health Score</strong><br>
+        <span style='color: #2ed573'>87/100</span><br>
+        <small>Good structure</small>
+      </div>
+    </div>
+  </div>
+
+  <div class='main-container'>
+    <div class='metro-section'>
+      <div class='controls'>
+        <div class='view-controls'>
+          <button class='btn active'>Structure View</button>
+          <button class='btn'>Complexity View</button>
+          <button class='btn'>Git Activity</button>
+          <button class='btn'>Dependencies</button>
+        </div>
+        <div class='legend'>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #61dafb'></div>
+            <span>React Components</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #f7df1e'></div>
+            <span>JavaScript/Utils</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #e34c26'></div>
+            <span>Styles/Assets</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #00d4aa'></div>
+            <span>API/Services</span>
+          </div>
+          <div class='legend-item'>
+            <div class='legend-dot' style='background: #a4b0be'></div>
+            <span>Config/Tests</span>
+          </div>
+        </div>
+      </div>
+
+      <div class='metro-map' id='metro-map'>
+        <svg width='100%' height='100%' viewBox='0 0 800 500'></svg>
+      </div>
+
+      <div class='tooltip' id='tooltip'></div>
+    </div>
+
+    <div class='sidebar'>
+      <div class='sidebar-section'>
+        <h3>📁 Selected: Components</h3>
+        <div class='file-item' onclick='openFile("ProductCard.jsx")'>
+          <h4>
+            <div class='file-icon' style='background: #61dafb'></div>
+            ProductCard.jsx
+          </h4>
+          <p>Main product display component</p>
+          <div class='meta'>
+            <span>156 lines</span>
+            <span>Modified 3h ago</span>
+          </div>
+        </div>
+
+        <div class='file-item' onclick='openFile("ShoppingCart.jsx")'>
+          <h4>
+            <div class='file-icon' style='background: #61dafb'></div>
+            ShoppingCart.jsx
+          </h4>
+          <p>Shopping cart functionality</p>
+          <div class='meta'>
+            <span>203 lines</span>
+            <span>Modified 1d ago</span>
+          </div>
+        </div>
+
+        <div class='file-item' onclick='openFile("PaymentForm.jsx")'>
+          <h4>
+            <div class='file-icon' style='background: #61dafb'></div>
+            PaymentForm.jsx
+            <span style='background: #ff6b35; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; margin-left: auto;'>NEW</span>
+          </h4>
+          <p>Payment processing form</p>
+          <div class='meta'>
+            <span>89 lines</span>
+            <span>Modified 2h ago</span>
+          </div>
+        </div>
+
+        <div class='file-item' onclick='openFile("UserProfile.jsx")'>
+          <h4>
+            <div class='file-icon' style='background: #61dafb'></div>
+            UserProfile.jsx
+          </h4>
+          <p>User account management</p>
+          <div class='meta'>
+            <span>134 lines</span>
+            <span>Modified 5d ago</span>
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>🔍 Code Preview</h3>
+        <div id='code-preview'>
+          <div class='code-preview'>
+// ProductCard.jsx
+import React from 'react';
+import { useCart } from '../hooks/useCart';
+import './ProductCard.css';
+
+const ProductCard = ({ product }) => {
+  const { addToCart } = useCart();
+
+  return (
+    &lt;div className="product-card"&gt;
+      &lt;img src={product.image} alt={product.name} /&gt;
+      &lt;h3&gt;{product.name}&lt;/h3&gt;
+      &lt;p className="price"&gt;${product.price}&lt;/p&gt;
+      &lt;button onClick={() => addToCart(product)}&gt;
+        Add to Cart
+      &lt;/button&gt;
+    &lt;/div&gt;
+  );
+};
+
+export default ProductCard;
+          </div>
+        </div>
+      </div>
+
+      <div class='sidebar-section'>
+        <h3>📊 Project Insights</h3>
+
+        <div style='margin-bottom: 15px;'>
+          <h4 style='color: #00d4aa; margin: 0 0 8px 0;'>🔥 Hot Files (Most Changed)</h4>
+          <div style='font-size: 0.9em;'>
+            <div style='display: flex; justify-content: space-between; margin-bottom: 5px;'>
+              <span>PaymentForm.jsx</span>
+              <span style='color: #ff6b35;'>23 commits</span>
+            </div>
+            <div style='display: flex; justify-content: space-between; margin-bottom: 5px;'>
+              <span>ShoppingCart.jsx</span>
+              <span style='color: #ffa502;'>18 commits</span>
+            </div>
+            <div style='display: flex; justify-content: space-between;'>
+              <span>ProductCard.jsx</span>
+              <span style='color: #2ed573;'>12 commits</span>
+            </div>
+          </div>
+        </div>
+
+        <div style='margin-bottom: 15px;'>
+          <h4 style='color: #00d4aa; margin: 0 0 8px 0;'>⚠️ Complexity Warnings</h4>
+          <div style='font-size: 0.9em;'>
+            <div style='background: rgba(255,107,53,0.2); padding: 8px; border-radius: 6px; margin-bottom: 5px;'>
+              <strong>CheckoutProcess.jsx</strong><br>
+              <span style='color: #ff6b35;'>High complexity (247 lines)</span>
+            </div>
+            <div style='background: rgba(255,165,2,0.2); padding: 8px; border-radius: 6px;'>
+              <strong>ProductList.jsx</strong><br>
+              <span style='color: #ffa502;'>Consider splitting (189 lines)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class='git-status'>
+          <div class='git-stat'>
+            <div class='git-dot' style='background: #2ed573;'></div>
+            <span>12 added</span>
+          </div>
+          <div class='git-stat'>
+            <div class='git-dot' style='background: #ffa502;'></div>
+            <span>5 modified</span>
+          </div>
+          <div class='git-stat'>
+            <div class='git-dot' style='background: #ff4757;'></div>
+            <span>2 deleted</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock data for project structure visualization
+    const projectData = [
+      {x: 150, y: 200, size: 60, label: 'Components', type: 'react', files: 23, complexity: 'medium', color: '#61dafb', modified: true},
+      {x: 300, y: 150, size: 45, label: 'Services', type: 'api', files: 8, complexity: 'low', color: '#00d4aa', modified: false},
+      {x: 450, y: 200, size: 50, label: 'Utils', type: 'js', files: 12, complexity: 'low', color: '#f7df1e', modified: false},
+      {x: 600, y: 150, size: 40, label: 'Styles', type: 'css', files: 15, complexity: 'low', color: '#e34c26', modified: true},
+      {x: 250, y: 300, size: 35, label: 'Hooks', type: 'react', files: 6, complexity: 'medium', color: '#61dafb', modified: true},
+      {x: 400, y: 350, size: 30, label: 'Tests', type: 'test', files: 18, complexity: 'low', color: '#a4b0be', modified: false},
+      {x: 550, y: 300, size: 25, label: 'Config', type: 'config', files: 4, complexity: 'low', color: '#a4b0be', modified: false},
+      {x: 100, y: 350, size: 55, label: 'Pages', type: 'react', files: 9, complexity: 'high', color: '#61dafb', modified: true}
+    ];
+
+    const dependencies = [
+      [0, 1], [0, 4], [7, 0], [1, 2], [0, 3], [4, 2], [0, 5], [2, 6]
+    ];
+
+    function renderProjectMap() {
+      const svg = document.querySelector('#metro-map svg');
+      svg.innerHTML = '';
+
+      // Draw dependency lines
+      dependencies.forEach(([from, to]) => {
+        const fromNode = projectData[from];
+        const toNode = projectData[to];
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', fromNode.x);
+        line.setAttribute('y1', fromNode.y);
+        line.setAttribute('x2', toNode.x);
+        line.setAttribute('y2', toNode.y);
+        line.setAttribute('stroke', '#555');
+        line.setAttribute('stroke-width', '3');
+        line.setAttribute('class', 'dependency-line');
+        line.setAttribute('opacity', '0.7');
+        svg.appendChild(line);
+      });
+
+      // Draw nodes (folders/modules)
+      projectData.forEach((node, index) => {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.style.cursor = 'pointer';
+
+        // Main circle (size represents number of files or complexity)
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', node.x);
+        circle.setAttribute('cy', node.y);
+        circle.setAttribute('r', node.size / 2);
+        circle.setAttribute('fill', node.color);
+        circle.setAttribute('stroke', '#fff');
+        circle.setAttribute('stroke-width', '3');
+        circle.setAttribute('opacity', '0.8');
+
+        // Add pulsing animation for modified files
+        if (node.modified) {
+          const pulseCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          pulseCircle.setAttribute('cx', node.x);
+          pulseCircle.setAttribute('cy', node.y);
+          pulseCircle.setAttribute('r', node.size / 2);
+          pulseCircle.setAttribute('fill', 'none');
+          pulseCircle.setAttribute('stroke', '#ff6b35');
+          pulseCircle.setAttribute('stroke-width', '2');
+          pulseCircle.setAttribute('opacity', '0.6');
+
+          const animate = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+          animate.setAttribute('attributeName', 'r');
+          animate.setAttribute('values', `${node.size/2};${node.size/2 + 10};${node.size/2}`);
+          animate.setAttribute('dur', '2s');
+          animate.setAttribute('repeatCount', 'indefinite');
+          pulseCircle.appendChild(animate);
+
+          group.appendChild(pulseCircle);
+        }
+
+        group.appendChild(circle);
+
+        // Complexity indicator
+        if (node.complexity === 'high') {
+          const complexityBadge = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          complexityBadge.setAttribute('cx', node.x + node.size/3);
+          complexityBadge.setAttribute('cy', node.y - node.size/3);
+          complexityBadge.setAttribute('r', '8');
+          complexityBadge.setAttribute('fill', '#ff4757');
+          complexityBadge.setAttribute('stroke', '#fff');
+          complexityBadge.setAttribute('stroke-width', '2');
+          group.appendChild(complexityBadge);
+
+          const warningText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          warningText.setAttribute('x', node.x + node.size/3);
+          warningText.setAttribute('y', node.y - node.size/3 + 3);
+          warningText.setAttribute('text-anchor', 'middle');
+          warningText.setAttribute('fill', '#fff');
+          warningText.setAttribute('font-size', '10px');
+          warningText.setAttribute('font-weight', 'bold');
+          warningText.textContent = '!';
+          group.appendChild(warningText);
+        }
+
+        // Modified indicator
+        if (node.modified) {
+          const modifiedDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          modifiedDot.setAttribute('cx', node.x + node.size/3);
+          modifiedDot.setAttribute('cy', node.y + node.size/3);
+          modifiedDot.setAttribute('r', '6');
+          modifiedDot.setAttribute('fill', '#ff6b35');
+          modifiedDot.setAttribute('stroke', '#fff');
+          modifiedDot.setAttribute('stroke-width', '2');
+          group.appendChild(modifiedDot);
+        }
+
+        // Label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', node.x);
+        text.setAttribute('y', node.y + node.size/2 + 20);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', '#fff');
+        text.setAttribute('font-size', '12px');
+        text.setAttribute('font-weight', 'bold');
+        text.textContent = node.label;
+        group.appendChild(text);
+
+        // File count
+        const fileCount = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        fileCount.setAttribute('x', node.x);
+        fileCount.setAttribute('y', node.y + node.size/2 + 35);
+        fileCount.setAttribute('text-anchor', 'middle');
+        fileCount.setAttribute('fill', node.color);
+        fileCount.setAttribute('font-size', '10px');
+        fileCount.setAttribute('font-weight', 'bold');
+        fileCount.textContent = `${node.files} files`;
+        group.appendChild(fileCount);
+
+        // Add hover and click events
+        group.addEventListener('mouseenter', (e) => showTooltip(e, node));
+        group.addEventListener('mouseleave', hideTooltip);
+        group.addEventListener('click', () => selectModule(node));
+
+        svg.appendChild(group);
+      });
+    }
+
+    function showTooltip(event, node) {
+      const tooltip = document.getElementById('tooltip');
+      tooltip.style.display = 'block';
+      tooltip.innerHTML = `
+        <strong>${node.label}</strong><br>
+        <strong>Files:</strong> ${node.files}<br>
+        <strong>Type:</strong> ${node.type}<br>
+        <strong>Complexity:</strong> ${node.complexity}<br>
+        ${node.modified ? '<strong style="color: #ff6b35;">Recently Modified</strong><br>' : ''}
+        <br>
+        <em>Click to explore this module</em>
+      `;
+
+      tooltip.style.left = (event.pageX + 15) + 'px';
+      tooltip.style.top = (event.pageY - 10) + 'px';
+    }
+
+    function hideTooltip() {
+      document.getElementById('tooltip').style.display = 'none';
+    }
+
+    function selectModule(node) {
+      // Update sidebar with module-specific files
+      const sidebarTitle = document.querySelector('.sidebar-section h3');
+      sidebarTitle.textContent = `📁 Selected: ${node.label}`;
+
+      // This would normally load actual files from the selected module
+      console.log(`Selected module: ${node.label}`);
+    }
+
+    function openFile(filename) {
+      // Update code preview
+      const codePreview = document.getElementById('code-preview');
+
+      const codeExamples = {
+        'ProductCard.jsx': `// ProductCard.jsx
+import React from 'react';
+import { useCart } from '../hooks/useCart';
+import './ProductCard.css';
+
+const ProductCard = ({ product }) => {
+  const { addToCart } = useCart();
+
+  return (
+    &lt;div className="product-card"&gt;
+      &lt;img src={product.image} alt={product.name} /&gt;
+      &lt;h3&gt;{product.name}&lt;/h3&gt;
+      &lt;p className="price"&gt;${product.price}&lt;/p&gt;
+      &lt;button onClick={() => addToCart(product)}&gt;
+        Add to Cart
+      &lt;/button&gt;
+    &lt;/div&gt;
+  );
+};
+
+export default ProductCard;`,
+
+        'ShoppingCart.jsx': `// ShoppingCart.jsx
+import React from 'react';
+import { useCart } from '../hooks/useCart';
+import CartItem from './CartItem';
+
+const ShoppingCart = () => {
+  const { items, total, clearCart } = useCart();
+
+  return (
+    &lt;div className="shopping-cart"&gt;
+      &lt;h2&gt;Shopping Cart&lt;/h2&gt;
+      {items.map(item => (
+        &lt;CartItem key={item.id} item={item} /&gt;
+      ))}
+      &lt;div className="cart-total"&gt;
+        Total: ${total}
+      &lt;/div&gt;
+      &lt;button onClick={clearCart}&gt;Clear Cart&lt;/button&gt;
+    &lt;/div&gt;
+  );
+};
+
+export default ShoppingCart;`,
+
+        'PaymentForm.jsx': `// PaymentForm.jsx - NEW FILE
+import React, { useState } from 'react';
+import { processPayment } from '../services/paymentService';
+
+const PaymentForm = ({ total, onSuccess }) => {
+  const [cardData, setCardData] = useState({
+    number: '',
+    expiry: '',
+    cvv: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await processPayment(cardData, total);
+      onSuccess();
+    } catch (error) {
+      console.error('Payment failed:', error);
+    }
+  };
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;input
+        type="text"
+        placeholder="Card Number"
+        value={cardData.number}
+        onChange={(e) => setCardData({...cardData, number: e.target.value})}
+      /&gt;
+      {/* More form fields... */}
+      &lt;button type="submit"&gt;Pay ${total}&lt;/button&gt;
+    &lt;/form&gt;
+  );
+};
+
+export default PaymentForm;`
+      };
+
+      codePreview.innerHTML = `<div class='code-preview'>${codeExamples[filename] || '// File content loading...'}</div>`;
+    }
+
+    // Initialize the visualization
+    renderProjectMap();
+  </script>
+</body>
+</html>

@@ -6,6 +6,7 @@
 import React, { useState, useCallback } from 'react';
 import SimpleMetroStage from './SimpleMetroStage';
 import './MetroUI.css';
+import './styles/SimpleMetroUI.css';
 
 export interface SimpleMetroUIProps {
   width?: number;
@@ -193,6 +194,110 @@ export const SimpleMetroUI: React.FC<SimpleMetroUIProps> = ({
             <li>✅ Light/dark theme support</li>
             <li>✅ Extended view with shared folder</li>
           </ul>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SimpleMetroUI;
+
+interface SimpleMetroUIProps {
+  onRootPathChange?: (path: string) => void;
+  onResetClick?: () => void;
+  selectedNode?: {
+    name: string;
+    type: string;
+    path: string;
+  } | null;
+  hoveredNode?: {
+    name: string;
+    type: string;
+    path: string;
+  } | null;
+}
+
+export const SimpleMetroUI: React.FC<SimpleMetroUIProps> = ({
+  onRootPathChange,
+  onResetClick,
+  selectedNode,
+  hoveredNode,
+}) => {
+  const [rootPath, setRootPath] = useState('/root');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleRootPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPath = e.target.value;
+    setRootPath(newPath);
+    onRootPathChange?.(newPath);
+  };
+
+  const handleResetClick = () => {
+    onResetClick?.();
+    setSuccessMessage('View reset successfully');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  return (
+    <div className="simple-metro-ui">
+      <header className="ui-header">
+        <h1>Metro Map Visualization</h1>
+        <p>Interactive folder structure visualization</p>
+      </header>
+
+      <div className="controls-section">
+        <div className="control-group">
+          <label htmlFor="rootPath">Root Path:</label>
+          <input
+            id="rootPath"
+            type="text"
+            value={rootPath}
+            onChange={handleRootPathChange}
+            className="path-input"
+          />
+        </div>
+
+        <button
+          onClick={handleResetClick}
+          className="reset-button"
+        >
+          Reset View
+        </button>
+
+        {successMessage && (
+          <div className="success-message">
+            {successMessage}
+          </div>
+        )}
+      </div>
+
+      <div className="main-content">
+        <div className="info-section">
+          <div className="node-info selected">
+            <h3>Selected Node</h3>
+            {selectedNode ? (
+              <>
+                <p><strong>Name:</strong> {selectedNode.name}</p>
+                <p><strong>Type:</strong> {selectedNode.type}</p>
+                <p><strong>Path:</strong> {selectedNode.path}</p>
+              </>
+            ) : (
+              <p className="empty-state">No node selected</p>
+            )}
+          </div>
+
+          <div className="node-info hovered">
+            <h3>Hovered Node</h3>
+            {hoveredNode ? (
+              <>
+                <p><strong>Name:</strong> {hoveredNode.name}</p>
+                <p><strong>Type:</strong> {hoveredNode.type}</p>
+                <p><strong>Path:</strong> {hoveredNode.path}</p>
+              </>
+            ) : (
+              <p className="empty-state">No node hovered</p>
+            )}
+          </div>
         </div>
       </div>
     </div>

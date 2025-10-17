@@ -97,9 +97,27 @@ export class SecurityHardening extends EventEmitter {
 
     // SQL injection patterns
     const sqlPatterns = [
-      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION)\b)/gi,
-      /(;|--|\|\|)/g,
+      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|TRUNCATE|SHOW|DESCRIBE)\b)/gi,
+      /(;|--|\|\||#|\/\*|\*\/)/g,
       /(\b(OR|AND)\b.*=.*)/gi,
+      /(['"]\s*OR\s*['"])/gi,
+      /(['"]\s*AND\s*['"])/gi,
+      /(\bUNION\b.*\bSELECT\b)/gi,
+      /(\b1\s*=\s*1\b)/gi,
+      /(\badmin\b.*['"])/gi,
+    ];
+
+    // Command injection patterns
+    const commandPatterns = [
+      /[;&|`]/g,
+      /\$\(/g,
+      /\$\{[^}]*\}/g,
+      /\|\s*nc\s+/gi,
+      /\|\s*wget\s+/gi,
+      /\|\s*curl\s+/gi,
+      /rm\s+-rf/gi,
+      /format\s+C:/gi,
+      /del\s+\/q/gi,
     ];
 
     let patterns: RegExp[] = [];
@@ -110,27 +128,45 @@ export class SecurityHardening extends EventEmitter {
       case 'sql':
         patterns = sqlPatterns;
         break;
+      case 'command':
+        patterns = commandPatterns;
+        break;
       case 'text':
       default:
-        patterns = [...xssPatterns, ...sqlPatterns];
+        // For plain text, only apply XSS patterns to allow unicode and common special characters
+        patterns = xssPatterns;
         break;
     }
 
     for (const pattern of patterns) {
       if (pattern.test(input)) {
         this.logSecurityEvent('VALIDATION_FAILED', {
-          type: type === 'html' ? 'XSS' : type === 'sql' ? 'SQL injection' : 'Malicious input',
+          type: type === 'html' ? 'XSS' : type === 'sql' ? 'SQL injection' : type === 'command' ? 'Command injection' : 'Malicious input',
           input: input.substring(0, 100),
         });
-        return { valid: false, error: `${type === 'html' ? 'XSS' : type === 'sql' ? 'SQL injection' : 'Malicious input'} detected` };
+        return { valid: false, error: `${type === 'html' ? 'XSS' : type === 'sql' ? 'SQL injection' : type === 'command' ? 'Command injection' : 'Malicious input'} detected` };
       }
     }
 
-    // Sanitize the input
-    const sanitized = input
-      .replace(/[<>]/g, '') // Remove angle brackets
-      .replace(/['"]/g, '') // Remove quotes
-      .trim();
+    // Sanitize the input - be less aggressive for text validation
+    let sanitized = input;
+
+    if (type === 'html') {
+      sanitized = input
+        .replace(/[<>]/g, '') // Remove angle brackets
+        .replace(/['"]/g, '') // Remove quotes
+        .trim();
+    } else if (type === 'sql') {
+      sanitized = input
+        .replace(/['"]/g, '') // Remove quotes for SQL
+        .trim();
+    } else if (type === 'command') {
+      sanitized = input
+        .replace(/[<>]/g, '') // Remove angle brackets
+        .replace(/['"]/g, '') // Remove quotes
+        .trim();
+    }
+    // For 'text' type, return input as-is since unicode should be preserved
 
     return { valid: true, sanitized };
   }
@@ -138,15 +174,32 @@ export class SecurityHardening extends EventEmitter {
   /**
    * Validate file paths against traversal attacks
    */
-  public validatePath(pathStr: string): ValidationResult {
+  public validatePath(pathStr: string, allowList?: string[]): ValidationResult {
     if (typeof pathStr !== 'string') {
       return { valid: false, error: 'Path must be a string' };
+    }
+
+    // Check path length limit (255 chars is common filesystem limit)
+    if (pathStr.length > 255) {
+      return { valid: false, error: 'Path is too long' };
+    }
+
+    // Block absolute paths and URLs
+  if (path.posix.isAbsolute(pathStr) || /^[a-zA-Z]:[/\\]/.test(pathStr) || /^[a-zA-Z]+:/.test(pathStr)) {
+      this.logSecurityEvent('PATH_TRAVERSAL', { path: pathStr });
+      return { valid: false, error: 'Path traversal detected' };
+    }
+
+    // Check for encoded traversal attempts
+    if (pathStr.includes('%2e%2e') || pathStr.includes('~')) {
+      this.logSecurityEvent('PATH_TRAVERSAL', { path: pathStr });
+      return { valid: false, error: 'Path traversal detected' };
     }
 
     // Normalize using POSIX semantics to be deterministic across platforms
     let normalized = path.posix.normalize(pathStr);
 
-    // Reject paths that escape upward beyond base (start with ../ or are absolute)
+    // Check after normalization - reject if it escapes to parent or is absolute
     if (normalized.startsWith('..') || path.posix.isAbsolute(normalized)) {
       this.logSecurityEvent('PATH_TRAVERSAL', { path: pathStr });
       return { valid: false, error: 'Path traversal detected' };
@@ -158,35 +211,74 @@ export class SecurityHardening extends EventEmitter {
     // Sanitize illegal characters (defense-in-depth)
     const sanitized = normalized.replace(/[<>:"|?*]/g, '').trim();
 
+    // Validate against allow-list if provided
+    if (allowList && allowList.length > 0) {
+      const isAllowed = allowList.some(prefix => sanitized.startsWith(prefix));
+      if (!isAllowed) {
+        return { valid: false, error: 'Path not in allow-list' };
+      }
+    }
+
     return { valid: true, sanitized };
   }
 
   /**
    * Check rate limiting for a given key (IP, user, etc.)
    */
-  public checkRateLimit(key: string): { allowed: boolean; remaining: number } {
+  public checkRateLimit(key: string, maxRequests: number = this.config.maxRequestsPerMinute, windowMs: number = 60000): { allowed: boolean; remaining: number; retryAfter: number } {
     if (!this.config.enableRateLimiting) {
-      return { allowed: true, remaining: this.config.maxRequestsPerMinute };
+      return { allowed: true, remaining: maxRequests, retryAfter: 0 };
     }
 
     const now = Date.now();
-    const windowStart = Math.floor(now / 60000) * 60000; // Start of current minute
+    const windowStart = Math.floor(now / windowMs) * windowMs;
 
-    const record = this.requestCounts.get(key);
+    const record = this.requestCounts.get(key) || { count: 0, resetTime: windowStart, violations: 0 };
 
-    if (!record || record.resetTime !== windowStart) {
-      // New window or first request
-      this.requestCounts.set(key, { count: 1, resetTime: windowStart });
-      return { allowed: true, remaining: this.config.maxRequestsPerMinute - 1 };
+    // Reset window if needed
+    if (record.resetTime !== windowStart) {
+      record.count = 0;
+      record.resetTime = windowStart;
+      // Keep violations count for exponential backoff
     }
 
-    if (record.count >= this.config.maxRequestsPerMinute) {
-      this.logSecurityEvent('RATE_LIMIT_EXCEEDED', { key, count: record.count });
-      return { allowed: false, remaining: 0 };
+    // Check if rate limited
+    if (record.count >= maxRequests) {
+      // Calculate exponential backoff time based on number of violations
+      const backoffTime = Math.min(
+        60000 * Math.pow(2, record.violations), // Double the wait time for each violation, start with 1 minute
+        3600000 // Cap at 1 hour
+      );
+
+      record.violations++; // Increment violations for next time
+      this.requestCounts.set(key, record);
+
+      this.logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+        key,
+        count: record.count,
+        violations: record.violations,
+        backoffTime
+      });
+
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: backoffTime
+      };
     }
 
+    // Allow request
     record.count++;
-    return { allowed: true, remaining: this.config.maxRequestsPerMinute - record.count };
+    if (record.violations > 0) {
+      record.violations = Math.max(0, record.violations - 1); // Gradually reduce violations
+    }
+    this.requestCounts.set(key, record);
+
+    return {
+      allowed: true,
+      remaining: maxRequests - record.count,
+      retryAfter: 0
+    };
   }
 
   /**
@@ -208,6 +300,11 @@ export class SecurityHardening extends EventEmitter {
    * Validate IP address format
    */
   public validateIP(ip: string): { valid: boolean } {
+    // Handle null/undefined gracefully
+    if (!ip || typeof ip !== 'string') {
+      return { valid: false };
+    }
+
     // Strict IPv4 validation (0-255 per octet)
     const ipv4Parts = ip.split('.');
     let isIPv4 = false;
@@ -293,10 +390,14 @@ export class SecurityHardening extends EventEmitter {
    * Sanitize HTML content
    */
   public sanitizeHtml(html: string): string {
-    // Remove script tags and their contents, but preserve other safe markup per tests
-    return html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .trim();
+    // Remove script tags and their contents
+    let sanitized = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+
+    // Remove event handler attributes (onclick, onerror, onload, etc.)
+    sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+    sanitized = sanitized.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+
+    return sanitized.trim();
   }
 
   /**
@@ -395,7 +496,8 @@ export class SecurityHardening extends EventEmitter {
    * Get recent security events
    */
   public getSecurityEvents(limit: number = 100): SecurityEvent[] {
-    return this.securityEvents.slice(-limit);
+    // Return most recent events first (reverse chronological order)
+    return this.securityEvents.slice(-limit).reverse();
   }
 
   /**
@@ -412,6 +514,26 @@ export class SecurityHardening extends EventEmitter {
   public unblockIP(ip: string): void {
     this.blockedIPs.delete(ip);
     this.logSecurityEvent('IP_UNBLOCKED', { ip });
+  }
+
+  /**
+   * Clean up rate limiting data (for testing and maintenance)
+   */
+  public cleanupRateLimitData(): void {
+    const now = Date.now();
+    const currentWindow = Math.floor(now / 60000) * 60000;
+
+    for (const [key, record] of this.requestCounts.entries()) {
+      if (record.resetTime < currentWindow) {
+        this.requestCounts.delete(key);
+      }
+    }
+
+    this.logSecurityEvent('RATE_LIMIT_CLEANUP', {
+      message: 'Rate limiting data cleaned up',
+      source: 'SYSTEM',
+      cleanedCount: this.requestCounts.size
+    });
   }
 
   /**

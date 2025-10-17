@@ -3,7 +3,7 @@ import { metricsService } from '../services/metrics-service';
 import { healthService } from '../services/health-service';
 import { auditLogger } from '../services/audit-logger';
 import { createLogger } from '../logger/central-logger';
-import './MonitoringDashboard.css';
+import './styles/MonitoringDashboard.css';
 
 const log = createLogger({ component: 'monitoring-dashboard' });
 
@@ -47,18 +47,44 @@ interface AuditEvent {
   result: string;
 }
 
-export const MonitoringDashboard: React.FC = () => {
-  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+interface MetricData {
+  name: string;
+  value: number;
+  unit: string;
+  status: 'healthy' | 'warning' | 'critical';
+}
+
+interface HealthCheck {
+  name: string;
+  status: 'passed' | 'failed';
+  message: string;
+  timestamp: string;
+}
+
+interface Event {
+  id: string;
+  type: string;
+  message: string;
+  timestamp: string;
+  severity: 'info' | 'warning' | 'error';
+}
+
+interface MonitoringDashboardProps {
+  metrics: MetricData[];
+  healthChecks: HealthCheck[];
+  events: Event[];
+}
+
+export const MonitoringDashboard: React.FC<MonitoringDashboardProps> = ({
+  metrics: _metrics,
+  healthChecks: _healthChecks,
+  events: _events,
+}) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [systemMetrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
 
   const loadData = async () => {
     try {
@@ -81,57 +107,13 @@ export const MonitoringDashboard: React.FC = () => {
     }
   };
 
-  const exportMetrics = async () => {
-    try {
-      const data = await metricsService.exportMetrics();
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `metrics-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-      log.info('Metrics exported successfully');
-    } catch (error) {
-      log.error('Failed to export metrics', { error });
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-      case 'pass':
-        return '#22c55e';
-      case 'degraded':
-      case 'warn':
-        return '#f59e0b';
-      case 'unhealthy':
-      case 'fail':
-        return '#ef4444';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return '#dc2626';
-      case 'high':
-        return '#ea580c';
-      case 'medium':
-        return '#d97706';
-      case 'low':
-        return '#65a30d';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  if (!metrics || !health) {
+  if (!systemMetrics || !health) {
     return (
       <div className="monitoring-dashboard">
         <div className="loading">
@@ -142,15 +124,57 @@ export const MonitoringDashboard: React.FC = () => {
     );
   }
 
+  const getStatusClass = (status: string) => {
+    switch (status) {
+      case 'healthy':
+      case 'pass':
+        return 'status-healthy';
+      case 'degraded':
+      case 'warn':
+        return 'status-warning';
+      case 'unhealthy':
+      case 'fail':
+        return 'status-error';
+      default:
+        return 'status-default';
+    }
+  };
+
+  const getSeverityClass = (severity: string) => {
+    switch (severity) {
+      case 'critical':
+        return 'severity-critical';
+      case 'high':
+        return 'severity-high';
+      case 'medium':
+        return 'severity-medium';
+      case 'low':
+        return 'severity-low';
+      default:
+        return 'severity-default';
+    }
+  };
+
   return (
     <div className="monitoring-dashboard">
       <div className="dashboard-header">
         <h2>System Monitoring Dashboard</h2>
         <div className="dashboard-controls">
-          <button onClick={loadData} disabled={isRefreshing} className="refresh-btn">
+          <button 
+            onClick={loadData} 
+            disabled={isRefreshing} 
+            className="refresh-btn"
+            title="Refresh monitoring data"
+            aria-label="Refresh data"
+          >
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-          <button onClick={exportMetrics} className="export-btn">
+          <button 
+            onClick={() => {}} 
+            className="export-btn"
+            title="Export metrics to file"
+            aria-label="Export metrics"
+          >
             Export Metrics
           </button>
         </div>
@@ -166,22 +190,19 @@ export const MonitoringDashboard: React.FC = () => {
             <label>Memory Usage:</label>
             <div className="progress-bar">
               <div
-                className="progress-fill"
-                style={{
-                  width: `${metrics.memory.percentage}%`,
-                  backgroundColor: getStatusColor(
-                    metrics.memory.percentage > 90
-                      ? 'unhealthy'
-                      : metrics.memory.percentage > 75
-                        ? 'degraded'
-                        : 'healthy'
-                  ),
-                }}
+                className={`progress-fill ${getStatusClass(
+                  systemMetrics.memory.percentage > 90
+                    ? 'unhealthy'
+                    : systemMetrics.memory.percentage > 75
+                    ? 'degraded'
+                    : 'healthy'
+                )}`}
+                style={{ width: `${systemMetrics.memory.percentage}%` }}
               />
             </div>
             <span>
-              {(metrics.memory.used / 1024 / 1024 / 1024).toFixed(1)} GB /{' '}
-              {(metrics.memory.total / 1024 / 1024 / 1024).toFixed(1)} GB
+              {(systemMetrics.memory.used / 1024 / 1024 / 1024).toFixed(1)} GB /{' '}
+              {(systemMetrics.memory.total / 1024 / 1024 / 1024).toFixed(1)} GB
             </span>
           </div>
 
@@ -189,22 +210,19 @@ export const MonitoringDashboard: React.FC = () => {
             <label>Disk Usage:</label>
             <div className="progress-bar">
               <div
-                className="progress-fill"
-                style={{
-                  width: `${metrics.disk.percentage}%`,
-                  backgroundColor: getStatusColor(
-                    metrics.disk.percentage > 90
-                      ? 'unhealthy'
-                      : metrics.disk.percentage > 75
-                        ? 'degraded'
-                        : 'healthy'
-                  ),
-                }}
+                className={`progress-fill ${getStatusClass(
+                  systemMetrics.disk.percentage > 90
+                    ? 'unhealthy'
+                    : systemMetrics.disk.percentage > 75
+                    ? 'degraded'
+                    : 'healthy'
+                )}`}
+                style={{ width: `${systemMetrics.disk.percentage}%` }}
               />
             </div>
             <span>
-              {(metrics.disk.total - metrics.disk.free).toFixed(1)} GB /{' '}
-              {metrics.disk.total.toFixed(1)} GB
+              {(systemMetrics.disk.total - systemMetrics.disk.free).toFixed(1)} GB /{' '}
+              {systemMetrics.disk.total.toFixed(1)} GB
             </span>
           </div>
         </div>
@@ -214,19 +232,16 @@ export const MonitoringDashboard: React.FC = () => {
           <h3>Scan Performance</h3>
           <div className="metric-item">
             <label>Total Scans:</label>
-            <span className="metric-value">{metrics.scan.totalScans}</span>
+            <span className="metric-value">{systemMetrics.scan.totalScans}</span>
           </div>
           <div className="metric-item">
             <label>Average Scan Time:</label>
-            <span className="metric-value">{metrics.scan.averageScanTime.toFixed(1)}s</span>
+            <span className="metric-value">{systemMetrics.scan.averageScanTime.toFixed(1)}s</span>
           </div>
           <div className="metric-item">
             <label>Scan Errors:</label>
-            <span
-              className="metric-value"
-              style={{ color: metrics.scan.errors > 0 ? '#ef4444' : '#22c55e' }}
-            >
-              {metrics.scan.errors}
+            <span className={`metric-value ${systemMetrics.scan.errors > 0 ? 'error' : 'success'}`}>
+              {systemMetrics.scan.errors}
             </span>
           </div>
         </div>
@@ -235,16 +250,13 @@ export const MonitoringDashboard: React.FC = () => {
         <div className="metric-card">
           <h3>System Health</h3>
           <div className="health-status">
-            <div
-              className="health-indicator"
-              style={{ backgroundColor: getStatusColor(health.status) }}
-            >
+            <div className={`health-indicator ${getStatusClass(health.status)}`}>
               {health.status.toUpperCase()}
             </div>
             <div className="health-checks">
               {health.checks.map((check, index) => (
                 <div key={index} className="health-check">
-                  <div className="check-status" style={{ color: getStatusColor(check.status) }}>
+                  <div className={`check-status ${getStatusClass(check.status)}`}>
                     {check.status.toUpperCase()}
                   </div>
                   <div className="check-name">{check.name}</div>
@@ -278,10 +290,7 @@ export const MonitoringDashboard: React.FC = () => {
                       <td>{new Date(event.timestamp).toLocaleTimeString()}</td>
                       <td>{event.eventType}</td>
                       <td>
-                        <span
-                          className="severity-badge"
-                          style={{ backgroundColor: getSeverityColor(event.severity) }}
-                        >
+                        <span className={`severity-badge ${getSeverityClass(event.severity)}`}>
                           {event.severity}
                         </span>
                       </td>
@@ -298,3 +307,5 @@ export const MonitoringDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default MonitoringDashboard;

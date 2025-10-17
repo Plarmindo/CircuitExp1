@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Maps-Style Metro Visualization Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #181818 0%, #232526 100%);
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(30, 30, 40, 0.97);
+      padding: 24px;
+      text-align: center;
+      border-bottom: 2px solid #ffb30044;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 2.4em;
+      color: #ffb300;
+      margin-bottom: 0.3em;
+      text-shadow: 0 2px 8px #000a;
+    }
+
+    .subtitle {
+      font-size: 1.1em;
+      color: #ffd54f;
+      margin-bottom: 1em;
+    }
+
+    .features {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.95em;
+      color: #29b6f6;
+    }
+
+    .feature .icon {
+      font-size: 1.4em;
+    }
+
+    .demo-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .demo-card {
+      background: rgba(30, 30, 40, 0.97);
+      border-radius: 18px;
+      padding: 36px;
+      max-width: 1200px;
+      width: 100%;
+      border: 2px solid #ffb30044;
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    }
+
+    canvas {
+      width: 100%;
+      height: 600px;
+      background: #1e1e28;
+      border-radius: 12px;
+      cursor: grab;
+      box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.6);
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .minimap {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 200px;
+      height: 150px;
+      background: rgba(30, 30, 40, 0.95);
+      border: 2px solid #ffb30044;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    .minimap canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: none;
+    }
+
+    .minimap canvas:active {
+      cursor: pointer;
+    }
+
+    .controls {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #ffb300;
+      color: #181818;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn:hover {
+      background: #ffc933;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.secondary {
+      background: #29b6f6;
+    }
+
+    .btn.secondary:hover {
+      background: #4fc3f7;
+    }
+
+    .btn.active {
+      background: #66bb6a;
+      box-shadow: 0 0 12px rgba(102, 187, 106, 0.6);
+    }
+
+    .info-panel {
+      margin-top: 24px;
+      background: #232526;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #ffb30033;
+    }
+
+    .info-panel h3 {
+      color: #ffd54f;
+      margin-bottom: 12px;
+      font-size: 1.2em;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #181818;
+      border-radius: 8px;
+    }
+
+    .info-item .label {
+      color: #999;
+      font-size: 0.9em;
+    }
+
+    .info-item .value {
+      color: #ffb300;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .legend {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+    }
+
+    .legend-line {
+      width: 32px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-dot.directory { background: #29b6f6; }
+    .legend-dot.file { background: #66bb6a; }
+    .legend-dot.hover { background: #ffd54f; }
+    .legend-line.level1 { background: #ffb300; }
+    .legend-line.level2 { background: #29b6f6; }
+    .legend-line.level3 { background: #66bb6a; }
+
+    .line-style-selector {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: #232526;
+      border-radius: 8px;
+      border: 1px solid #ffb30033;
+      flex-wrap: wrap;
+    }
+
+    .line-style-selector label {
+      color: #ffd54f;
+      font-weight: bold;
+    }
+
+    .line-style-btn {
+      padding: 8px 16px;
+      background: #181818;
+      border: 2px solid #ffb30033;
+      border-radius: 8px;
+      color: #eee;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.9em;
+    }
+
+    .line-style-btn:hover {
+      background: #2a2a2a;
+      border-color: #ffb300;
+    }
+
+    .line-style-btn.active {
+      background: #ffb300;
+      color: #000;
+      border-color: #ffb300;
+      box-shadow: 0 0 12px rgba(255, 179, 0, 0.6);
+    }
+
+    .option-group {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 16px;
+      background: #232526;
+      border-radius: 8px;
+      border: 1px solid #ffb30033;
+      flex-wrap: wrap;
+    }
+
+    .option-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .option-item label {
+      color: #ffd54f;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 24px;
+      background: #181818;
+      border-radius: 12px;
+      border: 2px solid #ffb30033;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-switch.active {
+      background: #ffb300;
+      border-color: #ffb300;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-switch.active::after {
+      left: 28px;
+    }
+
+    .select-box {
+      padding: 8px 16px;
+      background: #181818;
+      border: 2px solid #ffb30033;
+      border-radius: 8px;
+      color: #eee;
+      cursor: pointer;
+      font-size: 0.9em;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .select-box:hover, .select-box:focus {
+      border-color: #ffb300;
+      background: #2a2a2a;
+    }
+
+    .select-box option {
+      background: #1e1e28;
+      color: #eee;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🗺️ Google Maps-Style Metro Visualization</h1>
+    <div class="subtitle">
+      Transform your file tree into an interactive zoomable map with constant physical sizes
+    </div>
+    <div class="features">
+      <div class="feature">
+        <span class="icon">📍</span>
+        <span>Nodes: Always 4mm</span>
+      </div>
+      <div class="feature">
+        <span class="icon">📝</span>
+        <span>Text: Always 2mm</span>
+      </div>
+      <div class="feature">
+        <span class="icon">🔍</span>
+        <span>LOD-based Rendering</span>
+      </div>
+      <div class="feature">
+        <span class="icon">🖱️</span>
+        <span>Drag to Pan</span>
+      </div>
+      <div class="feature">
+        <span class="icon">🎡</span>
+        <span>Scroll to Zoom</span>
+      </div>
+      <div class="feature">
+        <span class="icon">🔗</span>
+        <span>All Nodes Connected</span>
+      </div>
+      <div class="feature">
+        <span class="icon">🎯</span>
+        <span>Click to Focus</span>
+      </div>
+      <div class="feature">
+        <span class="icon">🎯</span>
+        <span>Shift+Click to Isolate</span>
+      </div>
+      <div class="feature">
+        <span class="icon">📐</span>
+        <span>CAD Window Zoom</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-container">
+    <div class="demo-card">
+      <div style="position: relative;">
+        <canvas id="mapCanvas"></canvas>
+        
+        <!-- Minimap / Window Area -->
+        <div class="minimap">
+          <canvas id="minimapCanvas"></canvas>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn" onclick="zoomIn()">🔍 Zoom In</button>
+        <button class="btn" onclick="zoomOut()">🔍 Zoom Out</button>
+        <button class="btn secondary" onclick="toggleWindowZoom()" id="windowZoomBtn">📐 Window Zoom</button>
+        <button class="btn secondary" onclick="resetView()">⟲ Reset View</button>
+        <button class="btn secondary" onclick="generateMore()">➕ Generate More Data</button>
+      </div>
+
+      <div class="line-style-selector">
+        <label>Connection Line Style:</label>
+        <button class="line-style-btn active" onclick="setLineStyle('straight')">Straight</button>
+        <button class="line-style-btn" onclick="setLineStyle('curved')">Curved</button>
+        <button class="line-style-btn" onclick="setLineStyle('stepped')">Stepped</button>
+        <button class="line-style-btn" onclick="setLineStyle('rounded')">Rounded Steps</button>
+        <button class="line-style-btn" onclick="setLineStyle('bezier')">Bezier</button>
+      </div>
+
+      <div class="option-group">
+        <div class="option-item">
+          <label for="graphDirection">Graph Direction:</label>
+          <select id="graphDirection" class="select-box" onchange="setGraphDirection(this.value)">
+            <option value="horizontal">Left to Right (Metro)</option>
+            <option value="vertical">Top to Bottom (Tree)</option>
+          </select>
+        </div>
+
+        <div class="option-item">
+          <label for="showLabels">Show Node Labels:</label>
+          <div class="toggle-switch active" id="showLabelsToggle" onclick="toggleLabels()"></div>
+        </div>
+
+        <div class="option-item">
+          <label for="labelMode">Label Display:</label>
+          <select id="labelMode" class="select-box" onchange="setLabelMode(this.value)">
+            <option value="always">Always</option>
+            <option value="hover">On Hover Only</option>
+            <option value="zoomed">When Zoomed In</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <h3>Current State</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <div>
+              <div class="label">Zoom Level</div>
+              <div class="value" id="zoomLevel">5.0</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Folder Depth</div>
+              <div class="value" id="folderDepth">2</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Visible Nodes</div>
+              <div class="value" id="visibleNodes">0</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Total Nodes</div>
+              <div class="value" id="totalNodes">0</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Physical Node Size</div>
+              <div class="value">4mm</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Physical Text Size</div>
+              <div class="value">2mm</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Screen DPI</div>
+              <div class="value" id="screenDpi">96</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div>
+              <div class="label">Focused Node</div>
+              <div class="value" id="focusedNode">All (Root)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot directory"></div>
+            <span>Directory</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot file"></div>
+            <span>File</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot hover"></div>
+            <span>Hovered</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-line level1"></div>
+            <span>Level 1 Lines</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-line level2"></div>
+            <span>Level 2 Lines</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-line level3"></div>
+            <span>Level 3 Lines</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration
+    const NODE_SIZE_MM = 4;
+    const TEXT_SIZE_MM = 2;
+    const LINE_WIDTH_MM = 1;
+    const MIN_ZOOM = 1;
+    const MAX_ZOOM = 12;
+    const ZOOM_INCREMENT = 0.5;
+
+    // State
+    let nodes = [];
+    let zoom = 5;
+    let centerX = 0;
+    let centerY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let hoveredNode = null;
+    let focusedNode = null; // The node we're focused on (null = root/all nodes)
+    let selectedNode = null; // The explicitly selected node (for isolated view)
+    let isWindowZoomMode = false; // CAD-style window zoom mode
+    let windowZoomStart = null;
+    let windowZoomEnd = null;
+    let lineStyle = 'straight'; // Line drawing style: straight, curved, stepped, rounded, bezier
+    let graphDirection = 'horizontal'; // Graph direction: horizontal (metro) or vertical (tree)
+    let showLabels = true; // Show node labels
+    let labelMode = 'always'; // Label display mode: always, hover, zoomed
+
+    // Get canvas and context
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    const minimapCanvas = document.getElementById('minimapCanvas');
+    const minimapCtx = minimapCanvas.getContext('2d');
+
+    // Detect DPI
+    const dpi = window.devicePixelRatio * 96;
+    document.getElementById('screenDpi').textContent = dpi.toFixed(0);
+
+    // Convert mm to pixels
+    const mmToPixels = (mm) => mm * (dpi / 25.4);
+
+    // Line drawing functions for different styles
+    function drawStraightLine(ctx, from, to) {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+
+    function drawCurvedLine(ctx, from, to) {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      
+      // Control point for smooth curve
+      const dx = to.x - from.x;
+      const midX = from.x + dx / 2;
+      
+      ctx.quadraticCurveTo(midX, from.y, to.x, to.y);
+      ctx.stroke();
+    }
+
+    function drawSteppedLine(ctx, from, to) {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      
+      // Step at midpoint
+      const midX = from.x + (to.x - from.x) / 2;
+      ctx.lineTo(midX, from.y);
+      ctx.lineTo(midX, to.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+
+    function drawRoundedStepLine(ctx, from, to) {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      
+      const midX = from.x + (to.x - from.x) / 2;
+      const radius = 15;
+      
+      // Horizontal line to corner
+      ctx.lineTo(midX - radius, from.y);
+      
+      // Rounded corner
+      ctx.arcTo(midX, from.y, midX, from.y + radius * Math.sign(to.y - from.y), radius);
+      
+      // Vertical line to next corner
+      ctx.lineTo(midX, to.y - radius * Math.sign(to.y - from.y));
+      
+      // Rounded corner
+      ctx.arcTo(midX, to.y, midX + radius, to.y, radius);
+      
+      // Final horizontal line
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+
+    function drawBezierLine(ctx, from, to) {
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      
+      // Bezier curve with horizontal control points
+      const dx = to.x - from.x;
+      const ctrl1X = from.x + dx * 0.5;
+      const ctrl2X = from.x + dx * 0.5;
+      
+      ctx.bezierCurveTo(
+        ctrl1X, from.y,
+        ctrl2X, to.y,
+        to.x, to.y
+      );
+      ctx.stroke();
+    }
+
+    function drawConnectionLine(ctx, from, to) {
+      switch(lineStyle) {
+        case 'curved':
+          drawCurvedLine(ctx, from, to);
+          break;
+        case 'stepped':
+          drawSteppedLine(ctx, from, to);
+          break;
+        case 'rounded':
+          drawRoundedStepLine(ctx, from, to);
+          break;
+        case 'bezier':
+          drawBezierLine(ctx, from, to);
+          break;
+        case 'straight':
+        default:
+          drawStraightLine(ctx, from, to);
+          break;
+      }
+    }
+
+    // Generate sample tree data - Supports both horizontal and vertical layouts
+    function generateTreeData() {
+      nodes = [];
+      const folderNames = ['src', 'components', 'utils', 'styles', 'assets', 'pages', 'hooks', 'contexts'];
+      const fileNames = ['index', 'config', 'helper', 'constants', 'types', 'schema'];
+      const extensions = ['.tsx', '.ts', '.css', '.json', '.md'];
+
+      // Spacing constants - Increased to prevent overlap
+      const PRIMARY_SPACING = 400;    // Distance between depth levels (was 250)
+      const SECONDARY_SPACING = 180;  // Distance between parallel branches (was 120)
+
+      // Root node (center)
+      nodes.push({ 
+        id: 0,
+        path: '/', 
+        x: 0, 
+        y: 0, 
+        depth: 0, 
+        isDirectory: true, 
+        label: 'root', 
+        children: [] 
+      });
+
+      let nodeId = 1;
+      
+      // Level 1 - Main branches from root
+      for (let i = 0; i < 5; i++) {
+        const branchOffset = (i - 2) * SECONDARY_SPACING;
+        
+        let x1, y1;
+        if (graphDirection === 'horizontal') {
+          // Metro style: left to right
+          x1 = PRIMARY_SPACING;
+          y1 = branchOffset;
+        } else {
+          // Tree style: top to bottom
+          x1 = branchOffset;
+          y1 = PRIMARY_SPACING;
+        }
+        
+        const folder1 = {
+          id: nodeId++,
+          path: `/${folderNames[i]}/`,
+          x: x1,
+          y: y1,
+          depth: 1,
+          isDirectory: true,
+          label: folderNames[i],
+          children: [],
+          parent: 0
+        };
+        nodes.push(folder1);
+
+        // Level 2 - Continue branches
+        for (let j = 0; j < 3; j++) {
+          const subOffset = (j - 1) * (SECONDARY_SPACING * 0.6);
+          
+          let x2, y2;
+          if (graphDirection === 'horizontal') {
+            x2 = PRIMARY_SPACING * 2;
+            y2 = branchOffset + subOffset;
+          } else {
+            x2 = branchOffset + subOffset;
+            y2 = PRIMARY_SPACING * 2;
+          }
+          
+          const folder2 = {
+            id: nodeId++,
+            path: `/${folderNames[i]}/${folderNames[(i+j+1)%folderNames.length]}/`,
+            x: x2,
+            y: y2,
+            depth: 2,
+            isDirectory: true,
+            label: folderNames[(i+j+1)%folderNames.length],
+            children: [],
+            parent: folder1.id
+          };
+          nodes.push(folder2);
+
+          // Level 3 - Terminal nodes (files)
+          for (let k = 0; k < 4; k++) {
+            const fileOffset = (k - 1.5) * (SECONDARY_SPACING * 0.4);
+            
+            let x3, y3;
+            if (graphDirection === 'horizontal') {
+              x3 = PRIMARY_SPACING * 3;
+              y3 = branchOffset + subOffset + fileOffset;
+            } else {
+              x3 = branchOffset + subOffset + fileOffset;
+              y3 = PRIMARY_SPACING * 3;
+            }
+            
+            nodes.push({
+              id: nodeId++,
+              path: `/${folderNames[i]}/${folderNames[(i+j+1)%folderNames.length]}/${fileNames[k % fileNames.length]}${extensions[k % extensions.length]}`,
+              x: x3,
+              y: y3,
+              depth: 3,
+              isDirectory: false,
+              label: `${fileNames[k % fileNames.length]}${extensions[k % extensions.length]}`,
+              parent: folder2.id
+            });
+          }
+        }
+      }
+
+      updateStats();
+    }
+
+    // World to screen conversion
+    function worldToScreen(worldX, worldY) {
+      const scale = Math.pow(2, zoom - 5);
+      return {
+        x: (worldX - centerX) * scale + canvas.width / 2,
+        y: (worldY - centerY) * scale + canvas.height / 2
+      };
+    }
+
+    // Screen to world conversion
+    function screenToWorld(screenX, screenY) {
+      const scale = Math.pow(2, zoom - 5);
+      return {
+        x: (screenX - canvas.width / 2) / scale + centerX,
+        y: (screenY - canvas.height / 2) / scale + centerY
+      };
+    }
+
+    // Get visible nodes based on zoom level (LOD)
+    function getVisibleNodes() {
+      const maxDepth = Math.floor(zoom / 2);
+      
+      // If we have a selected node (isolated view), only show that node and its descendants
+      if (selectedNode) {
+        const selectedPath = selectedNode.path;
+        return nodes.filter(node => {
+          // Is this the selected node itself?
+          if (node.id === selectedNode.id) return true;
+          
+          // Is this a descendant of the selected node?
+          if (node.path.startsWith(selectedPath) && node.id !== selectedNode.id) {
+            // Calculate relative depth from selected node
+            const relativeDepth = node.depth - selectedNode.depth;
+            
+            // Apply LOD based on relative depth
+            if (relativeDepth <= maxDepth) return true;
+            if (zoom >= 8 && !node.isDirectory) return true;
+          }
+          
+          return false;
+        });
+      }
+      
+      // If we have a focused node, only show that node and its descendants
+      if (focusedNode) {
+        const focusedPath = focusedNode.path;
+        return nodes.filter(node => {
+          // Is this the focused node itself?
+          if (node.id === focusedNode.id) return true;
+          
+          // Is this a descendant of the focused node?
+          if (node.path.startsWith(focusedPath)) {
+            // Calculate relative depth from focused node
+            const relativeDepth = node.depth - focusedNode.depth;
+            
+            // Apply LOD based on relative depth
+            if (relativeDepth <= maxDepth) return true;
+            if (zoom >= 8 && !node.isDirectory) return true;
+          }
+          
+          return false;
+        });
+      }
+      
+      // No focus - show all nodes based on absolute depth
+      return nodes.filter(node => {
+        if (node.depth <= maxDepth) return true;
+        if (zoom >= 8 && !node.isDirectory) return true;
+        return false;
+      });
+    }
+
+    // Find node at position
+    function findNodeAt(screenX, screenY) {
+      const nodeRadius = mmToPixels(NODE_SIZE_MM) / 2;
+      const visibleNodes = getVisibleNodes();
+      
+      for (const node of visibleNodes) {
+        const screenPos = worldToScreen(node.x, node.y);
+        const distance = Math.sqrt(
+          Math.pow(screenPos.x - screenX, 2) + Math.pow(screenPos.y - screenY, 2)
+        );
+        if (distance <= nodeRadius) {
+          return node;
+        }
+      }
+      return null;
+    }
+
+    // Render the map
+    function render() {
+      // Set canvas size for high DPI
+      const pixelRatio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * pixelRatio;
+      canvas.height = rect.height * pixelRatio;
+      ctx.scale(pixelRatio, pixelRatio);
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+
+      // Clear
+      ctx.fillStyle = '#1e1e28';
+      ctx.fillRect(0, 0, rect.width, rect.height);
+
+      const visibleNodes = getVisibleNodes();
+      const nodeRadius = mmToPixels(NODE_SIZE_MM) / 2;
+      const lineWidth = mmToPixels(LINE_WIDTH_MM);
+      const fontSize = mmToPixels(TEXT_SIZE_MM);
+
+      // Draw connections - ALL nodes must be connected by lines at ALL zoom levels
+      ctx.lineWidth = lineWidth;
+
+      visibleNodes.forEach(node => {
+        if (node.parent !== undefined) {
+          const parent = nodes.find(n => n.id === node.parent);
+          if (parent) {
+            const from = worldToScreen(parent.x, parent.y);
+            const to = worldToScreen(node.x, node.y);
+            
+            // Check if parent is visible in current view
+            const parentIsVisible = visibleNodes.includes(parent);
+            
+            // Use dashed line with lower opacity for off-screen parents
+            if (!parentIsVisible) {
+              ctx.globalAlpha = 0.4;
+              ctx.setLineDash([5, 5]);
+              ctx.strokeStyle = '#888888'; // Gray for off-screen connections
+            } else {
+              ctx.globalAlpha = 0.7;
+              ctx.setLineDash([]); // Solid line
+              
+              // Color based on depth for visual hierarchy
+              if (node.depth === 1) {
+                ctx.strokeStyle = '#ffb300'; // Golden for level 1
+              } else if (node.depth === 2) {
+                ctx.strokeStyle = '#29b6f6'; // Blue for level 2
+              } else if (node.depth === 3) {
+                ctx.strokeStyle = '#66bb6a'; // Green for level 3
+              } else {
+                ctx.strokeStyle = '#999999'; // Gray for deeper levels
+              }
+            }
+            
+            // Draw line using selected style
+            drawConnectionLine(ctx, from, to);
+          }
+        }
+      });
+
+      // Reset line style
+      ctx.globalAlpha = 1.0;
+      ctx.setLineDash([]);
+
+      // Draw nodes
+      visibleNodes.forEach(node => {
+        const screenPos = worldToScreen(node.x, node.y);
+
+        // Skip if off screen
+        if (screenPos.x < -50 || screenPos.x > rect.width + 50 ||
+            screenPos.y < -50 || screenPos.y > rect.height + 50) {
+          return;
+        }
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(screenPos.x, screenPos.y, nodeRadius, 0, Math.PI * 2);
+        
+        // Color
+        if (selectedNode === node) {
+          // Selected node - bright green
+          ctx.fillStyle = '#66bb6a';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+        } else if (hoveredNode === node) {
+          ctx.fillStyle = '#ffd54f';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+        } else if (node.isDirectory) {
+          ctx.fillStyle = '#29b6f6';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+        } else {
+          ctx.fillStyle = '#66bb6a';
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+        }
+        ctx.fill();
+
+        // Border
+        ctx.stroke();
+
+        // Label - check if we should show it
+        let shouldShowLabel = false;
+        
+        if (showLabels) {
+          if (labelMode === 'always') {
+            shouldShowLabel = true;
+          } else if (labelMode === 'hover') {
+            shouldShowLabel = (hoveredNode === node || selectedNode === node);
+          } else if (labelMode === 'zoomed') {
+            shouldShowLabel = zoom >= 6; // Show labels when zoomed in
+          }
+        }
+        
+        if (shouldShowLabel) {
+          ctx.fillStyle = '#ffd54f';
+          ctx.font = `${fontSize}px "Segoe UI", Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(node.label, screenPos.x, screenPos.y + nodeRadius + 4);
+        }
+      });
+
+      // Draw window zoom rectangle if active
+      if (isWindowZoomMode && windowZoomStart && windowZoomEnd) {
+        const startX = Math.min(windowZoomStart.x, windowZoomEnd.x);
+        const startY = Math.min(windowZoomStart.y, windowZoomEnd.y);
+        const width = Math.abs(windowZoomEnd.x - windowZoomStart.x);
+        const height = Math.abs(windowZoomEnd.y - windowZoomStart.y);
+
+        // Draw rectangle
+        ctx.strokeStyle = '#66bb6a';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(startX, startY, width, height);
+
+        // Fill with semi-transparent color
+        ctx.fillStyle = '#66bb6a33';
+        ctx.fillRect(startX, startY, width, height);
+        ctx.setLineDash([]);
+      }
+
+      // Draw info
+      ctx.fillStyle = '#ffb300';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'left';
+      const maxDepth = Math.floor(zoom / 2);
+      ctx.fillText(`Zoom: ${zoom.toFixed(1)} (Depth: ${maxDepth})`, 10, 20);
+      ctx.fillText(`Visible: ${visibleNodes.length} / ${nodes.length}`, 10, 40);
+      if (selectedNode) {
+        ctx.fillStyle = '#66bb6a';
+        ctx.fillText(`Selected (Isolated): ${selectedNode.label}`, 10, 60);
+      } else if (focusedNode) {
+        ctx.fillStyle = '#29b6f6';
+        ctx.fillText(`Focused: ${focusedNode.label}`, 10, 60);
+      }
+
+      updateStats();
+    }
+
+    // Render minimap - shows FULL map always
+    function renderMinimap() {
+      // Set canvas size for high DPI
+      const pixelRatio = window.devicePixelRatio || 1;
+      const rect = minimapCanvas.getBoundingClientRect();
+      minimapCanvas.width = rect.width * pixelRatio;
+      minimapCanvas.height = rect.height * pixelRatio;
+      minimapCtx.scale(pixelRatio, pixelRatio);
+
+      // Clear
+      minimapCtx.fillStyle = '#1e1e28';
+      minimapCtx.fillRect(0, 0, rect.width, rect.height);
+
+      // Calculate bounds of ALL nodes (not filtered)
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      
+      nodes.forEach(node => {
+        minX = Math.min(minX, node.x);
+        maxX = Math.max(maxX, node.x);
+        minY = Math.min(minY, node.y);
+        maxY = Math.max(maxY, node.y);
+      });
+
+      // Add padding
+      const padding = 50;
+      minX -= padding;
+      maxX += padding;
+      minY -= padding;
+      maxY += padding;
+
+      const worldWidth = maxX - minX;
+      const worldHeight = maxY - minY;
+
+      // Calculate scale to fit all nodes
+      const scaleX = rect.width / worldWidth;
+      const scaleY = rect.height / worldHeight;
+      const minimapScale = Math.min(scaleX, scaleY) * 0.9;
+
+      // Center offset
+      const offsetX = (rect.width - worldWidth * minimapScale) / 2;
+      const offsetY = (rect.height - worldHeight * minimapScale) / 2;
+
+      // Transform world to minimap coordinates
+      const worldToMinimap = (x, y) => ({
+        x: (x - minX) * minimapScale + offsetX,
+        y: (y - minY) * minimapScale + offsetY
+      });
+
+      // Draw ALL nodes (small dots)
+      nodes.forEach(node => {
+        const pos = worldToMinimap(node.x, node.y);
+        
+        minimapCtx.beginPath();
+        minimapCtx.arc(pos.x, pos.y, 2, 0, Math.PI * 2);
+        
+        if (node.isDirectory) {
+          minimapCtx.fillStyle = '#29b6f688';
+        } else {
+          minimapCtx.fillStyle = '#66bb6a88';
+        }
+        minimapCtx.fill();
+      });
+
+      // Draw viewport rectangle
+      const scale = Math.pow(2, zoom - 5);
+      const viewportWidth = (canvas.getBoundingClientRect().width / 2) / scale;
+      const viewportHeight = (canvas.getBoundingClientRect().height / 2) / scale;
+
+      const topLeft = worldToMinimap(centerX - viewportWidth, centerY - viewportHeight);
+      const bottomRight = worldToMinimap(centerX + viewportWidth, centerY + viewportHeight);
+
+      minimapCtx.strokeStyle = '#ffb300';
+      minimapCtx.lineWidth = 2;
+      minimapCtx.strokeRect(
+        topLeft.x,
+        topLeft.y,
+        bottomRight.x - topLeft.x,
+        bottomRight.y - topLeft.y
+      );
+
+      // Fill with semi-transparent color
+      minimapCtx.fillStyle = '#ffb30033';
+      minimapCtx.fillRect(
+        topLeft.x,
+        topLeft.y,
+        bottomRight.x - topLeft.x,
+        bottomRight.y - topLeft.y
+      );
+    }
+
+    // Update stats
+    function updateStats() {
+      const maxDepth = Math.floor(zoom / 2);
+      document.getElementById('zoomLevel').textContent = zoom.toFixed(1);
+      document.getElementById('folderDepth').textContent = maxDepth;
+      document.getElementById('totalNodes').textContent = nodes.length;
+      document.getElementById('visibleNodes').textContent = getVisibleNodes().length;
+      
+      if (selectedNode) {
+        document.getElementById('focusedNode').textContent = `${selectedNode.label} (Isolated)`;
+      } else if (focusedNode) {
+        document.getElementById('focusedNode').textContent = focusedNode.label;
+      } else {
+        document.getElementById('focusedNode').textContent = 'All (Root)';
+      }
+    }
+
+    // Mouse handlers
+    canvas.addEventListener('mousedown', (e) => {
+      if (isWindowZoomMode) {
+        // Start window zoom selection
+        windowZoomStart = { x: e.offsetX, y: e.offsetY };
+        windowZoomEnd = { x: e.offsetX, y: e.offsetY };
+      } else {
+        isDragging = true;
+        dragStartX = e.offsetX;
+        dragStartY = e.offsetY;
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isWindowZoomMode && windowZoomStart) {
+        // Update window zoom rectangle
+        windowZoomEnd = { x: e.offsetX, y: e.offsetY };
+        renderAll();
+      } else if (isDragging) {
+        const dx = e.offsetX - dragStartX;
+        const dy = e.offsetY - dragStartY;
+        const scale = Math.pow(2, zoom - 5);
+        centerX -= dx / scale;
+        centerY -= dy / scale;
+        dragStartX = e.offsetX;
+        dragStartY = e.offsetY;
+        renderAll();
+      } else {
+        const node = findNodeAt(e.offsetX, e.offsetY);
+        hoveredNode = node;
+        renderAll();
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (isWindowZoomMode && windowZoomStart && windowZoomEnd) {
+        // Execute window zoom
+        const width = Math.abs(windowZoomEnd.x - windowZoomStart.x);
+        const height = Math.abs(windowZoomEnd.y - windowZoomStart.y);
+        
+        // Only zoom if rectangle is large enough (not just a click)
+        if (width > 10 && height > 10) {
+          const rect = canvas.getBoundingClientRect();
+          const centerScreenX = (windowZoomStart.x + windowZoomEnd.x) / 2;
+          const centerScreenY = (windowZoomStart.y + windowZoomEnd.y) / 2;
+          
+          // Convert to world coordinates
+          const worldPos = screenToWorld(centerScreenX, centerScreenY);
+          centerX = worldPos.x;
+          centerY = worldPos.y;
+          
+          // Calculate zoom to fit rectangle
+          const scaleX = rect.width / width;
+          const scaleY = rect.height / height;
+          const targetScale = Math.min(scaleX, scaleY) * 0.9; // 90% to add padding
+          
+          // Convert scale to zoom level: scale = 2^(zoom - 5)
+          // So: zoom = log2(scale) + 5
+          const newZoom = Math.log2(targetScale) + zoom;
+          zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        }
+        
+        // Reset window zoom
+        windowZoomStart = null;
+        windowZoomEnd = null;
+        isWindowZoomMode = false;
+        document.getElementById('windowZoomBtn').classList.remove('active');
+        canvas.style.cursor = 'grab';
+        renderAll();
+      } else if (!isDragging) {
+        // This was a click, not a drag
+        const node = findNodeAt(e.offsetX, e.offsetY);
+        if (node) {
+          // Check if shift key is pressed for selection (isolated view)
+          if (e.shiftKey) {
+            // Select node for isolated view
+            selectedNode = node;
+            focusedNode = null; // Clear focus when selecting
+            
+            // Center and zoom on selected node
+            centerX = node.x;
+            centerY = node.y;
+            zoom = 8; // Zoom in more for isolated view
+          } else {
+            // Regular focus mode (shows node and descendants)
+            selectedNode = null; // Clear selection
+            focusedNode = node;
+            
+            // Center the view on this node
+            centerX = node.x;
+            centerY = node.y;
+            
+            // Reset zoom to medium level for the new focus
+            zoom = 5;
+          }
+          
+          renderAll();
+        }
+      }
+      isDragging = false;
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+      hoveredNode = null;
+      renderAll();
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -ZOOM_INCREMENT : ZOOM_INCREMENT;
+      zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom + delta));
+      renderAll();
+    });
+
+    // Minimap navigation - draggable viewport
+    let isMinimapDragging = false;
+    
+    // Helper function to convert minimap coordinates to world coordinates
+    function minimapToWorld(minimapX, minimapY) {
+      const rect = minimapCanvas.getBoundingClientRect();
+      
+      // Calculate bounds - ALWAYS USE ALL NODES
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      
+      nodes.forEach(node => {
+        minX = Math.min(minX, node.x);
+        maxX = Math.max(maxX, node.x);
+        minY = Math.min(minY, node.y);
+        maxY = Math.max(maxY, node.y);
+      });
+
+      const padding = 50;
+      minX -= padding;
+      maxX += padding;
+      minY -= padding;
+      maxY += padding;
+
+      const worldWidth = maxX - minX;
+      const worldHeight = maxY - minY;
+
+      const scaleX = rect.width / worldWidth;
+      const scaleY = rect.height / worldHeight;
+      const minimapScale = Math.min(scaleX, scaleY) * 0.9;
+
+      const offsetX = (rect.width - worldWidth * minimapScale) / 2;
+      const offsetY = (rect.height - worldHeight * minimapScale) / 2;
+
+      // Convert minimap coordinates to world coordinates
+      const worldX = (minimapX - offsetX) / minimapScale + minX;
+      const worldY = (minimapY - offsetY) / minimapScale + minY;
+      
+      return { x: worldX, y: worldY };
+    }
+
+    minimapCanvas.addEventListener('mousedown', (e) => {
+      isMinimapDragging = true;
+      minimapCanvas.style.cursor = 'grabbing';
+      
+      const rect = minimapCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      
+      // Center on clicked position
+      const worldPos = minimapToWorld(clickX, clickY);
+      centerX = worldPos.x;
+      centerY = worldPos.y;
+      renderAll();
+    });
+
+    minimapCanvas.addEventListener('mousemove', (e) => {
+      if (isMinimapDragging) {
+        const rect = minimapCanvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        // Update center position as we drag
+        const worldPos = minimapToWorld(clickX, clickY);
+        centerX = worldPos.x;
+        centerY = worldPos.y;
+        renderAll();
+      }
+    });
+
+    minimapCanvas.addEventListener('mouseup', () => {
+      isMinimapDragging = false;
+      minimapCanvas.style.cursor = 'grab';
+    });
+
+    minimapCanvas.addEventListener('mouseleave', () => {
+      isMinimapDragging = false;
+      minimapCanvas.style.cursor = 'grab';
+    });
+
+    // Set minimap cursor
+    minimapCanvas.style.cursor = 'grab';
+
+    // Control functions
+    function zoomIn() {
+      zoom = Math.min(MAX_ZOOM, zoom + ZOOM_INCREMENT);
+      renderAll();
+    }
+
+    function zoomOut() {
+      zoom = Math.max(MIN_ZOOM, zoom - ZOOM_INCREMENT);
+      renderAll();
+    }
+
+    function resetView() {
+      zoom = 5;
+      centerX = 0;
+      centerY = 0;
+      focusedNode = null; // Clear focus - back to root view
+      selectedNode = null; // Clear selection
+      isWindowZoomMode = false;
+      windowZoomStart = null;
+      windowZoomEnd = null;
+      document.getElementById('windowZoomBtn').classList.remove('active');
+      canvas.style.cursor = 'grab';
+      renderAll();
+    }
+
+    function toggleWindowZoom() {
+      isWindowZoomMode = !isWindowZoomMode;
+      windowZoomStart = null;
+      windowZoomEnd = null;
+      
+      const btn = document.getElementById('windowZoomBtn');
+      if (isWindowZoomMode) {
+        btn.classList.add('active');
+        canvas.style.cursor = 'crosshair';
+      } else {
+        btn.classList.remove('active');
+        canvas.style.cursor = 'grab';
+      }
+      renderAll();
+    }
+
+    function generateMore() {
+      // Add more random nodes - Supports both horizontal and vertical layouts
+      const baseCount = nodes.length;
+      const PRIMARY_SPACING = 400;    // Match the main spacing
+      const SECONDARY_SPACING = 180;  // Match the main spacing
+      
+      // Create a new branch from root
+      const branchOffset = Math.random() * 600 - 300; // Random offset (increased range)
+      
+      let x1, y1;
+      if (graphDirection === 'horizontal') {
+        x1 = PRIMARY_SPACING;
+        y1 = branchOffset;
+      } else {
+        x1 = branchOffset;
+        y1 = PRIMARY_SPACING;
+      }
+      
+      // Add folder at level 1
+      const folderId = baseCount;
+      nodes.push({
+        id: folderId,
+        path: `/extra/`,
+        x: x1,
+        y: y1,
+        depth: 1,
+        isDirectory: true,
+        label: 'extra',
+        parent: 0
+      });
+      
+      // Add files at level 2
+      for (let i = 0; i < 20; i++) {
+        const fileOffset = (i - 10) * (SECONDARY_SPACING * 0.35); // Slightly more spread
+        
+        let x2, y2;
+        if (graphDirection === 'horizontal') {
+          x2 = PRIMARY_SPACING * 2;
+          y2 = branchOffset + fileOffset;
+        } else {
+          x2 = branchOffset + fileOffset;
+          y2 = PRIMARY_SPACING * 2;
+        }
+        
+        nodes.push({
+          id: baseCount + i + 1,
+          path: `/extra/file${i}.txt`,
+          x: x2,
+          y: y2,
+          depth: 2,
+          isDirectory: false,
+          label: `file${i}.txt`,
+          parent: folderId
+        });
+      }
+      renderAll();
+    }
+
+    // Main render function that renders both main canvas and minimap
+    function renderAll() {
+      render();
+      renderMinimap();
+    }
+
+    // Set line style
+    function setLineStyle(style) {
+      lineStyle = style;
+      
+      // Update button states
+      document.querySelectorAll('.line-style-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      renderAll();
+    }
+
+    // Set graph direction
+    function setGraphDirection(direction) {
+      graphDirection = direction;
+      
+      // Regenerate the tree with new direction
+      focusedNode = null;
+      selectedNode = null;
+      centerX = 0;
+      centerY = 0;
+      zoom = 5;
+      
+      generateTreeData();
+      renderAll();
+    }
+
+    // Toggle labels visibility
+    function toggleLabels() {
+      showLabels = !showLabels;
+      
+      const toggle = document.getElementById('showLabelsToggle');
+      if (showLabels) {
+        toggle.classList.add('active');
+      } else {
+        toggle.classList.remove('active');
+      }
+      
+      renderAll();
+    }
+
+    // Set label display mode
+    function setLabelMode(mode) {
+      labelMode = mode;
+      renderAll();
+    }
+
+    // Initialize
+    generateTreeData();
+    renderAll();
+
+    // Handle window resize
+    window.addEventListener('resize', renderAll);
+  </script>
+</body>
+</html>

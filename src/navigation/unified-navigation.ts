@@ -9,7 +9,7 @@ interface ElectronScanAPI {
   selectAndScanFolder?: () => Promise<unknown>;
   startScan?: (root: string) => Promise<unknown>;
   cancelScan?: (id: string) => Promise<unknown>;
-  onScanError?: (cb: (e: any) => void) => () => void;
+  onScanError?: (cb: (e: Error) => void) => () => void;
 }
 
 function electronAPI(): ElectronScanAPI {
@@ -66,7 +66,7 @@ export async function cancelScan(id: string): Promise<unknown> {
 }
 
 // Events
-export function onScanError(cb: (e: any) => void): () => void {
+export function onScanError(cb: (e: Error) => void): () => void {
   const api = electronAPI();
   if (api.onScanError) return api.onScanError(cb);
   return () => {};

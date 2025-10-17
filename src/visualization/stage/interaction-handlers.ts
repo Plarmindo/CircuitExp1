@@ -6,6 +6,8 @@ export interface InteractionHandlers {
   handleFitToView: () => void;
   handleSelect: (path: string) => void;
   handleExportPNG: () => void;
+  handleCenterAt: (worldX: number, worldY: number) => void;
+  handleZoomToArea: (screenX1: number, screenY1: number, screenX2: number, screenY2: number) => void;
   // Added explicit zoom controls so global event listeners can invoke them
   zoomIn: () => void;
   zoomOut: () => void;
@@ -140,10 +142,76 @@ export function createInteractionHandlers(config: InteractionHandlerConfig): Int
     window.dispatchEvent(new CustomEvent('metro:exportPNG'));
   };
 
+  const handleCenterAt = (worldX: number, worldY: number): void => {
+    const renderer = app.renderer as Renderer;
+    if (!renderer || typeof (renderer as unknown as { width?: number }).width !== 'number') {
+      return; // jsdom fallback guard
+    }
+
+    const viewW = (renderer as unknown as { width: number }).width;
+    const viewH = (renderer as unknown as { height: number }).height ?? 0;
+
+    if (viewW <= 0 || viewH <= 0) return;
+    if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+
+    const currentScale = scaleRef.current;
+    if (!Number.isFinite(currentScale) || currentScale <= 0) return;
+
+    // Center the viewport at the given world position
+    app.stage.x = viewW / 2 - worldX * currentScale;
+    app.stage.y = viewH / 2 - worldY * currentScale;
+
+    redraw(false);
+  };
+
+  const handleZoomToArea = (screenX1: number, screenY1: number, screenX2: number, screenY2: number): void => {
+    const canvas = getCanvas();
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const renderer = app.renderer as Renderer;
+    if (!renderer) return;
+
+    // Calculate rectangle dimensions
+    const width = Math.abs(screenX2 - screenX1);
+    const height = Math.abs(screenY2 - screenY1);
+
+    // Only zoom if rectangle is large enough (not just a click)
+    if (width < 10 || height < 10) return;
+
+    // Calculate center of selection in screen coordinates
+    const centerScreenX = (screenX1 + screenX2) / 2;
+    const centerScreenY = (screenY1 + screenY2) / 2;
+
+    // Convert to world coordinates
+    const stage = app.stage;
+    const currentScale = scaleRef.current;
+    const worldX = (centerScreenX - rect.left - stage.x) / currentScale;
+    const worldY = (centerScreenY - rect.top - stage.y) / currentScale;
+
+    // Calculate scale to fit rectangle (with 90% padding)
+    const scaleX = rect.width / width;
+    const scaleY = rect.height / height;
+    const targetScale = Math.min(scaleX, scaleY) * 0.9 * currentScale;
+
+    // Clamp scale to reasonable bounds
+    const newScale = Math.max(0.1, Math.min(10, targetScale));
+    scaleRef.current = newScale;
+    stage.scale.set(newScale);
+
+    // Center on the selected area
+    stage.x = rect.width / 2 - worldX * newScale;
+    stage.y = rect.height / 2 - worldY * newScale;
+
+    redraw(false);
+  };
+
   return {
     handleFitToView,
     handleSelect,
     handleExportPNG,
+    handleCenterAt,
+    handleZoomToArea,
     zoomIn,
     zoomOut,
   };

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MiniMap } from './MiniMap';
-import { setTheme, light, dark } from '../visualization/style-tokens';
+import { DraggableWindow } from './DraggableWindow';
+import { ScanProgressBar } from './ScanProgressBar';
+import { useScanProgress } from '../hooks/useScanProgress';
+import { setTheme } from '../visualization/style-tokens';
 import {
   getUserSettings,
   onUserSettingsLoaded,
@@ -18,8 +21,15 @@ import { RateLimiter, defaultRateLimitConfig } from '../services/rate-limiter';
 import { createGraphAdapter } from '../visualization/graph-adapter';
 import { layoutHierarchicalV2 } from '../visualization/layout-v2';
 import { ModeProvider, useMode } from '../visualization/modes/ModeProvider';
-import { ModeRegistry } from '../visualization/modes/mode-registry';
+import { ModeRegistry, VisualizationMode } from '../visualization/modes/mode-registry';
+import type { ModeComponentProps } from '../visualization/modes/mode-registry';
 import { SettingsProvider } from '../settings/SettingsProvider';
+import type {
+  GoogleMapSettings,
+  GraphDirection,
+  LabelMode,
+  LineStyle,
+} from '../visualization/stage/metro-map-zoom';
 
 interface ScanProgress {
   dirsProcessed: number;
@@ -60,24 +70,107 @@ interface SelectedNodeInfo {
   children?: number;
 }
 
-const ModeRenderer: React.FC<{ theme: unknown; layout: unknown[]; routes: unknown[]; onNodeClick?: (p: string)=>void; onNodeHover?: (p: string|null)=>void; onLayoutUpdate?: (l: unknown[])=>void; debug?: boolean; }> = ({ theme, layout, routes, onNodeClick, onNodeHover, onLayoutUpdate, debug }) => {
+const DEFAULT_MAP_SETTINGS: GoogleMapSettings = Object.freeze({
+  nodeSizeMm: 4,
+  textSizeMm: 2,
+  lineWidthMm: 1,
+  lineStyle: 'straight' as LineStyle,
+  showLabels: true,
+  labelMode: 'always' as LabelMode,
+  graphDirection: 'vertical' as GraphDirection,
+});
+
+const LINE_STYLE_OPTIONS: ReadonlyArray<{ value: LineStyle; label: string }> = [
+  { value: 'straight', label: 'Straight' },
+  { value: 'curved', label: 'Curved' },
+  { value: 'stepped', label: 'Stepped' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'bezier', label: 'Bezier' },
+];
+
+const LABEL_MODE_OPTIONS: ReadonlyArray<{ value: LabelMode; label: string }> = [
+  { value: 'always', label: 'Always' },
+  { value: 'hover', label: 'On Hover' },
+  { value: 'zoomed', label: 'When Zoomed In' },
+];
+
+const GRAPH_DIRECTION_OPTIONS: ReadonlyArray<{ value: GraphDirection; label: string }> = [
+  { value: 'vertical', label: 'Vertical' },
+  { value: 'horizontal', label: 'Horizontal' },
+];
+
+const clampValue = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
+
+const ModeRenderer: React.FC<{
+  theme: unknown;
+  layout: unknown[];
+  routes: unknown[];
+  onNodeClick?: (p: string) => void;
+  onNodeHover?: (p: string | null) => void;
+  onLayoutUpdate?: (l: unknown[]) => void;
+  onViewportChange?: (viewport: { centerX: number; centerY: number; scale: number; viewportWidth: number; viewportHeight: number }) => void;
+  debug?: boolean;
+  modeProps?: Partial<ModeComponentProps>;
+}> = ({ theme, layout, routes, onNodeClick, onNodeHover, onLayoutUpdate, onViewportChange, debug, modeProps }) => {
   const { selected } = useMode();
-  const [Comp, setComp] = React.useState<React.ComponentType<any> | null>(null);
+  const [Comp, setComp] = React.useState<React.ComponentType<ModeComponentProps> | null>(null);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
     let cancelled = false;
+    setIsLoading(true);
+    setLoadError(null);
+    
     (async () => {
       try {
+        console.log('[ModeRenderer] Loading mode:', selected);
         const mod = await ModeRegistry.load(selected);
-        if (!cancelled) setComp(() => mod);
+        if (!cancelled) {
+          console.log('[ModeRenderer] Mode loaded successfully:', selected);
+          setComp(() => mod);
+          setIsLoading(false);
+        }
       } catch (e) {
-        console.error('Failed to load mode', selected, e);
+        console.error('[ModeRenderer] Failed to load mode', selected, e);
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : 'Failed to load visualization mode');
+          setIsLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, [selected]);
 
-  if (!Comp) return null;
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary, #666)' }}>
+        Loading visualization mode...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-error, #d32f2f)', padding: 20 }}>
+        <div style={{ fontSize: 24, marginBottom: 10 }}>⚠️</div>
+        <div>Failed to load visualization mode: {selected}</div>
+        <div style={{ fontSize: 12, marginTop: 5 }}>{loadError}</div>
+      </div>
+    );
+  }
+
+  if (!Comp) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary, #666)' }}>
+        No visualization component available
+      </div>
+    );
+  }
+
+  console.log('[ModeRenderer] Rendering with layout count:', Array.isArray(layout) ? layout.length : 0);
+  
   return (
     <Comp
       theme={theme}
@@ -86,7 +179,9 @@ const ModeRenderer: React.FC<{ theme: unknown; layout: unknown[]; routes: unknow
       onNodeClick={onNodeClick}
       onNodeHover={onNodeHover}
       onLayoutUpdate={onLayoutUpdate}
+      onViewportChange={onViewportChange}
       debug={debug}
+      {...(modeProps || {})}
     />
   );
 };
@@ -94,7 +189,7 @@ const ModeRenderer: React.FC<{ theme: unknown; layout: unknown[]; routes: unknow
 export const MetroUIInner: React.FC<MetroUIProps> = ({
   scanId,
   progress,
-  nodes,
+  nodes: externalNodes,
   receivedNodes,
   done,
   rootPath,
@@ -102,8 +197,19 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   // Access mode context for switcher
   const { selected: selectedMode, setMode, definitions } = useMode();
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
+  
+  // Use the new scan progress hook for ScanProgressBar
+  const scanProgressState = useScanProgress();
+  
+  // Local nodes state that can be overridden by synthetic tree generation
+  const [syntheticNodes, setSyntheticNodes] = useState<NodeEntry[] | null>(null);
+  // Use synthetic nodes if available, otherwise use external nodes
+  const nodes = syntheticNodes || externalNodes;
+  const [mapSettings, setMapSettings] = useState<GoogleMapSettings>(() => ({ ...DEFAULT_MAP_SETTINGS }));
   const [showPerformance, setShowPerformance] = useState(false);
   const [showMinimap, setShowMinimap] = useState(true);
+  const [showLodHud, setShowLodHud] = useState(true);
+  const [viewportBounds, setViewportBounds] = useState<{ centerX: number; centerY: number; scale: number; viewportWidth: number; viewportHeight: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNode, setSelectedNode] = useState<SelectedNodeInfo | null>(null);
   const [hoveredNode, setHoveredNode] = useState<SelectedNodeInfo | null>(null);
@@ -137,6 +243,11 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
     lastBatchMs: 0,
     memoryUsage: 0,
   });
+  const isGoogleMapMode = selectedMode === VisualizationMode.GoogleMap;
+
+  const updateMapSettings = useCallback((patch: Partial<GoogleMapSettings>) => {
+    setMapSettings((prev) => ({ ...prev, ...patch }));
+  }, []);
   // LOD HUD state (escala, depthCap efetivo, nós renderizados vs total)
   const [lodStats, setLodStats] = useState<{
     scale: number;
@@ -168,9 +279,78 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
     }
   }, [handleLoadSampleData, nodes, scanId, progress, autoLoadedSample]);
 
+  // Listen for synthetic tree generation event
+  useEffect(() => {
+    const handleGenTree = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      const { breadth = 3, depth = 3, files = 2 } = detail;
+      
+      console.log('[MetroUI] Generating synthetic tree:', { breadth, depth, files });
+      
+      // Generate synthetic nodes
+      const synthetic: NodeEntry[] = [];
+      let nodeId = 0;
+      
+      // Generate a tree structure
+      const generateTree = (parentPath: string, currentDepth: number) => {
+        if (currentDepth >= depth) return;
+        
+        // Add directories
+        for (let i = 0; i < breadth; i++) {
+          const dirPath = `${parentPath}/dir-${nodeId++}`;
+          synthetic.push({
+            path: dirPath,
+            name: `dir-${i}`,
+            kind: 'dir',
+            size: 0
+          });
+          
+          // Add files in this directory
+          for (let f = 0; f < files; f++) {
+            const filePath = `${dirPath}/file-${f}.txt`;
+            synthetic.push({
+              path: filePath,
+              name: `file-${f}.txt`,
+              kind: 'file',
+              size: Math.floor(Math.random() * 10000) + 1000
+            });
+          }
+          
+          // Recursively generate subdirectories
+          generateTree(dirPath, currentDepth + 1);
+        }
+      };
+      
+      // Start from root
+      synthetic.push({
+        path: '/root',
+        name: 'root',
+        kind: 'dir',
+        size: 0
+      });
+      generateTree('/root', 0);
+      
+      console.log('[MetroUI] Generated', synthetic.length, 'synthetic nodes');
+      setSyntheticNodes(synthetic);
+    };
+    
+    window.addEventListener('metro:genTree', handleGenTree);
+    return () => window.removeEventListener('metro:genTree', handleGenTree);
+  }, []);
+
+  // Clear synthetic nodes when external scan starts
+  useEffect(() => {
+    if (scanId || (externalNodes && externalNodes.length > 0)) {
+      setSyntheticNodes(null);
+    }
+  }, [scanId, externalNodes]);
+
   // Memoized layout generation from nodes
   const { layoutNodes, routes } = useMemo(() => {
+    console.log('[MetroUI] Generating layout from nodes:', nodes?.length || 0);
+    
     if (!nodes || nodes.length === 0) {
+      console.log('[MetroUI] No nodes to layout');
       return { layoutNodes: [], routes: [] };
     }
 
@@ -199,15 +379,24 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
       // Extract routes from the layout
       const layoutRoutes = layoutResult.nodes.map((node) => node.path);
 
+      console.log('[MetroUI] Layout generated:', layoutResult.nodes.length, 'nodes');
+      
       return {
         layoutNodes: layoutResult.nodes,
         routes: layoutRoutes,
       };
     } catch (error) {
-      console.error('Error generating layout:', error);
+      console.error('[MetroUI] Error generating layout:', error);
       return { layoutNodes: [], routes: [] };
     }
   }, [nodes]);
+
+  const modeSpecificProps = useMemo<Partial<ModeComponentProps> | undefined>(() => {
+    if (!isGoogleMapMode) {
+      return undefined;
+    }
+    return { mapSettings, showMinimap };
+  }, [isGoogleMapMode, mapSettings, showMinimap]);
 
   // Ensure focus-visible outline for stage container even when external CSS isn't loaded (e.g., JSDOM tests)
   useEffect(() => {
@@ -222,9 +411,38 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
 
   // Live region ref for announcements (A11Y)
   const liveRegionRef = useRef<HTMLDivElement | null>(null);
+  // Stage container ref for keyboard navigation
+  const stageContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // DEBUG: Log container dimensions
+  useEffect(() => {
+    if (stageContainerRef.current) {
+      const rect = stageContainerRef.current.getBoundingClientRect();
+      console.log('[DEBUG] Stage container dimensions:', {
+        width: rect.width,
+        height: rect.height,
+        offsetWidth: stageContainerRef.current.offsetWidth,
+        offsetHeight: stageContainerRef.current.offsetHeight,
+        clientWidth: stageContainerRef.current.clientWidth,
+        clientHeight: stageContainerRef.current.clientHeight,
+        scrollHeight: stageContainerRef.current.scrollHeight
+      });
+      
+      // Also log parent dimensions
+      const parent = stageContainerRef.current.parentElement;
+      if (parent) {
+        const parentRect = parent.getBoundingClientRect();
+        console.log('[DEBUG] Parent (.metro-main) dimensions:', {
+          width: parentRect.width,
+          height: parentRect.height,
+          className: parent.className
+        });
+      }
+    }
+  }, []);
 
   // Handle node click events from the visualization
-  const _handleNodeClick = useCallback(
+  const handleNodeClick = useCallback(
     (nodePath: string) => {
       const node = nodes.find((n) => n.path === nodePath);
       if (node) {
@@ -250,27 +468,6 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
       const node = nodes.find((n) => n.path === nodePath);
       if (node) {
         setHoveredNode({
-          path: node.path,
-          type: 'node',
-          name: node.name,
-          size: node.size,
-        });
-      }
-    },
-    [nodes]
-  );
-
-  // Handle node select events from the visualization
-  const handleNodeSelect = useCallback(
-    (nodePath: string | null) => {
-      if (nodePath === null) {
-        setSelectedNode(null);
-        return;
-      }
-
-      const node = nodes.find((n) => n.path === nodePath);
-      if (node) {
-        setSelectedNode({
           path: node.path,
           type: 'node',
           name: node.name,
@@ -326,7 +523,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   }, []);
 
   // Handle layout update events from the visualization
-  const _handleLayoutUpdate = useCallback((layoutInfo: unknown) => {
+  const handleLayoutUpdate = useCallback((layoutInfo: unknown) => {
     if (layoutInfo && layoutInfo.stats) {
       setLodStats(layoutInfo.stats);
     }
@@ -430,8 +627,13 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
         auditLogger.logFileAccess('folder-selection-initiated', 'user-requested-scan');
         const res = await UnifiedNavigation.scan.selectAndScanFolder();
         console.log('Folder selection result', res);
+        const folderName =
+          typeof res === 'object' && res !== null && 'folder' in res &&
+          typeof (res as { folder?: unknown }).folder === 'string'
+            ? (res as { folder: string }).folder
+            : 'unknown';
         auditLogger.logSystemEvent('folder-selection-completed', 'scan-started', {
-          folder: res && typeof res === 'object' && 'folder' in res ? (res as any).folder : 'unknown',
+          folder: folderName,
         });
       }
     } catch (error) {
@@ -528,6 +730,8 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
   }, []);
 
   // Performance monitoring (disabled in test mode to avoid jsdom teardown races)
+  const nodeCount = nodes?.length ?? 0;
+
   useEffect(() => {
     if (import.meta.env.MODE === 'test') return; // skip in vitest to prevent stray timers after unmount
     if (typeof globalThis === 'undefined' || !globalThis.performance) return;
@@ -539,7 +743,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
         setPerfMetrics((prev) => ({
           ...prev,
           fps: fpsCounterRef.current.length,
-          nodeCount: nodes?.length || 0,
+          nodeCount,
           memoryUsage:
             (globalThis.performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
               ?.usedJSHeapSize || 0,
@@ -549,28 +753,98 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
       }
     }, 100);
     return () => clearInterval(interval);
-  }, [nodes?.length || 0]);
+  }, [nodeCount]);
 
   // Control actions
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     // Dispatch global control event consumed by MetroStage
     window.dispatchEvent(new Event('metro:zoomIn'));
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     // Dispatch global control event consumed by MetroStage
     window.dispatchEvent(new Event('metro:zoomOut'));
-  };
+  }, []);
 
-  const handleFitToView = () => {
+  const handleFitToView = useCallback(() => {
     // Dispatch global control event consumed by MetroStage
     window.dispatchEvent(new Event('metro:fit'));
-  };
+  }, []);
 
   const handleExportPNG = () => {
     // Dispatch global control event consumed by MetroStage
     window.dispatchEvent(new Event('metro:exportPNG'));
   };
+
+  // Handler for minimap clicks to pan viewport
+  const handleMinimapViewportChange = useCallback((worldX: number, worldY: number) => {
+    // Dispatch event to center view at clicked world position
+    window.dispatchEvent(new CustomEvent('metro:centerAt', { detail: { x: worldX, y: worldY } }));
+  }, []);
+
+  // Keyboard navigation for stage container
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Prevent default behavior for arrow keys to avoid page scrolling
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+    }
+    
+    switch (e.key) {
+      case 'ArrowUp':
+        window.dispatchEvent(new Event('metro:panUp'));
+        break;
+      case 'ArrowDown':
+        window.dispatchEvent(new Event('metro:panDown'));
+        break;
+      case 'ArrowLeft':
+        window.dispatchEvent(new Event('metro:panLeft'));
+        break;
+      case 'ArrowRight':
+        window.dispatchEvent(new Event('metro:panRight'));
+        break;
+      case '+':
+      case '=':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleZoomIn();
+        }
+        break;
+      case '-':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleZoomOut();
+        }
+        break;
+      case '0':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          handleFitToView();
+        }
+        break;
+      case 'Escape':
+        setSelectedNode(null);
+        setCtxMenu(null);
+        break;
+    }
+  }, [handleZoomIn, handleZoomOut, handleFitToView]);
+  
+  // Handle focus events for stage container
+  const handleFocus = useCallback(() => {
+    // Announce to screen readers that the visualization is focused
+    if (liveRegionRef.current) {
+      liveRegionRef.current.textContent = 'Visualization area focused. Use arrow keys to navigate, plus and minus to zoom, and zero to fit to view.';
+    }
+    // Dispatch focus event for other components to react
+    window.dispatchEvent(new Event('metro:stageFocus'));
+  }, []);
+  
+  // Handle blur events for stage container
+  const handleBlur = useCallback(() => {
+    // Clear any hover states when focus is lost
+    setHoveredNode(null);
+    // Dispatch blur event for other components to react
+    window.dispatchEvent(new Event('metro:stageBlur'));
+  }, []);
 
   const filteredNodes =
     nodes?.filter(
@@ -763,25 +1037,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
 
   return (
     <div className={`metro-ui ${theme}`}>
-      <a
-        href="#mainContent"
-        className="skip-link sr-only"
-        style={{
-          position: 'absolute',
-          left: -9999,
-          top: 0,
-          background: '#111',
-          color: '#fff',
-          padding: '8px 12px',
-          zIndex: 5000,
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.left = '8px';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.left = '-9999px';
-        }}
-      >
+      <a href="#mainContent" className="skip-link">
         Skip to main content
       </a>
       <header className="metro-header">
@@ -792,6 +1048,16 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               <div className={`status-indicator ${done.cancelled ? 'cancelled' : 'completed'}`}>
                 <span>{done.cancelled ? '⚠️ Cancelled' : '✅ Complete'}</span>
               </div>
+            ) : scanProgressState.scanId ? (
+              <ScanProgressBar
+                scanId={scanProgressState.scanId}
+                progress={scanProgressState.progress}
+                processedNodes={scanProgressState.processedNodes}
+                totalNodes={scanProgressState.totalNodes}
+                elapsedTime={scanProgressState.elapsedTime}
+                onCancel={handleCancelScan}
+                className="scan-progress-bar"
+              />
             ) : progress ? (
               <div className="status-indicator scanning">
                 <div className="spinner" aria-hidden="true"></div>
@@ -808,18 +1074,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               </div>
             )}
             {rootPath && (
-              <div
-                className="current-root"
-                title={rootPath}
-                style={{
-                  marginTop: 4,
-                  fontSize: 11,
-                  maxWidth: 360,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <div className="current-root" title={rootPath}>
                 📂 {rootPath}
               </div>
             )}
@@ -881,6 +1136,14 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
             aria-label="Toggle Minimap"
           >
             🗺️
+          </button>
+          <button
+            className="control-btn"
+            onClick={() => setShowLodHud(!showLodHud)}
+            title="LOD Stats"
+            aria-label="Toggle LOD Stats"
+          >
+            📊
           </button>
           {import.meta.env.DEV && (
             <button
@@ -1062,7 +1325,7 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
                     <div className="stat-value">{progress?.filesProcessed || 0}</div>
                     <div className="stat-label">Files</div>
                   </div>
-                  {settings && (
+                  {settings?.defaultScan && (
                     <div
                       className="stat-item"
                       title="Current aggregation threshold (persisted setting)"
@@ -1202,64 +1465,28 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
           {/* Toolbar */}
           <div className="metro-toolbar" data-testid="metro-toolbar">
             {/* Mode Switcher */}
-            <div className="toolbar-section" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ fontSize: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                Mode
-                <div
-                  role="group"
-                  aria-label="Visualization Mode"
-                  style={{ display: 'flex', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, overflow: 'hidden' }}
-                >
-                  {definitions.map((d, idx) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setMode(d.id as any)}
-                      className="tool-btn"
-                      aria-pressed={selectedMode === d.id}
-                      title={d.label}
-                      style={{
-                        padding: '4px 8px',
-                        background: selectedMode === d.id ? 'rgba(59,130,246,0.15)' : 'transparent',
-                        borderRight: idx < definitions.length - 1 ? '1px solid var(--border, #e5e7eb)' : 'none',
-                        fontSize: 12,
-                      }}
-                    >
-                      {d.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="toolbar-section mode-switcher">
+              <div>Mode</div>
+              <div
+                role="group"
+                aria-label="Visualization Mode"
+                className="mode-buttons"
+              >
+                {definitions.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setMode(d.id)}
+                    className={`mode-btn ${selectedMode === d.id ? 'active' : ''}`}
+                    aria-pressed={selectedMode === d.id}
+                    title={d.label}
+                  >
+                    {d.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="toolbar-section" role="toolbar" aria-label="Visualization tools">
-              <button
-                type="button"
-                className="tool-btn"
-                onClick={handleZoomIn}
-                title="Zoom In"
-                aria-label="Zoom in"
-              >
-                🔍➕
-              </button>
-              <button
-                type="button"
-                className="tool-btn"
-                onClick={handleZoomOut}
-                title="Zoom Out"
-                aria-label="Zoom out"
-              >
-                🔍➖
-              </button>
-              <button
-                type="button"
-                className="tool-btn"
-                onClick={handleFitToView}
-                title="Fit to View"
-                aria-label="Fit to view"
-              >
-                ⏹️
-              </button>
-            </div>
+            {/* Zoom controls removed - now handled by MapControls component in visualization modes */}
             <div className="toolbar-section">
               <button
                 type="button"
@@ -1271,27 +1498,205 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
                 📸
               </button>
             </div>
-            {import.meta.env.DEV && (
+            {isGoogleMapMode && (
               <div
                 className="toolbar-section"
-                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  alignItems: 'center',
+                  maxWidth: 'min(780px, 100%)',
+                }}
               >
-                <label
-                  style={{
-                    fontSize: 10,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                  }}
-                  title="Override manual da profundidade máxima visível (LOD). Deixe vazio para automático."
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  Node (mm)
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="range"
+                      min={1}
+                      max={12}
+                      step={0.25}
+                      value={mapSettings.nodeSizeMm}
+                      onChange={(e) => {
+                        const next = Number.parseFloat(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateMapSettings({ nodeSizeMm: clampValue(next, 1, 12) });
+                        }
+                      }}
+                      aria-label="Node size in millimeters"
+                      style={{ width: 120 }}
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      max={12}
+                      step={0.1}
+                      value={mapSettings.nodeSizeMm}
+                      onChange={(e) => {
+                        const next = Number.parseFloat(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateMapSettings({ nodeSizeMm: clampValue(next, 1, 12) });
+                        }
+                      }}
+                      aria-label="Node size value"
+                      style={{ width: 56 }}
+                    />
+                  </div>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  Text (mm)
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={8}
+                      step={0.1}
+                      value={mapSettings.textSizeMm}
+                      onChange={(e) => {
+                        const next = Number.parseFloat(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateMapSettings({ textSizeMm: clampValue(next, 0.5, 8) });
+                        }
+                      }}
+                      aria-label="Label text size in millimeters"
+                      style={{ width: 120 }}
+                    />
+                    <input
+                      type="number"
+                      min={0.5}
+                      max={8}
+                      step={0.1}
+                      value={mapSettings.textSizeMm}
+                      onChange={(e) => {
+                        const next = Number.parseFloat(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateMapSettings({ textSizeMm: clampValue(next, 0.5, 8) });
+                        }
+                      }}
+                      aria-label="Label text size value"
+                      style={{ width: 56 }}
+                    />
+                  </div>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  Line (mm)
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="range"
+                      min={0.25}
+                      max={4}
+                      step={0.05}
+                      value={mapSettings.lineWidthMm}
+                      onChange={(e) => {
+                        const next = Number.parseFloat(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateMapSettings({ lineWidthMm: clampValue(next, 0.25, 4) });
+                        }
+                      }}
+                      aria-label="Line width in millimeters"
+                      style={{ width: 120 }}
+                    />
+                    <input
+                      type="number"
+                      min={0.25}
+                      max={4}
+                      step={0.05}
+                      value={mapSettings.lineWidthMm}
+                      onChange={(e) => {
+                        const next = Number.parseFloat(e.target.value);
+                        if (Number.isFinite(next)) {
+                          updateMapSettings({ lineWidthMm: clampValue(next, 0.25, 4) });
+                        }
+                      }}
+                      aria-label="Line width value"
+                      style={{ width: 56 }}
+                    />
+                  </div>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  Line style
+                  <select
+                    value={mapSettings.lineStyle}
+                    onChange={(e) =>
+                      updateMapSettings({ lineStyle: e.target.value as LineStyle })
+                    }
+                    aria-label="Line style"
+                    className="settings-input"
+                  >
+                    {LINE_STYLE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  Labels
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={mapSettings.showLabels}
+                      onChange={(e) =>
+                        updateMapSettings({ showLabels: e.target.checked })
+                      }
+                      aria-label="Toggle label visibility"
+                    />
+                    <select
+                      value={mapSettings.labelMode}
+                      onChange={(e) =>
+                        updateMapSettings({ labelMode: e.target.value as LabelMode })
+                      }
+                      aria-label="Label display mode"
+                      className="settings-input"
+                      disabled={!mapSettings.showLabels}
+                    >
+                      {LABEL_MODE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', fontSize: 12 }}>
+                  Orientation
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {GRAPH_DIRECTION_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`tool-btn ${
+                          mapSettings.graphDirection === option.value ? 'active' : ''
+                        }`}
+                        aria-pressed={mapSettings.graphDirection === option.value}
+                        onClick={() => updateMapSettings({ graphDirection: option.value })}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="tool-btn"
+                  onClick={() => setMapSettings({ ...DEFAULT_MAP_SETTINGS })}
+                  aria-label="Reset map appearance to defaults"
                 >
+                  Reset
+                </button>
+              </div>
+            )}
+            {import.meta.env.DEV && (
+              <div className="toolbar-section">
+                <label className="mode-switcher">
                   Depth Cap
                   <input
                     type="number"
                     min={1}
                     placeholder="auto"
                     value={depthOverride ?? ''}
-                    style={{ width: 54 }}
+                    className="depth-cap-input"
                     onChange={(e) => {
                       const v = e.target.value.trim();
                       if (v === '') {
@@ -1315,25 +1720,15 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
                 )}
               </div>
             )}
-            {settings && (
-              <div
-                className="toolbar-section"
-                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <label
-                  style={{
-                    fontSize: 10,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                  }}
-                >
+            {settings?.defaultScan && (
+              <div className="toolbar-section">
+                <label className="mode-switcher">
                   Agg Thresh
                   <input
                     type="number"
                     value={settings.defaultScan.aggregationThreshold}
                     min={1}
-                    style={{ width: 60 }}
+                    className="settings-input"
                     onChange={async (e) => {
                       const v = parseInt(e.target.value, 10);
                       if (!Number.isNaN(v) && v > 0) {
@@ -1352,20 +1747,17 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
                     }}
                   />
                 </label>
-                <label
-                  style={{
-                    fontSize: 10,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                  }}
-                >
+              </div>
+            )}
+            {settings?.defaultScan && (
+              <div className="toolbar-section">
+                <label className="mode-switcher">
                   Max Entries
                   <input
                     type="number"
                     value={settings.defaultScan.maxEntries}
                     min={0}
-                    style={{ width: 60 }}
+                    className="settings-input"
                     onChange={async (e) => {
                       const v = parseInt(e.target.value, 10);
                       if (!Number.isNaN(v) && v >= 0) {
@@ -1393,55 +1785,66 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
 
           {/* Stage Container */}
           <div
+            ref={stageContainerRef}
             className="stage-container"
             tabIndex={0}
-            role="group"
-            aria-label="Visualization Stage (focus to enable keyboard navigation)"
-            style={{ width: '100%', height: '100%', position: 'relative' }}
+            onKeyDown={handleKeyDown}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
           >
             <ModeRenderer
-              theme={currentTheme === 'dark' ? dark : light}
+              theme={currentTheme}
               layout={layoutNodes}
               routes={routes}
-              onNodeClick={(p)=>handleNodeSelect({ path: p, name: p.split('/').pop() || p, type: 'node' })}
+              onNodeClick={handleNodeClick}
               onNodeHover={handleNodeHover}
-              onLayoutUpdate={(_l)=>{/* optional: capture layout updates */}}
-              debug={false}
+              onLayoutUpdate={handleLayoutUpdate}
+              onViewportChange={setViewportBounds}
+              debug={import.meta.env.DEV}
+              modeProps={modeSpecificProps}
             />
           </div>
 
-          {/* Minimap */}
-          {showMinimap && (
-            <div className="minimap">
-              <div className="minimap-header">Minimap</div>
-              <div className="minimap-content">
-                <div className="minimap-viewport">
-                  <MiniMap />
-                </div>
-              </div>
-            </div>
-          )}
-          {import.meta.env.DEV && showDevIdleHint && (
+          {/* Context Menu */}
+          {ctxMenu && (
             <div
               style={{
                 position: 'absolute',
-                bottom: 10,
-                left: 10,
-                padding: '8px 12px',
-                background: 'rgba(30,30,30,0.85)',
-                color: '#fff',
-                borderRadius: 6,
-                fontSize: 12,
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
+                top: ctxMenu.y,
+                left: ctxMenu.x,
+                zIndex: 1000,
               }}
             >
+              {/* Context menu content */}
+            </div>
+          )}
+
+          {/* Minimap */}
+          {showMinimap && !isGoogleMapMode && (
+            <DraggableWindow
+              title="Minimap"
+              id="minimap"
+              defaultPosition={{ x: 20, y: window.innerHeight - 250 }}
+              onClose={() => setShowMinimap(false)}
+              className="minimap-window"
+            >
+              <div style={{ width: '200px', height: '150px' }}>
+                <MiniMap 
+                  layout={layoutNodes}
+                  viewportBounds={viewportBounds || undefined}
+                  onViewportChange={handleMinimapViewportChange}
+                />
+              </div>
+            </DraggableWindow>
+          )}
+
+          {/* Development Idle Hint */}
+          {showDevIdleHint && (
+            <div className="dev-hint">
               <span>Nenhum scan ativo. Iniciar?</span>
               <button
                 type="button"
                 className="tool-btn"
-                style={{ fontSize: 11 }}
                 onClick={handleStartScanDev}
               >
                 Scan C:/
@@ -1449,7 +1852,6 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               <button
                 type="button"
                 className="tool-btn"
-                style={{ fontSize: 11 }}
                 onClick={() => {
                   window.dispatchEvent(
                     new CustomEvent('metro:genTree', { detail: { breadth: 3, depth: 3, files: 2 } })
@@ -1462,50 +1864,44 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               <button
                 type="button"
                 className="tool-btn"
-                style={{ fontSize: 11 }}
                 onClick={() => setShowDevIdleHint(false)}
               >
                 Fechar
               </button>
             </div>
           )}
+
           {/* LOD HUD */}
-          {lodStats && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                background: 'rgba(20,20,30,0.55)',
-                backdropFilter: 'blur(2px)',
-                color: '#fff',
-                padding: '6px 10px',
-                borderRadius: 6,
-                fontSize: 11,
-                lineHeight: 1.35,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-              }}
-              aria-label="Level of Detail Status"
-              role="status"
+          {lodStats && showLodHud && (
+            <DraggableWindow
+              title="LOD"
+              id="lod-hud"
+              defaultPosition={{ x: window.innerWidth - 240, y: 100 }}
+              onClose={() => setShowLodHud(false)}
+              className="lod-window"
             >
-              <div style={{ fontWeight: 600 }}>LOD</div>
-              <div>Scale: {lodStats.scale.toFixed(2)}</div>
-              <div>Depth Cap: {lodStats.depthCap == null ? '∞' : lodStats.depthCap}</div>
-              <div>
-                Rendered: {lodStats.rendered}/{lodStats.total} ({lodStats.culled} culled)
+              <div style={{ fontSize: 11, lineHeight: 1.35, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div>Scale: {lodStats.scale.toFixed(2)}</div>
+                <div>Depth Cap: {lodStats.depthCap == null ? '∞' : lodStats.depthCap}</div>
+                <div>
+                  Rendered: {lodStats.rendered}/{lodStats.total} ({lodStats.culled} culled)
+                </div>
+                {depthOverride != null && <div style={{ color: '#f5d90a' }}>Override ativo</div>}
               </div>
-              {depthOverride != null && <div style={{ color: '#f5d90a' }}>Override ativo</div>}
-            </div>
+            </DraggableWindow>
           )}
         </main>
       </div>
 
       {/* Performance Overlay */}
       {showPerformance && (
-        <div className="performance-overlay">
-          <div className="perf-header">Performance Metrics</div>
+        <DraggableWindow
+          title="Performance Metrics"
+          id="performance"
+          defaultPosition={{ x: window.innerWidth - 240, y: 20 }}
+          onClose={() => setShowPerformance(false)}
+          className="performance-window"
+        >
           <div className="perf-content">
             <div className="perf-item">
               <span className="perf-label">FPS:</span>
@@ -1530,52 +1926,29 @@ export const MetroUIInner: React.FC<MetroUIProps> = ({
               <span className="perf-value">{perfMetrics.lastLayoutMs.toFixed(1)}ms</span>
             </div>
           </div>
-        </div>
+        </DraggableWindow>
       )}
 
+      {/* Context Menu */}
       {ctxMenu?.visible && (
         <div
-          className="metro-context-menu"
+          className="context-menu"
           style={{
-            position: 'fixed',
             left: ctxMenu.x,
             top: ctxMenu.y,
-            background: '#222',
-            color: '#fff',
-            padding: '6px 8px',
-            fontSize: 12,
-            borderRadius: 4,
-            zIndex: 3000,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
           }}
         >
-          <div style={{ marginBottom: 6, fontWeight: 600 }}>
-            {ctxMenu.path.split(/[/\\]/).pop()}
-          </div>
           <button
-            type="button"
-            style={{
-              display: 'block',
-              width: '100%',
-              textAlign: 'left',
-              background: 'transparent',
-              color: '#fff',
-              border: 'none',
-              padding: '4px 0',
-              cursor: 'pointer',
-            }}
-            aria-label={favorites.includes(ctxMenu.path) ? 'Remove favorite' : 'Add favorite'}
-            onClick={async () => {
-              try {
-                if (favorites.includes(ctxMenu.path)) {
-                  const list = await UnifiedNavigation.favorites.remove(ctxMenu.path);
-                  setFavorites(list);
-                } else {
-                  const list = await UnifiedNavigation.favorites.add(ctxMenu.path);
-                  setFavorites(list);
-                }
-              } catch (err) {
-                console.error('ctx favorite toggle failed', err);
+            className="context-menu-item"
+            onClick={() => {
+              if (favorites.includes(ctxMenu.path)) {
+                const newFavs = favorites.filter((f) => f !== ctxMenu.path);
+                setFavorites(newFavs);
+                saveFavorites(newFavs);
+              } else {
+                const newFavs = [...favorites, ctxMenu.path];
+                setFavorites(newFavs);
+                saveFavorites(newFavs);
               }
               setCtxMenu(null);
             }}

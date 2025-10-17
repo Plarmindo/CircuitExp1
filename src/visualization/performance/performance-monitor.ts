@@ -468,7 +468,7 @@ export class PerformanceMonitor {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(event);
       }
-    } catch (_error) {
+    } catch {
       console.warn('Failed to emit performance alert:', error);
     }
   }
@@ -606,7 +606,7 @@ export class PerformanceMonitor {
 
       // Return estimated memory based on texture and buffer sizes
       return this.calculateEstimatedGPUMemory();
-    } catch (_error) {
+    } catch {
       console.warn('Failed to get GPU memory usage:', error);
       return 0;
     }
@@ -636,7 +636,7 @@ export class PerformanceMonitor {
       estimatedMemory += colorBufferSize + depthBufferSize;
       
       return estimatedMemory;
-    } catch (_error) {
+    } catch {
       return 0;
     }
   }
@@ -661,7 +661,7 @@ export class PerformanceMonitor {
         }
       }
       return 0;
-    } catch (_error) {
+    } catch {
       console.warn('Failed to get texture memory usage:', error);
       return 0;
     }
@@ -677,7 +677,7 @@ export class PerformanceMonitor {
       const avgVertexCount = 100; // conservative estimate
       
       return this.currentActiveObjects * avgVertexCount * avgVertexSize;
-    } catch (_error) {
+    } catch {
       return 0;
     }
   }
@@ -818,7 +818,7 @@ export function monitor(name?: string) {
         
         monitor.endProfile(profileName);
         return result;
-      } catch (_error) {
+      } catch {
         monitor.endProfile(profileName);
         throw error;
       }

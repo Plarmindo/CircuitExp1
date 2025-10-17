@@ -1,16 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ResponsiveMetroStage from '../../components/ResponsiveMetroStage';
-import type { LayoutNodeLite, RouteCommand } from '../stage/types';
+import { MapControls } from '../../components/MapControls';
+import { MapSettingsControls } from '../../components/MapSettingsControls';
+import { useCommonZoom } from './use-common-zoom';
+import type { CommonModeProps } from './common-mode-interface';
 
-export interface SemanticZoomModeProps {
-  layout?: LayoutNodeLite[];
-  routes?: RouteCommand[];
-  onNodeClick?: (path: string) => void;
-  onNodeHover?: (path: string | null) => void;
-  onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
-  theme?: any;
-  debug?: boolean;
-}
+// SemanticZoomMode uses standard CommonModeProps
+export type SemanticZoomModeProps = CommonModeProps;
 
 interface DebugWindow {
   __metroDebug?: {
@@ -47,7 +43,9 @@ const srOnly: React.CSSProperties = {
 
 // Thin shell enhanced with semantic overlays and zoom controls
 const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
-  const [scale, setScale] = useState<number>(1);
+  // Use common zoom hook (standardized across all modes)
+  const { scale, isWindowZoomMode, handleZoomIn, handleZoomOut, handleResetView, handleToggleWindowZoom } = useCommonZoom();
+
   const [center, setCenter] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [focusPath, setFocusPath] = useState<string>('');
   const [announce, setAnnounce] = useState<string>('');
@@ -108,7 +106,8 @@ const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
     }
   }, [center.x, center.y, dbg]);
 
-  // Sample viewport + scale at ~10Hz to keep overlay in sync without heavy coupling
+  // Sample viewport at ~10Hz to keep overlay in sync without heavy coupling
+  // Scale is now managed by ZoomContext, but we still track viewport center
   useEffect(() => {
     let mounted = true;
     const sample = (t: number) => {
@@ -117,15 +116,11 @@ const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
       if (t - last >= 100) {
         lastSampleRef.current = t;
         const vp = dbg?.getViewport?.();
-        const s = dbg?.getScale?.();
         if (vp && Number.isFinite(vp.x) && Number.isFinite(vp.y)) {
           const c = { x: vp.x, y: vp.y };
           if (c.x !== center.x || c.y !== center.y) {
             setCenter(c);
           }
-        }
-        if (typeof s === 'number' && Number.isFinite(s) && s !== scale) {
-          setScale(s);
         }
       }
       rafRef.current = requestAnimationFrame(sample);
@@ -135,7 +130,7 @@ const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
       mounted = false;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [center.x, center.y, scale, dbg]);
+  }, [center.x, center.y, dbg]);
 
   // Update focus path based on level and nearest node
   useEffect(() => {
@@ -153,6 +148,8 @@ const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
       const root = parts.length > 1 ? '/' + parts.slice(0, 1).join('/') : '/' + (parts[0] || '');
       if (root !== focusPath) setFocusPath(root);
     }
+    // focusPath is intentionally omitted - we read it for comparison but don't want to re-run when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, findNearestPathToCenter]);
 
   // Announce SR updates on scale/focus changes
@@ -165,7 +162,8 @@ const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // If another handler has already handled this event, skip to avoid double-dispatch
-      if (e.defaultPrevented || (e as any).cancelBubble) return;
+      const event = e as KeyboardEvent & { cancelBubble?: boolean };
+      if (e.defaultPrevented || event.cancelBubble) return;
 
       // Gating: only respond when the Stage container has focus (or focus is within it)
       const stage = document.querySelector('.stage-container') as HTMLElement | null;
@@ -262,7 +260,24 @@ const SemanticZoomMode: React.FC<SemanticZoomModeProps> = (props) => {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <ResponsiveMetroStage {...props} />
+      <ResponsiveMetroStage {...props} lineWidthMm={1} />
+
+      {/* Map Controls - centralized zoom */}
+      <MapControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetView={handleResetView}
+        onToggleWindowZoom={handleToggleWindowZoom}
+        zoomLevel={scale}
+        isWindowZoomActive={isWindowZoomMode}
+      />
+
+      {/* Map Settings Controls - always visible */}
+      <MapSettingsControls
+        position="bottom-left"
+        compact={false}
+      />
+
       <div style={overlayStyle} aria-hidden>
         {/* Breadcrumbs */}
         {crumbSegments.length > 0 && (

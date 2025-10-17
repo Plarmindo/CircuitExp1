@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import CanvasMetroMap, { type MetroNode, type FileMeta } from './CanvasMetroMap';
+import { type MetroNode, type FileMeta } from './CanvasMetroMap';
+import './styles/MetroLineDemo.css';
 
 // Demo helpers: deterministic file generation per-station and lightweight explorers
 
@@ -146,7 +147,7 @@ const StationExplorer: React.FC<{ files: FileMeta[]; mode: FileViewMode; title: 
   );
 };
 
-const MetroLineDemo: React.FC = () => {
+export function MetroLineDemo() {
   const [selectedNode, setSelectedNode] = useState<MetroNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<MetroNode | null>(null);
   const [rootPath, setRootPath] = useState('/root');
@@ -205,287 +206,91 @@ const MetroLineDemo: React.FC = () => {
   const sampleRootPaths = ['/root', '/Users/john', '/home/user', 'C:/Projects'];
 
   return (
-    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#f5f5f5', fontFamily: 'Arial, sans-serif' }}>
-      {/* Header */}
-      <div style={{ backgroundColor: '#1a1a2e', color: 'white', padding: '15px 20px', borderBottom: '3px solid #0078D4' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>🚦 Metro Line Sequence Demo</h1>
-        <p style={{ margin: '5px 0 0 0', fontSize: '14px', opacity: 0.8 }}>
-          Single-line metro sequence with adjustable stations, spacing, angle, and color
+    <div className="metro-line-demo">
+      <div className="demo-header">
+        <h1 className="demo-title">Metro Line Demo</h1>
+        <p className="demo-description">
+          Experiment with different metro line configurations and see how they render.
         </p>
       </div>
 
-      {/* Controls */}
-      <div style={{ backgroundColor: 'white', padding: '12px 20px', borderBottom: '1px solid #ddd', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Root Path</label>
-          <select value={rootPath} onChange={(e) => setRootPath(e.target.value)} style={{ padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, flex: 1 }}>
-            {sampleRootPaths.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* New: Demo Mode selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Demo Mode</label>
-          <select value={demoMode} onChange={(e)=>{ setDemoMode(e.target.value as any); setPlatformOpen(false); }} style={{ padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, flex: 1 }}>
-            <option value="drawer">A — Station Drawer</option>
-            <option value="semantic">B — Semantic Zoom + Drill‑in</option>
-            <option value="split">C — Split View</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Line Name</label>
-          <input value={lineName} onChange={(e) => setLineName(e.target.value)} style={{ padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, flex: 1 }} />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Line Color</label>
-          <input type="color" value={lineColor} onChange={(e) => setLineColor(e.target.value)} style={{ width: 44, height: 28, border: '1px solid #ccc', borderRadius: 4 }} />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Stations</label>
-          <input
-            type="number"
-            min={2}
-            max={64}
-            value={lineStations}
-            onChange={(e) => setLineStations(Math.max(2, Math.min(64, Number(e.target.value) || 2)))}
-            style={{ padding: '5px 8px', width: 80, border: '1px solid #ccc', borderRadius: 4, fontSize: 13 }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Angle (°)</label>
-          <input
-            type="range"
-            min={0}
-            max={360}
-            value={lineAngleDeg}
-            onChange={(e) => setLineAngleDeg(Number(e.target.value))}
-            style={{ flex: 1 }}
-          />
-          <span style={{ minWidth: 36, textAlign: 'right' }}>{lineAngleDeg}</span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Spacing</label>
-          <input
-            type="range"
-            min={40}
-            max={150}
-            value={stationSpacing}
-            onChange={(e) => setStationSpacing(Number(e.target.value))}
-            style={{ flex: 1 }}
-          />
-          <span style={{ minWidth: 36, textAlign: 'right' }}>{stationSpacing}</span>
-        </div>
-        {/* New: file chip controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Show Files on Map</label>
-          <input type="checkbox" checked={showFiles} onChange={(e)=>setShowFiles(e.target.checked)} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, opacity: showFiles ? 1 : 0.6 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Max Chips</label>
-          <input type="range" min={2} max={12} value={maxFilesPerStation} onChange={(e)=>setMaxFilesPerStation(Number(e.target.value))} style={{ flex: 1 }} disabled={!showFiles} />
-          <span style={{ minWidth: 36, textAlign: 'right' }}>{maxFilesPerStation}</span>
-        </div>
-
-        {/* New: File view mode for explorers */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontWeight: 'bold', fontSize: 13 }}>Explorer View</label>
-          <select value={fileViewMode} onChange={(e)=>setFileViewMode(e.target.value as FileViewMode)} style={{ padding: '5px 8px', border: '1px solid #ccc', borderRadius: 4, fontSize: 13, flex: 1 }}>
-            <option value="icons">Large Icons</option>
-            <option value="details">Details</option>
-          </select>
-        </div>
-
-        {/* Semantic zoom demo control */}
-        {(
-          <div style={{ display: demoMode === 'semantic' ? 'flex' : 'none', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontWeight: 'bold', fontSize: 13 }}>Zoom</label>
-            <input type="range" min={0} max={100} value={zoomLevel} onChange={(e)=>setZoomLevel(Number(e.target.value))} style={{ flex: 1 }} />
-            <span style={{ minWidth: 36, textAlign: 'right' }}>{zoomLevel}</span>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={resetSelection} style={{ padding: '8px 12px', backgroundColor: '#0078D4', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Reset</button>
-        </div>
-      </div>
-
-      {/* Info Panel */}
-      <div style={{ backgroundColor: '#f9f9f9', padding: '12px 20px', borderBottom: '1px solid #ddd', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-        <div>
-          <strong style={{ color: '#0078D4' }}>Selected Station</strong>
-          <div style={{ marginTop: 6, fontSize: 13 }}>
-            {selectedNode ? (
-              <>
-                <div>
-                  <strong>Name:</strong> {selectedNode.name}
-                </div>
-                <div>
-                  <strong>Type:</strong> {selectedNode.type}
-                </div>
-                <div>
-                  <strong>Path:</strong> {selectedNode.path}
-                </div>
-                <div>
-                  <strong>Line:</strong> {selectedNode.lineName}
-                </div>
-              </>
-            ) : (
-              <span style={{ color: '#999' }}>None</span>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <strong style={{ color: '#C19C00' }}>Hovered Station</strong>
-          <div style={{ marginTop: 6, fontSize: 13 }}>
-            {hoveredNode ? (
-              <>
-                <div>
-                  <strong>Name:</strong> {hoveredNode.name}
-                </div>
-                <div>
-                  <strong>Type:</strong> {hoveredNode.type}
-                </div>
-                <div>
-                  <strong>Path:</strong> {hoveredNode.path}
-                </div>
-              </>
-            ) : (
-              <span style={{ color: '#999' }}>None</span>
-            )}
-          </div>
-        </div>
-
-        {/* New: File info */}
-        <div>
-          <strong style={{ color: '#2E7D32' }}>File Info</strong>
-          <div style={{ marginTop: 6, fontSize: 13 }}>
-            <div>
-              <strong>Hover:</strong>{' '}
-              {hoveredFile ? `${hoveredFile.name} (${hoveredFile.kind})` : <span style={{ color: '#999' }}>None</span>}
-            </div>
-            <div>
-              <strong>Selected:</strong>{' '}
-              {selectedFile ? `${selectedFile.name} (${selectedFile.kind})` : <span style={{ color: '#999' }}>None</span>}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <strong style={{ color: '#555' }}>Line Settings</strong>
-          <div style={{ marginTop: 6, fontSize: 13 }}>
-            <div>• {lineStations} stations</div>
-            <div>• Angle: {lineAngleDeg}°</div>
-            <div>
-              • Color: <span style={{ display: 'inline-block', width: 16, height: 10, background: lineColor, border: '1px solid #000', verticalAlign: 'middle' }} /> {lineColor}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Visualization */}
-      {demoMode !== 'split' ? (
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 'calc(100vh - 210px)', position: 'relative' }}>
-          <CanvasMetroMap
-            width={1000}
-            height={600}
-            rootPath={rootPath}
-            onNodeClick={handleNodeClick}
-            onNodeHover={handleNodeHover}
-            mode="line"
-            lineName={lineName}
-            lineColor={lineColor}
-            lineStations={lineStations}
-            lineAngleDeg={lineAngleDeg}
-            stationSpacing={stationSpacing}
-            showFiles={demoMode === 'semantic' ? (showFiles && zoomLevel >= 45) : showFiles}
-            maxFilesPerStation={maxFilesPerStation}
-            onFileHover={handleFileHover}
-            onFileClick={handleFileClick}
-          />
-
-          {/* Option A: Station Drawer */}
-          {demoMode === 'drawer' && selectedNode && (
-            <>
-              <div onClick={()=>setSelectedNode(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} />
-              <div style={{ position: 'absolute', top: 10, right: 10, width: 420, height: 580, background: '#fff', borderRadius: 8, boxShadow: '0 10px 28px rgba(0,0,0,0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '10px 12px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <strong>Station:</strong> {selectedNode.name}
-                    <div style={{ color: '#777', fontSize: 12 }}>{selectedNode.path}</div>
-                  </div>
-                  <button onClick={()=>setSelectedNode(null)} style={{ border: 'none', background: 'transparent', fontSize: 18, cursor: 'pointer' }}>✖</button>
-                </div>
-                <StationExplorer files={stationFiles} mode={fileViewMode} title="Files" />
-              </div>
-            </>
-          )}
-
-          {/* Option B: Semantic Zoom Drill-in Overlay */}
-          {demoMode === 'semantic' && platformOpen && selectedNode && (
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(250,250,250,0.95)', border: '2px solid #ddd', borderRadius: 8, boxShadow: '0 10px 28px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderBottom: '1px solid #e5e5e5', background: '#fff' }}>
-                <div>
-                  <strong>Inside platform:</strong> {selectedNode.name}
-                  <span style={{ marginLeft: 10, color: '#777' }}>Zoom {zoomLevel}</span>
-                </div>
-                <button onClick={()=>setPlatformOpen(false)} style={{ padding: '6px 10px', background: '#0078D4', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Exit</button>
-              </div>
-              <StationExplorer files={stationFiles} mode={fileViewMode} title={selectedNode.path || ''} />
-            </div>
-          )}
-        </div>
-      ) : (
-        // Option C: Split View
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 16, padding: 16, minHeight: 'calc(100vh - 210px)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CanvasMetroMap
-              width={1000}
-              height={600}
-              rootPath={rootPath}
-              onNodeClick={handleNodeClick}
-              onNodeHover={handleNodeHover}
-              mode="line"
-              lineName={lineName}
-              lineColor={lineColor}
-              lineStations={lineStations}
-              lineAngleDeg={lineAngleDeg}
-              stationSpacing={stationSpacing}
-              showFiles={false}
-              maxFilesPerStation={maxFilesPerStation}
-              onFileHover={handleFileHover}
-              onFileClick={handleFileClick}
+      <div className="demo-controls">
+        <div className="control-group">
+          <label className="control-label">
+            Number of Stations
+            <input
+              type="number"
+              className="control-input"
+              value={numStations}
+              onChange={(e) => setNumStations(parseInt(e.target.value, 10))}
+              min={2}
+              max={20}
             />
-          </div>
-          <div style={{ border: '1px solid #e5e5e5', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
-            {selectedNode ? (
-              <StationExplorer files={stationFiles} mode={fileViewMode} title={selectedNode.path || ''} />
-            ) : (
-              <div style={{ padding: 16, color: '#777' }}>Select a station on the map to view its files here.</div>
-            )}
-          </div>
+          </label>
         </div>
-      )}
 
-      {/* Footer */}
-      <div style={{ backgroundColor: '#1a1a2e', color: 'white', padding: '10px 20px', textAlign: 'center', fontSize: 12 }}>
-        <div>
-          {demoMode === 'drawer' && 'Option A — Click a station to open a right-side drawer with a Windows-like explorer.'}
-          {demoMode === 'semantic' && 'Option B — Use the Zoom slider. At high zoom, clicking a station enters the platform view overlay.'}
-          {demoMode === 'split' && 'Option C — Split view. Map on the left, synchronized explorer on the right.'}
+        <div className="control-group">
+          <label className="control-label">
+            Line Color
+            <input
+              type="color"
+              className="control-input"
+              value={lineColor}
+              onChange={(e) => setLineColor(e.target.value)}
+            />
+          </label>
         </div>
+
+        <div className="control-group">
+          <label className="control-label">
+            Station Size
+            <input
+              type="range"
+              className="control-input"
+              value={stationSize}
+              onChange={(e) => setStationSize(parseInt(e.target.value, 10))}
+              min={4}
+              max={20}
+            />
+          </label>
+        </div>
+
+        <button
+          className="demo-button"
+          onClick={regenerateLine}
+          disabled={isGenerating}
+          title="Generate a new random metro line"
+          aria-label="Regenerate line"
+        >
+          {isGenerating ? 'Generating...' : 'Regenerate Line'}
+        </button>
+      </div>
+
+      <div className="demo-canvas" ref={canvasContainerRef}>
+        <canvas ref={canvasRef} />
+      </div>
+
+      <div className="demo-info">
+        <h2 className="info-title">Line Information</h2>
+        <ul className="info-list">
+          <li className="info-item">
+            <span className="info-label">Total Length:</span>
+            <span className="info-value">{totalLength.toFixed(2)}px</span>
+          </li>
+          <li className="info-item">
+            <span className="info-label">Average Station Distance:</span>
+            <span className="info-value">
+              {(totalLength / (numStations - 1)).toFixed(2)}px
+            </span>
+          </li>
+          <li className="info-item">
+            <span className="info-label">Render Time:</span>
+            <span className="info-value">{lastRenderTime}ms</span>
+          </li>
+        </ul>
       </div>
     </div>
   );
-};
+}
 
 export default MetroLineDemo;

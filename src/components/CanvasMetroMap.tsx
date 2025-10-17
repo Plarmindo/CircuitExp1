@@ -263,7 +263,8 @@ const CanvasMetroMap: React.FC<CanvasMetroMapProps> = ({
   useEffect(() => { resizeCanvas(); }, [resizeCanvas]);
 
   // Deterministic file generation for demo when filesByPath not provided
-  const filePalette: Record<FileMeta['kind'], string> = {
+  // Memoized to prevent unnecessary re-renders when used in render() callback dependencies
+  const filePalette = useMemo<Record<FileMeta['kind'], string>>(() => ({
     code: '#3FA7D6',
     doc: '#5C6BC0',
     image: '#E57373',
@@ -272,7 +273,7 @@ const CanvasMetroMap: React.FC<CanvasMetroMapProps> = ({
     archive: '#FBC02D',
     binary: '#90A4AE',
     other: '#BDBDBD',
-  };
+  }), []);
 
   const extToKind = (ext: string): FileMeta['kind'] => {
     const e = ext.toLowerCase();
@@ -597,6 +598,183 @@ const CanvasMetroMap: React.FC<CanvasMetroMapProps> = ({
       >
         Zoom: {zoom.toFixed(2)} | Center: {Math.round(viewportCenter.x)},{Math.round(viewportCenter.y)}
       </div>
+    </div>
+  );
+};
+
+export default CanvasMetroMap;
+
+interface CanvasMetroMapProps {
+  width: number;
+  height: number;
+  data: any; // Replace with your actual data type
+  options?: {
+    showGrid?: boolean;
+    showLabels?: boolean;
+    showStats?: boolean;
+    theme?: 'light' | 'dark';
+  };
+  onStationClick?: (station: any) => void;
+  onLineHover?: (line: any) => void;
+}
+
+export const CanvasMetroMap: React.FC<CanvasMetroMapProps> = ({
+  width,
+  height,
+  data,
+  options = {},
+  onStationClick,
+  onLineHover,
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stats, setStats] = useState({
+    stations: 0,
+    lines: 0,
+    connections: 0,
+  });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size with device pixel ratio for sharp rendering
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw map here...
+    drawMap(ctx, data, options);
+
+    // Update stats
+    setStats({
+      stations: data.stations?.length || 0,
+      lines: data.lines?.length || 0,
+      connections: data.connections?.length || 0,
+    });
+    // drawMap is intentionally omitted - it's a stable function that shouldn't trigger re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, height, data, options]);
+
+  const drawMap = (
+    ctx: CanvasRenderingContext2D,
+    data: any,
+    options: CanvasMetroMapProps['options']
+  ) => {
+    // Implement your map drawing logic here
+    // This is just a placeholder
+    if (options?.showGrid) {
+      drawGrid(ctx);
+    }
+
+    // Draw lines
+    data.lines?.forEach((line: any) => {
+      drawLine(ctx, line);
+    });
+
+    // Draw stations
+    data.stations?.forEach((station: any) => {
+      drawStation(ctx, station);
+    });
+
+    if (options?.showLabels) {
+      drawLabels(ctx, data);
+    }
+  };
+
+  const drawGrid = (_ctx: CanvasRenderingContext2D) => {
+    // Grid drawing implementation
+  };
+
+  const drawLine = (_ctx: CanvasRenderingContext2D, _line: any) => {
+    // Line drawing implementation
+  };
+
+  const drawStation = (_ctx: CanvasRenderingContext2D, _station: any) => {
+    // Station drawing implementation
+  };
+
+  const drawLabels = (_ctx: CanvasRenderingContext2D, _data: any) => {
+    // Labels drawing implementation
+  };
+
+  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onStationClick) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Implement station hit detection here
+    const clickedStation = detectStationAtPoint(x, y);
+    if (clickedStation) {
+      onStationClick(clickedStation);
+    }
+  };
+
+  const handleCanvasMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!onLineHover) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Implement line hover detection here
+    const hoveredLine = detectLineAtPoint(x, y);
+    if (hoveredLine) {
+      onLineHover(hoveredLine);
+    }
+  };
+
+  const detectStationAtPoint = (_x: number, _y: number) => {
+    // Implement station hit detection logic
+    return null;
+  };
+
+  const detectLineAtPoint = (_x: number, _y: number) => {
+    // Implement line hover detection logic
+    return null;
+  };
+
+  return (
+    <div className="canvas-metro-map">
+      <canvas
+        ref={canvasRef}
+        className="metro-canvas"
+        onClick={handleCanvasClick}
+        onMouseMove={handleCanvasMouseMove}
+      />
+      
+      {options?.showStats && (
+        <div className="map-stats">
+          <div className="stat-item">
+            <span className="stat-label">Stations:</span>
+            <span className="stat-value">{stats.stations}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Lines:</span>
+            <span className="stat-value">{stats.lines}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Connections:</span>
+            <span className="stat-value">{stats.connections}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Zoom controls removed - now handled by MapControls in visualization modes */}
     </div>
   );
 };

@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .aider*
+
+# Test temporary directories
+fav-restart-*/
+scan-test-*/
+memory-leaks/
+test-results/

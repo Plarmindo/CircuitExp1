@@ -21,7 +21,7 @@ class SigningVerifier {
       try {
         const _result = execSync(`signtool verify /pa "${file}"`, { encoding: 'utf8' });
         console.log(`✓ ${path.basename(file)}: Valid signature`);
-      } catch (_error) {
+      } catch {
         console.error(`❌ ${path.basename(file)}: Invalid signature`);
       }
     });
@@ -36,7 +36,7 @@ class SigningVerifier {
       try {
         const _result = execSync(`codesign --verify --deep --strict "${file}"`, { encoding: 'utf8' });
         console.log(`✓ ${path.basename(file)}: Valid signature`);
-      } catch (_error) {
+      } catch {
         console.error(`❌ ${path.basename(file)}: Invalid signature`);
       }
     });
@@ -52,7 +52,7 @@ class SigningVerifier {
         try {
           const _result = execSync(`gpg --verify "${sigFile}" "${file}"`, { encoding: 'utf8' });
           console.log(`✓ ${path.basename(file)}: Valid GPG signature`);
-        } catch (_error) {
+        } catch {
           console.error(`❌ ${path.basename(file)}: Invalid GPG signature`);
         }
       } else {

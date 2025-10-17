@@ -1,0 +1,131 @@
+{
+  "timestamp": "2025-10-09T19:10:56.615Z",
+  "testDir": "C:\\Users\\paulo\\AppData\\Local\\Temp\\circuit-perf-100k\\balanced",
+  "iterations": 10,
+  "baseline": {
+    "heapUsed": 4390120,
+    "heapTotal": 7172096,
+    "external": 1850748,
+    "rss": 44744704,
+    "timestamp": 1760037052415
+  },
+  "snapshots": [
+    {
+      "iteration": 0,
+      "heapUsed": 4390120,
+      "heapTotal": 7172096,
+      "external": 1850748,
+      "rss": 44744704,
+      "timestamp": 1760037052415,
+      "label": "Baseline"
+    },
+    {
+      "iteration": 1,
+      "heapUsed": 4460040,
+      "heapTotal": 41512960,
+      "external": 1847934,
+      "rss": 99446784,
+      "timestamp": 1760037052896,
+      "duration": 352,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 2,
+      "heapUsed": 4512992,
+      "heapTotal": 42037248,
+      "external": 1915934,
+      "rss": 100134912,
+      "timestamp": 1760037053346,
+      "duration": 330,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 3,
+      "heapUsed": 4544896,
+      "heapTotal": 43610112,
+      "external": 1913734,
+      "rss": 103878656,
+      "timestamp": 1760037053779,
+      "duration": 316,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 4,
+      "heapUsed": 4567864,
+      "heapTotal": 43872256,
+      "external": 1913734,
+      "rss": 103510016,
+      "timestamp": 1760037054179,
+      "duration": 289,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 5,
+      "heapUsed": 4568400,
+      "heapTotal": 44134400,
+      "external": 1913934,
+      "rss": 103768064,
+      "timestamp": 1760037054578,
+      "duration": 293,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 6,
+      "heapUsed": 3720544,
+      "heapTotal": 44134400,
+      "external": 1912454,
+      "rss": 104275968,
+      "timestamp": 1760037054980,
+      "duration": 291,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 7,
+      "heapUsed": 3720720,
+      "heapTotal": 44920832,
+      "external": 1853854,
+      "rss": 104091648,
+      "timestamp": 1760037055380,
+      "duration": 294,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 8,
+      "heapUsed": 3747944,
+      "heapTotal": 44658688,
+      "external": 1926854,
+      "rss": 106803200,
+      "timestamp": 1760037055779,
+      "duration": 289,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 9,
+      "heapUsed": 3749816,
+      "heapTotal": 45182976,
+      "external": 1914454,
+      "rss": 107216896,
+      "timestamp": 1760037056196,
+      "duration": 313,
+      "nodeCount": 0
+    },
+    {
+      "iteration": 10,
+      "heapUsed": 3750040,
+      "heapTotal": 45707264,
+      "external": 1912654,
+      "rss": 107315200,
+      "timestamp": 1760037056612,
+      "duration": 311,
+      "nodeCount": 0
+    }
+  ],
+  "analysis": {
+    "hasLeak": false,
+    "totalGrowth": -640080,
+    "growthPercent": -14.58,
+    "avgGrowthPerIteration": -64008,
+    "trend": -793025.6000000006,
+    "trendPercent": -17.5
+  }
+}

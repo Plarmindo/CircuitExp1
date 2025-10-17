@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ResponsiveMetroStage from '../../components/ResponsiveMetroStage';
+import { MapControls } from '../../components/MapControls';
+import { MapSettingsControls } from '../../components/MapSettingsControls';
+import { useCommonZoom } from './use-common-zoom';
 import { UnifiedNavigation } from '../../navigation/unified-navigation';
 import { MiniMap } from '../../components/MiniMap';
+import type { CommonModeProps } from './common-mode-interface';
 
-export interface DrawerExplorerModeProps {
-  theme?: any;
-  layout?: any[];
-  routes?: any[];
-  onNodeClick?: (p: string) => void;
-  onNodeHover?: (p: string | null) => void;
-  onLayoutUpdate?: (l: any[]) => void;
-  debug?: boolean;
-}
+// DrawerExplorerMode uses standard CommonModeProps
+export type DrawerExplorerModeProps = CommonModeProps;
 
 const DRAWER_WIDTH = 360;
 const ITEM_HEIGHT = 28;
@@ -19,6 +16,9 @@ const ITEM_HEIGHT = 28;
 type TabKey = 'favorites' | 'recent';
 
 const DrawerExplorerMode: React.FC<DrawerExplorerModeProps> = (props) => {
+  // Use common zoom hook (standardized across all modes)
+  const { scale, isWindowZoomMode, handleZoomIn, handleZoomOut, handleResetView, handleToggleWindowZoom } = useCommonZoom();
+
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>('favorites');
@@ -50,7 +50,9 @@ const DrawerExplorerMode: React.FC<DrawerExplorerModeProps> = (props) => {
     setLoadingRecent(true);
     try {
       const res = await UnifiedNavigation.recent.list();
-      const list = Array.isArray((res as any)?.recent) ? (res as any).recent : (res as any);
+      const list = Array.isArray((res as { recent?: string[] })?.recent)
+        ? (res as { recent: string[] }).recent
+        : (res as string[]);
       setRecent(list || []);
     } catch (e) {
       console.error('Failed to load recent', e);
@@ -100,7 +102,7 @@ const DrawerExplorerMode: React.FC<DrawerExplorerModeProps> = (props) => {
     const q = filter.trim().toLowerCase();
     if (!q) return activeList;
     return activeList.filter((p) => p.toLowerCase().includes(q));
-  }, [activeList, filter, tab]);
+  }, [activeList, filter]);
 
   // Virtualization calculations
   const viewportHeight = 260; // body upper area reserved; actual container gets flex so compute via ref on render
@@ -189,6 +191,23 @@ const DrawerExplorerMode: React.FC<DrawerExplorerModeProps> = (props) => {
           onNodeHover={handleNodeHover}
           onLayoutUpdate={props.onLayoutUpdate}
           debug={props.debug}
+          lineWidthMm={1}
+        />
+
+        {/* Map Controls - centralized zoom with CAD functions */}
+        <MapControls
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onResetView={handleResetView}
+          onToggleWindowZoom={handleToggleWindowZoom}
+          zoomLevel={scale}
+          isWindowZoomActive={isWindowZoomMode}
+        />
+
+        {/* Map Settings Controls - always visible */}
+        <MapSettingsControls
+          position="bottom-left"
+          compact={false}
         />
 
         {/* Edge opener when closed */}

@@ -10,7 +10,6 @@ const cspManager = CSPManager.getInstance();
 // Import scan manager and validation
 const scanManager = require('./scan-manager.cjs');
 const { validateSchema, sanitizePath, isSafePath } = require('./ipc-validation.cjs');
-const fs = require('fs').promises;
 const { realpath } = require('fs').promises;
 
 // Track active scans and main window reference
@@ -127,6 +126,7 @@ function setupIpcHandlers() {
   // Scan operations
   ipcMain.handle('scan:start', async (event, rootPath, options = {}) => {
     const windowId = event.sender.id;
+    let result = null;
     
     try {
       // Rate limiting check
@@ -153,18 +153,28 @@ function setupIpcHandlers() {
         includeMetadata: options.includeMetadata || false
       };
       
-      // Add timeout for long-running scans
+      // Start scan FIRST to get the result
+      result = scanManager.startScan(validatedPath, scanOptions);
+      
+      // Then add timeout with the scanId
       const scanTimeout = setTimeout(() => {
         scanManager.cancelScan(result.scanId);
         logSecurityViolation('scan_timeout', { scanId: result.scanId, path: validatedPath }, windowId);
       }, 300000); // 5 minute timeout
 
-      const result = scanManager.startScan(validatedPath, scanOptions);
       activeScanCount.set(result.scanId, { windowId, timeout: scanTimeout });
       
       return result;
     } catch (error) {
       console.error('[IPC] scan:start error:', error.message);
+      // Clean up any partial scan state on error
+      if (result && result.scanId) {
+        const scanData = activeScanCount.get(result.scanId);
+        if (scanData?.timeout) {
+          clearTimeout(scanData.timeout);
+        }
+        activeScanCount.delete(result.scanId);
+      }
       throw error;
     }
   });
@@ -205,7 +215,7 @@ function setupIpcHandlers() {
       }
 
       const selectedPath = filePaths[0];
-      const validatedPath = validateScanPath(selectedPath);
+      const validatedPath = await validateScanPath(selectedPath);
       
       // Start scan with default options
       const result = scanManager.startScan(validatedPath, {
@@ -511,6 +521,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Clean up any stuck scan state from previous crashes
+  activeScanCount.clear();
+  
   createWindow();
 
   app.on('activate', () => {

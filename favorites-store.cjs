@@ -6,9 +6,15 @@ function createFavoritesStore(getFilePath) {
   let favorites = [];
   let filePath = null;
 
+  // Normalize paths to forward slashes for cross-platform consistency
+  function normalizePath(p) {
+    return p.replace(/\\/g, '/');
+  }
+
   function ensurePath() {
     if (!filePath) {
-      filePath = getFilePath();
+      // Support both function and string for getFilePath
+      filePath = typeof getFilePath === 'function' ? getFilePath() : getFilePath;
       // Ensure directory exists
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) {
@@ -27,6 +33,16 @@ function createFavoritesStore(getFilePath) {
       }
     } catch (error) {
       console.warn('[Favorites] Failed to load:', error.message);
+      // Backup corrupt file
+      if (fs.existsSync(ensurePath())) {
+        try {
+          const backupPath = `${ensurePath()}.corrupt-${Date.now()}.backup`;
+          fs.copyFileSync(ensurePath(), backupPath);
+          fs.unlinkSync(ensurePath()); // Remove corrupt file
+        } catch (backupError) {
+          console.error('[Favorites] Failed to backup corrupt file:', backupError.message);
+        }
+      }
       favorites = [];
     }
     return favorites;
@@ -47,31 +63,31 @@ function createFavoritesStore(getFilePath) {
 
   function add(itemPath) {
     if (typeof itemPath !== 'string' || !itemPath.trim()) {
-      return false;
+      return list();
     }
     
-    const normalizedPath = path.resolve(itemPath);
+    // Normalize to forward slashes for consistency, but keep original path format
+    const normalizedPath = normalizePath(itemPath);
     if (!favorites.includes(normalizedPath)) {
       favorites.push(normalizedPath);
       save();
-      return true;
     }
-    return false;
+    return list();
   }
 
   function remove(itemPath) {
     if (typeof itemPath !== 'string') {
-      return false;
+      return list();
     }
     
-    const normalizedPath = path.resolve(itemPath);
+    // Normalize to forward slashes for consistency, but keep original path format
+    const normalizedPath = normalizePath(itemPath);
     const index = favorites.indexOf(normalizedPath);
     if (index >= 0) {
       favorites.splice(index, 1);
       save();
-      return true;
     }
-    return false;
+    return list();
   }
 
   function clear() {

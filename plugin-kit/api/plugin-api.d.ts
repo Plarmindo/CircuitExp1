@@ -112,7 +112,10 @@ export interface ConfigManager {
   set<T = any>(key: string, value: T): Promise<void>;
   has(key: string): boolean;
   delete(key: string): Promise<void>;
-  watch(key: string, callback: (newValue: any, oldValue: any) => void): () => void;
+  /**
+   * Watch for changes to a specific storage key
+   */
+  watch<T = unknown>(key: string, callback: (newValue: T, oldValue: T) => void): () => void;
   getAll(): Record<string, any>;
 }
 

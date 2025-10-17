@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { Application, Container } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import { createInteractionHandlers } from './interaction-handlers';
 import { setupEventListeners } from './event-listeners';
 import { FallbackRenderer } from './fallback-renderer';
 // Unused import - keeping for future use
 // import { initDebugAPI } from './debug-api';
-import { createGraphAdapter as _createGraphAdapter, type GraphAdapter } from '../graph-adapter';
+import { createGraphAdapter as _createGraphAdapter } from '../graph-adapter';
 import { renderScene } from './render';
 import { tokens } from '../style-tokens';
 import { cleanupPixiApplication, MemoryManager } from './gpu-cleanup';
@@ -13,7 +13,6 @@ import type { LayoutNodeLite, RouteCommand, RenderOptions, ThemeConfig } from '.
 import { ExportManager } from './export-manager';
 import { BatchRenderer, type BatchObject, type BatchStats } from '../performance/batch-renderer';
 import { DeltaUpdateManager, type DeltaChange } from '../performance/delta-updater';
-import { checkGPUSupport } from './gpu-utils';
 
 export interface MetroStageProps {
   layout?: LayoutNodeLite[];
@@ -21,6 +20,7 @@ export interface MetroStageProps {
   onNodeClick?: (path: string) => void;
   onNodeHover?: (path: string | null) => void;
   onLayoutUpdate?: (layout: LayoutNodeLite[]) => void;
+  onViewportChange?: (viewport: { centerX: number; centerY: number; scale: number; viewportWidth: number; viewportHeight: number }) => void;
   theme?: ThemeConfig;
   debug?: boolean;
   className?: string;
@@ -35,6 +35,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   onNodeClick,
   onNodeHover,
   onLayoutUpdate,
+  onViewportChange,
   theme,
   debug = false,
   className,
@@ -42,14 +43,23 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   width,
   height,
 }) => {
-  // Memoize theme to prevent infinite loops
-  const memoizedTheme = useMemo(() => theme || {}, [theme]);
+  // Memoize theme and extract values in one go to prevent circular dependencies
+  const themeValues = useMemo(() => {
+    const resolved = theme || { background: '#102030', text: '#ffffff' };
+    return {
+      theme: resolved,
+      background: resolved.background || '#102030',
+      text: resolved.text || '#ffffff',
+    };
+  }, [theme]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<Application | null>(null);
   const interactionsApiRef = useRef<ReturnType<typeof createInteractionHandlers> | null>(null);
   const selectedKeyRef = useRef<string | null>(null);
   const scaleRef = useRef<number>(1);
+  const initializePixiRef = useRef<() => Promise<void>>(async () => {});
 
   // Early debug API bootstrap so tests can read scale immediately, before full debug API is set
   useEffect(() => {
@@ -165,8 +175,6 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   // Internal copies used by debug/test helpers (e.g., metro:genTree)
   const [internalLayout, setInternalLayout] = useState<LayoutNodeLite[]>(layout);
   const [internalRoutes, setInternalRoutes] = useState<RouteCommand[]>(routes);
-  const [_adapter, _setAdapter] = useState<GraphAdapter | null>(null);
-  const [_nodeIndex, _setNodeIndex] = useState<Map<string, LayoutNodeLite>>(new Map());
 
   const spriteNodes = useRef(new Map<string, any>());
   const spriteLines = useRef(new Map<string, any>());
@@ -192,6 +200,32 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   const [_depthCapOverride, _setDepthCapOverride] = useState<number | null>(null);
   const depthCapOverrideRef = useRef<number | null>(null);
 
+  // MapSettings state
+  const [mapSettings, setMapSettings] = useState<{
+    lineWidth: number;
+    lineColor: string;
+    lineStyle: 'straight' | 'curved' | 'orthogonal';
+    showLines: boolean;
+    showNodes: boolean;
+    showLabels: boolean;
+    nodeSize: number;
+    labelSize: number;
+  }>({
+    lineWidth: 4,
+    lineColor: '#95a5a6',
+    lineStyle: 'straight',
+    showLines: true,
+    showNodes: true,
+    showLabels: true,
+    nodeSize: 8,
+    labelSize: 12,
+  });
+
+  // Window zoom state for CAD-style area selection
+  const [isWindowZoomMode, setIsWindowZoomMode] = useState(false);
+  const windowZoomStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [windowZoomEnd, setWindowZoomEnd] = useState<{ x: number; y: number } | null>(null);
+
   // Use internal state for layout and routes, but allow props to override
   const effectiveLayout = useMemo(() => {
     return layout.length > 0 ? layout : internalLayout;
@@ -200,6 +234,33 @@ export const MetroStage: React.FC<MetroStageProps> = ({
   const effectiveRoutes = useMemo(() => {
     return routes.length > 0 ? routes : internalRoutes;
   }, [routes, internalRoutes]);
+
+  // Create adapter and node index from effective layout
+  const adapter = useMemo(() => {
+    const graphAdapter = _createGraphAdapter();
+
+    if (effectiveLayout.length > 0) {
+      // Convert layout nodes to ScanNode format for applyDelta
+      const scanNodes = effectiveLayout.map((node) => ({
+        path: node.path,
+        name: node.path.split(/[/\\]/).pop() || node.path,
+        kind: 'file' as const, // Layout nodes don't distinguish kind, default to file
+        depth: node.depth || 0,
+      }));
+
+      graphAdapter.applyDelta(scanNodes);
+    }
+
+    return graphAdapter;
+  }, [effectiveLayout]);
+
+  const nodeIndex = useMemo(() => {
+    const index = new Map<string, LayoutNodeLite>();
+    effectiveLayout.forEach((node) => {
+      index.set(node.path, node);
+    });
+    return index;
+  }, [effectiveLayout]);
 
   // Create layout index for efficient lookups
   const layoutIndex = useMemo(() => {
@@ -210,8 +271,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     return index;
   }, [effectiveLayout]);
 
-  // Handle node click
-  const handleNodeClick = useCallback(
+  // Handle node click (placeholder for future batch renderer integration)
+  const _handleNodeClick = useCallback(
     (path: string) => {
       selectedKeyRef.current = path === selectedKeyRef.current ? null : path;
 
@@ -221,6 +282,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
       redrawScene(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redrawScene is stable and should not trigger re-renders
     [onNodeClick]
   );
 
@@ -235,17 +297,59 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
       redrawScene(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redrawScene is stable and should not trigger re-renders
     [onNodeHover]
   );
 
+  // Listen to MapSettings changes
+  useEffect(() => {
+    const handleSettingsChange = (e: Event) => {
+      const event = e as CustomEvent;
+      const settings = event.detail;
+      if (settings) {
+        setMapSettings({
+          lineWidth: settings.line?.width ?? 4,
+          lineColor: settings.line?.color ?? '#95a5a6',
+          lineStyle: settings.line?.style ?? 'straight',
+          showLines: settings.line?.visible !== false,
+          showNodes: settings.node?.visible !== false,
+          showLabels: settings.text?.visible !== false,
+          nodeSize: settings.node?.size ?? 8,
+          labelSize: settings.text?.size ?? 12,
+        });
+      }
+    };
+
+    const handleSettingsReset = () => {
+      setMapSettings({
+        lineWidth: 4,
+        lineColor: '#95a5a6',
+        lineStyle: 'straight',
+        showLines: true,
+        showNodes: true,
+        showLabels: true,
+        nodeSize: 8,
+        labelSize: 12,
+      });
+    };
+
+    window.addEventListener('metro:settingsChange', handleSettingsChange);
+    window.addEventListener('metro:settingsReset', handleSettingsReset);
+
+    return () => {
+      window.removeEventListener('metro:settingsChange', handleSettingsChange);
+      window.removeEventListener('metro:settingsReset', handleSettingsReset);
+    };
+  }, []);
+
   // Convert layout nodes to batch objects for optimized rendering
   const createBatchObjects = useCallback(
-    (layout: LayoutNodeLite[], _type: 'nodes' | 'edges' | 'labels'): BatchObject[] => {
+    (layout: LayoutNodeLite[], _type: 'nodes' | 'edges' | 'labels', nodeScale: number): BatchObject[] => {
       return layout.map((node, index) => ({
         id: node.path,
         x: node.x,
         y: node.y,
-        scale: 1.0,
+        scale: nodeScale,
         color: selectedKeyRef.current === node.path ? 0xff6b35 :
                hoveredKeyRef.current === node.path ? 0x4ecdc4 : 0x45b7d1,
         alpha: 1.0,
@@ -324,9 +428,24 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
   // Optimized render layout function using BatchRenderer
   const renderLayout = useCallback(
-    async (app: Application, layout: LayoutNodeLite[], routes: RouteCommand[], _options: RenderOptions) => {
+    async (
+      app: Application,
+      layout: LayoutNodeLite[],
+      routes: RouteCommand[],
+      _options: RenderOptions,
+      settings: {
+        lineWidth: number;
+        lineColor: string;
+        lineStyle?: 'straight' | 'curved' | 'orthogonal';
+        showLines: boolean;
+        showNodes: boolean;
+        showLabels: boolean;
+        nodeSize: number;
+        labelSize: number;
+      }
+    ) => {
+      // Initialize BatchRenderer if not already created
       if (!batchRendererRef.current) {
-        // Initialize BatchRenderer if not already created
         batchRendererRef.current = new BatchRenderer(app, {
           maxBatchSize: 1000,
           enableAtlasing: true,
@@ -373,32 +492,126 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         ? layout.filter((n) => n.depth == null ? true : n.depth <= currentDepthCap)
         : layout;
 
-      // Create batch objects for nodes
-      const nodeBatchObjects = createBatchObjects(filteredLayout, 'nodes');
-      batchRenderer.createBatch('main-nodes', 'nodes', nodeBatchObjects);
-
-      // Create batch objects for edges/routes
-      const edgeBatchObjects: BatchObject[] = [];
-      routes.forEach((route, index) => {
-        // Convert route to batch objects
-        // This is simplified - actual implementation would need route geometry
-        edgeBatchObjects.push({
-          id: `route-${index}`,
-          x: 0, // Would be calculated from route geometry
-          y: 0,
-          scale: 1.0,
-          color: 0x95a5a6,
-          alpha: 0.8,
-          visible: true,
-          priority: -index, // Render edges behind nodes
-        });
-      });
-
-      if (edgeBatchObjects.length > 0) {
-        batchRenderer.createBatch('main-edges', 'edges', edgeBatchObjects);
+      // Create batch objects for nodes (respect visibility and size)
+      if (settings.showNodes) {
+        const nodeScale = Math.max(0.1, (settings.nodeSize ?? 8) / 5);
+        const nodeBatchObjects = createBatchObjects(filteredLayout, 'nodes', nodeScale);
+        batchRenderer.createBatch('main-nodes', 'nodes', nodeBatchObjects);
       }
 
-      // Render all batches
+      // Labels layer: render text labels when enabled
+      let labelsContainer = app.stage.children.find(c => c.name === 'labels-layer') as Container;
+      if (!labelsContainer) {
+        labelsContainer = new Container();
+        labelsContainer.name = 'labels-layer';
+        app.stage.addChild(labelsContainer); // add above nodes by default
+      }
+      labelsContainer.removeChildren();
+
+      if (settings.showLabels) {
+        const fontSize = Math.max(8, settings.labelSize ?? 12);
+        for (const node of filteredLayout) {
+          const gn = adapter?.getNode(node.path);
+          const labelText = gn?.name || (node.path.split(/[/\\]/).pop() || node.path);
+          const text = new Text({ text: labelText, style: { fill: '#ffffff', fontSize } });
+          text.anchor.set(0.5);
+          text.x = node.x;
+          text.y = node.y - Math.max(4, fontSize * 0.6);
+          labelsContainer.addChild(text);
+        }
+      }
+
+      // Render routes/edges using Graphics (batch renderer doesn't support complex geometry)
+      // Get or create lines container
+      let linesContainer = app.stage.children.find(c => c.name === 'lines-layer') as Container;
+      if (!linesContainer) {
+        linesContainer = new Container();
+        linesContainer.name = 'lines-layer';
+        app.stage.addChildAt(linesContainer, 0); // Add behind everything
+      }
+
+      // Clear previous lines
+      linesContainer.removeChildren();
+
+      // Render each route using Graphics - only if lines are enabled
+      if (routes.length > 0 && settings.showLines) {
+        const lineColor = (() => {
+          const c = settings.lineColor;
+          if (typeof c === 'string' && c.startsWith('#')) {
+            const n = parseInt(c.slice(1), 16);
+            return Number.isFinite(n) ? n : 0x95a5a6;
+          }
+          return 0x95a5a6;
+        })();
+        const lineWidth = settings.lineWidth;
+
+        let currentGraphics: Graphics | null = null;
+        let currentPath: { x: number; y: number }[] = [];
+
+        routes.forEach((command) => {
+          switch (command.type) {
+            case 'M': // Move to
+              // Draw previous path if exists
+              if (currentGraphics && currentPath.length > 1) {
+                currentGraphics.moveTo(currentPath[0].x, currentPath[0].y);
+                for (let i = 1; i < currentPath.length; i++) {
+                  currentGraphics.lineTo(currentPath[i].x, currentPath[i].y);
+                }
+              }
+
+              // Start new path
+              currentGraphics = new Graphics();
+              currentGraphics.lineStyle(lineWidth, lineColor, 0.7);
+              currentPath = [{ x: command.x, y: command.y }];
+              linesContainer.addChild(currentGraphics);
+              break;
+
+            case 'L': // Line to
+              if (currentGraphics) {
+                currentPath.push({ x: command.x, y: command.y });
+              }
+              break;
+
+            case 'Q': // Quadratic curve
+              if (currentGraphics && command.x1 !== undefined && command.y1 !== undefined) {
+                const startPoint = currentPath[currentPath.length - 1];
+                if (startPoint) {
+                  // Generate curve points
+                  const segments = 20;
+                  for (let i = 1; i <= segments; i++) {
+                    const t = i / segments;
+                    const x = (1 - t) * (1 - t) * startPoint.x + 2 * (1 - t) * t * command.x1 + t * t * command.x;
+                    const y = (1 - t) * (1 - t) * startPoint.y + 2 * (1 - t) * t * command.y1 + t * t * command.y;
+                    currentPath.push({ x, y });
+                  }
+                }
+              }
+              break;
+            case 'S': // Stroke
+              if (currentGraphics && currentPath.length > 0) {
+                currentGraphics.lineStyle(lineWidth, lineColor, 0.9);
+                currentGraphics.moveTo(currentPath[0].x, currentPath[0].y);
+                for (let i = 1; i < currentPath.length; i++) {
+                  currentGraphics.lineTo(currentPath[i].x, currentPath[i].y);
+                }
+                linesContainer.addChild(currentGraphics);
+                currentGraphics = null;
+                currentPath = [];
+              }
+              break;
+          }
+        });
+
+        // Draw final path
+        if (currentGraphics && currentPath.length > 1) {
+          currentGraphics.moveTo(currentPath[0].x, currentPath[0].y);
+          for (let i = 1; i < currentPath.length; i++) {
+            currentGraphics.lineTo(currentPath[i].x, currentPath[i].y);
+          }
+        }
+      }
+
+      // Render all node batches
       batchRenderer.render();
 
       // Emit LOD stats event to sync UI
@@ -420,8 +633,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
       // Update render statistics
       const stats = batchRenderer.getStats();
-      setRenderStats(stats);
-      setLastUpdateTime(performance.now());
+      _setRenderStats(stats);
+      _setLastUpdateTime(performance.now());
 
       // Log performance metrics in debug mode
       if (debug) {
@@ -434,7 +647,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         });
       }
     },
-    [handleNodeClick, createBatchObjects, debug, processDeltaChanges]
+    [createBatchObjects, debug, processDeltaChanges]
   );
 
   // Add method to trigger delta updates
@@ -449,6 +662,34 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     });
   }, []);
 
+  // Emit viewport changes to parent
+  const emitViewportChange = useCallback(() => {
+    if (!appRef.current || !onViewportChange) return;
+
+    const app = appRef.current;
+    const canvas = app.canvas as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scale = scaleRef.current;
+
+    // Calculate world center from stage position
+    const centerX = (-app.stage.x + rect.width / 2) / scale;
+    const centerY = (-app.stage.y + rect.height / 2) / scale;
+
+    // Calculate viewport size in world coordinates
+    const viewportWidth = rect.width / 2 / scale;
+    const viewportHeight = rect.height / 2 / scale;
+
+    onViewportChange({
+      centerX,
+      centerY,
+      scale,
+      viewportWidth,
+      viewportHeight,
+    });
+  }, [onViewportChange]);
+
   // Redraw the scene with optimized batch rendering
   const redrawScene = useCallback(
     (_force = false) => {
@@ -456,11 +697,11 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
       // Use optimized batch rendering instead of traditional renderScene
       renderLayout(appRef.current, effectiveLayout, effectiveRoutes, {
-        theme: memoizedTheme,
+        theme: themeValues.theme,
         debug,
         selectedKey: selectedKeyRef.current,
         hoveredKey: hoveredKeyRef.current,
-      });
+      }, mapSettings);
 
       // Fallback to traditional rendering if batch renderer fails
       if (!batchRendererRef.current) {
@@ -485,9 +726,33 @@ export const MetroStage: React.FC<MetroStageProps> = ({
           depthCap: depthCapOverrideRef.current,
         });
       }
+
+      // Emit viewport changes after rendering
+      emitViewportChange();
     },
-    [effectiveLayout, effectiveRoutes, adapter, nodeIndex, memoizedTheme, pixiFailed]
+    // debug and renderLayout are intentionally omitted - they're stable refs that shouldn't trigger re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveLayout, effectiveRoutes, adapter, nodeIndex, themeValues.theme, pixiFailed, emitViewportChange]
   );
+
+  // Redraw when map settings change to sync canvas view
+  useEffect(() => {
+    if (!appRef.current || pixiFailed) return;
+    redrawScene(true);
+  }, [mapSettings, pixiFailed, redrawScene]);
+
+  const retryInitialization = useCallback(async () => {
+    setPixiFailed(false);
+    setError(null);
+    setIsLoading(true);
+
+    if (fallbackRendererRef.current) {
+      fallbackRendererRef.current.clear();
+      fallbackRendererRef.current = null;
+    }
+
+    await initializePixiRef.current();
+  }, []);
 
   // Initialize PixiJS with enhanced GPU detection
   const initializePixi = useCallback(async () => {
@@ -513,12 +778,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         return;
       }
 
-      const gpuMode = await checkGPUSupport();
-      console.log('Selected GPU mode:', gpuMode);
-
-      if (gpuMode === 'fallback') {
-        throw new Error('GPU acceleration not available');
-      }
+      // Force HTML5 Canvas rendering only (no WebGL/WebGPU)
+      console.log('Forcing HTML5 Canvas rendering');
 
       // Capture a stable reference to the container
       const container = containerRef.current;
@@ -535,18 +796,21 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       const initialWidth = validatedViewport.width;
       const initialHeight = validatedViewport.height;
 
-      // Configure based on GPU mode with enhanced fallback
+      // Configure for Canvas 2D only - disable WebGL/WebGPU
       const appConfig = {
-        background: theme.background || '#102030',
+        background: themeValues.background,
         antialias: true,
-        preference: gpuMode as 'webgpu' | 'webgl',
         width: initialWidth,
         height: initialHeight,
-        powerPreference: 'high-performance',
+        preference: 'webgl', // WebGL preference (will use canvas fallback if WebGL unavailable)
+        powerPreference: 'low-power', // Use low-power mode to avoid GPU issues
         hello: true, // Enable PixiJS hello message for debugging
       };
 
       const app = new Application();
+
+      // Initialize PixiJS
+      await app.init(appConfig);
 
       // Start memory monitoring
       const memoryManager = MemoryManager.getInstance();
@@ -554,69 +818,19 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
       // Register cleanup callback for memory pressure
       const unregisterCleanup = memoryManager.registerCleanupCallback(() => {
-        if (app.renderer && app.renderer.gl) {
+        if (app.renderer && app.renderer.texture) {
           // Force texture garbage collection
           app.renderer.texture.gc.run();
         }
       });
 
-      let initSuccess = false;
-      let lastError: Error | null = null;
-
-      // Try WebGPU first if supported
-      if (gpuMode === 'webgpu') {
-        try {
-          await app.init(appConfig);
-          initSuccess = true;
-          console.log('PixiJS initialized with WebGPU');
-        } catch (webgpuError) {
-          console.warn('WebGPU initialization failed, falling back to WebGL:', webgpuError);
-          lastError = webgpuError as Error;
-          // Destroy the failed app instance
-          try {
-            app.destroy();
-          } catch (destroyError) {
-            console.warn('Error destroying failed WebGPU app:', destroyError);
-          }
-        }
-      }
-
-      // Try WebGL if WebGPU failed or wasn't available
-      if (!initSuccess) {
-        try {
-          // Create a new app instance for WebGL if WebGPU failed
-          const webglApp = gpuMode === 'webgpu' ? new Application() : app;
-          appConfig.preference = 'webgl';
-          await webglApp.init(appConfig);
-          initSuccess = true;
-          console.log('PixiJS initialized with WebGL');
-          // Update app reference if we created a new instance
-          if (webglApp !== app) {
-            appRef.current = webglApp;
-          }
-        } catch (webglError) {
-          console.warn('WebGL initialization failed:', webglError);
-          lastError = webglError as Error;
-        }
-      }
-
-      // Final fallback with minimal config
-      if (!initSuccess) {
-        try {
-          const fallbackConfig = {
-            background: theme.background || '#102030',
-            antialias: false,
-            width: initialWidth,
-            height: initialHeight,
-            forceCanvas: true, // Force canvas renderer as last resort
-          };
-          await app.init(fallbackConfig);
-          initSuccess = true;
-          console.log('PixiJS initialized with Canvas fallback');
-        } catch (fallbackError) {
-          console.error('All PixiJS initialization methods failed:', fallbackError);
-          throw lastError || fallbackError;
-        }
+      // Initialize PixiJS with low-power WebGL (or Canvas fallback)
+      try {
+        await app.init(appConfig);
+        console.log(`PixiJS initialized with ${app.renderer.type} renderer (low-power mode)`);
+      } catch (initError) {
+        console.error('PixiJS initialization failed:', initError);
+        throw initError;
       }
 
       appRef.current = app;
@@ -638,15 +852,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         throw new Error('Invalid canvas dimensions after initialization');
       }
 
-      // Ensure viewport is valid before any GPU operations
-      const gpuValidatedViewport = validateViewport(canvas.width, canvas.height);
-      if (gpuValidatedViewport.width !== canvas.width || gpuValidatedViewport.height !== canvas.height) {
-        try {
-          app.renderer.resize(gpuValidatedViewport.width, gpuValidatedViewport.height);
-        } catch (e) {
-          console.warn('[MetroStage] Failed to resize to validated viewport:', e);
-        }
-      }
+      // Note: HTML5 Canvas doesn't have context loss like WebGL, so no context handlers needed
+
+      // Viewport was already validated during initialization, no need to re-validate
 
       // Safe resize helper to avoid passing non-finite sizes to the renderer
       const safeResize = () => {
@@ -758,7 +966,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         interactionHandlers,
         interactionsApiRef,
         onDepthCapChange: (cap) => {
-          setDepthCapOverride(cap);
+          _setDepthCapOverride(cap);
           depthCapOverrideRef.current = cap;
           // Redraw to apply new depth cap
           redrawScene(false);
@@ -838,22 +1046,10 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       setIsLoading(false);
       setError(userFriendlyError);
     }
-  }, [layoutIndex, pixiFailed, redrawScene, handleNodeClick]);
+  }, [layoutIndex, pixiFailed, redrawScene, themeValues.background, retryInitialization]);
 
-  // Retry initialization function
-  const retryInitialization = useCallback(async () => {
-    setPixiFailed(false);
-    setError(null);
-    setIsLoading(true);
-
-    // Clean up any existing fallback
-    if (fallbackRendererRef.current) {
-      fallbackRendererRef.current.clear();
-      fallbackRendererRef.current = null;
-    }
-
-    // Attempt reinitialization
-    await initializePixi();
+  useEffect(() => {
+    initializePixiRef.current = initializePixi;
   }, [initializePixi]);
 
   // Initialize fallback renderer with enhanced messaging
@@ -868,8 +1064,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       canvas: canvasRef.current,
       width: Math.max(containerRef.current.clientWidth || 800, 100),
       height: Math.max(containerRef.current.clientHeight || 600, 100),
-      backgroundColor: theme.background || '#102030',
-      textColor: theme.text || '#ffffff',
+      backgroundColor: themeValues.background,
+      textColor: themeValues.text,
     });
 
     if (isLoading) {
@@ -883,7 +1079,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     } else {
       fallbackRendererRef.current.renderFallback('Metro Map', 'Interactive metro visualization');
     }
-  }, [theme, isLoading, error]);
+  }, [isLoading, error, themeValues.background, themeValues.text]);
 
   // Handle theme changes
   useEffect(() => {
@@ -893,7 +1089,8 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     if (fallbackRendererRef.current && pixiFailed) {
       initializeFallback();
     }
-  }, [memoizedTheme, pixiFailed, initializeFallback]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redrawScene is stable and should not trigger re-renders
+  }, [themeValues.theme, pixiFailed, initializeFallback]);
 
   // Handle theme change events for testing
   useEffect(() => {
@@ -1007,6 +1204,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
     window.addEventListener('metro:genTree', handleGenTree as EventListener);
     return (): void => window.removeEventListener('metro:genTree', handleGenTree as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redrawScene is stable and should not trigger re-renders
   }, [onLayoutUpdate]);
 
   // Debug API for testing
@@ -1117,6 +1315,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         delete window.__metroDebug;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redrawScene is stable and should not trigger re-renders
   }, [effectiveLayout, pixiFailed]);
 
   // Handle layout prop changes - always update when layout changes, even if empty
@@ -1128,7 +1327,16 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     // Force redraw after a brief delay to ensure canvas is ready
     setTimeout(() => {
       redrawScene(true);
+
+      // Auto fit-to-view when layout is first loaded with nodes
+      if (layout && layout.length > 0 && interactionsApiRef.current?.handleFitToView) {
+        console.log('[MetroStage] Auto-fitting to view with', layout.length, 'nodes');
+        setTimeout(() => {
+          interactionsApiRef.current?.handleFitToView();
+        }, 200); // Extra delay to ensure layout is fully rendered
+      }
     }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redrawScene is stable and should not trigger re-renders
   }, [layout, routes]);
 
   return (

@@ -1,6 +1,10 @@
 /**
  * Content Security Policy Manager (CommonJS version for Electron)
  * Provides nonce-based CSP implementation for enhanced security
+ *
+ * SECURITY NOTE: This CSP includes 'unsafe-eval' which is required for PixiJS WebGL
+ * shader compilation. This is a known security trade-off for graphics performance.
+ * Alternative: Use SVG-based rendering (metro-stage-svg.tsx) for maximum security.
  */
 
 const { randomBytes } = require('crypto');
@@ -69,6 +73,7 @@ class CSPManager {
 
   /**
    * Get production CSP directives (hardened)
+   * Note: unsafe-eval is required for PixiJS WebGL shader compilation
    */
   getProductionDirectives(config = {}) {
     const nonce = config.nonce || this.getCurrentNonce();
@@ -77,8 +82,8 @@ class CSPManager {
       defaultSrc: ["'self'"],
       scriptSrc: [
         "'self'",
-        `'nonce-${nonce}'`
-        // No unsafe-eval or unsafe-inline in production
+        `'nonce-${nonce}'`,
+        "'unsafe-eval'" // Required for PixiJS WebGL shader compilation
       ],
       styleSrc: [
         "'self'",
@@ -110,7 +115,7 @@ class CSPManager {
       scriptSrc: [
         "'self'",
         "'unsafe-inline'", // Required for Vite HMR
-        "'unsafe-eval'", // Required for PixiJS and development
+        "'unsafe-eval'", // Required for PixiJS WebGL shader compilation - security risk acknowledged
       ],
       styleSrc: [
         "'self'",
@@ -180,7 +185,7 @@ class CSPManager {
    */
   getSecurityHeaders(isDev = false, devPort = null) {
     const headers = {};
-    
+
     if (isDev && devPort) {
       headers['Content-Security-Policy'] = this.getDevelopmentCSP(devPort);
     } else {

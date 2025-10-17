@@ -28,6 +28,10 @@ export class SimpleMetroRenderer {
   private nodeGraphics = new Map<string, Graphics>();
   private lineGraphics: Graphics[] = [];
   private labelTexts = new Map<string, Text>();
+  private currentLineWidth = 4;
+  private showLines = true;
+  private showNodes = true;
+  private showLabels = true;
 
   constructor(app: Application) {
     this.app = app;
@@ -45,6 +49,16 @@ export class SimpleMetroRenderer {
     this.app.stage.addChild(this.linesContainer);
     this.app.stage.addChild(this.nodesContainer);
     this.app.stage.addChild(this.labelsContainer);
+
+    // Listen to MapSettings changes
+    this.setupSettingsListeners();
+  }
+
+  private setupSettingsListeners() {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('metro:settingsChange', this.handleSettingsChange);
+      window.addEventListener('metro:settingsReset', this.handleSettingsReset);
+    }
   }
 
   /**
@@ -53,14 +67,20 @@ export class SimpleMetroRenderer {
   render(layout: LayoutNodeLite[], routes: RouteCommand[], options: SimpleRenderOptions = {}) {
     this.clear();
 
-    // Render lines first (behind nodes)
-    this.renderRoutes(routes, options);
+    // Render lines first (behind nodes) - only if enabled
+    if (this.showLines) {
+      this.renderRoutes(routes, options);
+    }
 
-    // Render nodes on top of lines
-    this.renderNodes(layout, options);
+    // Render nodes on top of lines - only if enabled
+    if (this.showNodes) {
+      this.renderNodes(layout, options);
+    }
 
-    // Render labels on top of everything
-    this.renderLabels(layout, options);
+    // Render labels on top of everything - only if enabled
+    if (this.showLabels) {
+      this.renderLabels(layout, options);
+    }
   }
 
   /**
@@ -70,7 +90,7 @@ export class SimpleMetroRenderer {
     if (routes.length === 0) return;
 
     const lineColor = this.parseColor(options.theme?.line || '#95a5a6');
-    const lineWidth = 3;
+    const lineWidth = this.currentLineWidth;
 
     let currentGraphics: Graphics | null = null;
     let currentPath: { x: number; y: number }[] = [];
@@ -329,5 +349,29 @@ export class SimpleMetroRenderer {
     this.linesContainer.destroy();
     this.nodesContainer.destroy();
     this.labelsContainer.destroy();
+
+    // Clean up event listeners
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('metro:settingsChange', this.handleSettingsChange);
+      window.removeEventListener('metro:settingsReset', this.handleSettingsReset);
+    }
   }
+
+  private handleSettingsChange = (e: Event) => {
+    const event = e as CustomEvent;
+    const settings = event.detail;
+    if (settings) {
+      this.currentLineWidth = settings.line?.width || 4;
+      this.showLines = settings.line?.visible !== false;
+      this.showNodes = settings.node?.visible !== false;
+      this.showLabels = settings.text?.visible !== false;
+    }
+  };
+
+  private handleSettingsReset = () => {
+    this.currentLineWidth = 4;
+    this.showLines = true;
+    this.showNodes = true;
+    this.showLabels = true;
+  };
 }

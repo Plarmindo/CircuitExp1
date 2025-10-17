@@ -14,6 +14,13 @@ export interface ErrorInfo {
   timestamp: number;
 }
 
+// Custom event types for metro application
+interface ScanErrorDetail {
+  error: Error;
+  code: string;
+  path: string;
+}
+
 interface ErrorHandlerProps {
   children: React.ReactNode;
 }
@@ -66,7 +73,7 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
     };
 
     // Listen for custom scan errors
-    const handleScanError = (event: CustomEvent) => {
+    const handleScanError = (event: CustomEvent<ScanErrorDetail>) => {
       const { error, code, path } = event.detail;
       const errorInfo = createScanErrorInfo(error, code, path);
       setErrors((prev) => [...prev, errorInfo]);
@@ -74,12 +81,12 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
 
     window.addEventListener('error', handleError);
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    window.addEventListener('metro:scanError', handleScanError as any);
+    window.addEventListener('metro:scanError', handleScanError as EventListener);
 
     return () => {
       window.removeEventListener('error', handleError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-      window.removeEventListener('metro:scanError', handleScanError as any);
+      window.removeEventListener('metro:scanError', handleScanError as EventListener);
     };
   }, []);
 
@@ -154,6 +161,7 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
                 className="error-dismiss"
                 onClick={() => dismissError(error.id)}
                 aria-label="Dismiss error"
+                title="Dismiss error"
               >
                 ×
               </button>
@@ -167,6 +175,7 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
                   className="error-details-toggle"
                   onClick={() => setShowDetails(showDetails === error.id ? null : error.id)}
                   aria-expanded={showDetails === error.id}
+                  title={showDetails === error.id ? 'Hide error details' : 'Show error details'}
                 >
                   {showDetails === error.id ? 'Hide Details' : 'Show Details'}
                 </button>
@@ -180,12 +189,20 @@ export function ErrorHandler({ children }: ErrorHandlerProps) {
 
             <div className="error-actions">
               {error.recoverable && error.retryAction && (
-                <button className="error-retry-button" onClick={() => retryError(error)}>
+                <button 
+                  className="error-retry-button" 
+                  onClick={() => retryError(error)}
+                  title="Retry failed action"
+                >
                   Retry
                 </button>
               )}
               {error.dismissible && (
-                <button className="error-dismiss-button" onClick={() => dismissError(error.id)}>
+                <button 
+                  className="error-dismiss-button" 
+                  onClick={() => dismissError(error.id)}
+                  title="Dismiss this error"
+                >
                   Dismiss
                 </button>
               )}

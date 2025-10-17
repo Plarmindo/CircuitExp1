@@ -12,6 +12,19 @@ export const LOG_LEVELS: LogLevel[] = ['debug', 'info', 'warn', 'error'];
 interface LoggerOptions {
   component?: string;
 }
+
+// Type definitions for Electron API
+interface ElectronAPI {
+  logToFile?: (options: { dir: string; filename: string }) => void;
+  logMessage?: (record: LogRecord) => void;
+}
+
+declare global {
+  interface Window {
+    electronAPI?: ElectronAPI;
+  }
+}
+
 interface LogRecord {
   ts: string; // ISO timestamp
   level: LogLevel;
@@ -36,8 +49,8 @@ export function setLevel(l: LogLevel) {
 // File logging is handled by main process - these are now no-ops for renderer
 export function enableFile(dir: string, filename = 'app-log.ndjson') {
   // Send to main process via IPC if available (renderer context)
-  if (typeof window !== 'undefined' && (window as any).electronAPI?.logToFile) {
-    (window as any).electronAPI.logToFile({ dir, filename });
+  if (typeof window !== 'undefined' && window.electronAPI?.logToFile) {
+    window.electronAPI.logToFile({ dir, filename });
   }
 }
 export function disableFile() {
@@ -51,8 +64,8 @@ function write(rec: LogRecord) {
   if (ring.length > ringMax) ring.splice(0, ring.length - ringMax);
 
   // Send to main process via IPC if available (renderer context)
-  if (typeof window !== 'undefined' && (window as any).electronAPI?.logMessage) {
-    (window as any).electronAPI.logMessage(rec);
+  if (typeof window !== 'undefined' && window.electronAPI?.logMessage) {
+    window.electronAPI.logMessage(rec);
   }
 
   if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {

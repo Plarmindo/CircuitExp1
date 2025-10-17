@@ -1,0 +1,80 @@
+.metro-ui {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.metro-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header-title {
+  margin: 0 0 10px 0;
+  color: var(--text-color);
+}
+
+.header-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.control-button {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  cursor: pointer;
+}
+
+.control-button:hover {
+  background: var(--button-hover-bg);
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.controls-section {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.info-section {
+  padding: 20px;
+  background: var(--info-bg);
+  border-radius: 8px;
+}
+
+.info-title {
+  margin: 0 0 10px 0;
+}
+
+.info-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.success-message {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 4px;
+  background: var(--success-bg);
+}
+
+.success-list {
+  margin: 5px 0 0 0;
+  padding-left: 20px;
+}
