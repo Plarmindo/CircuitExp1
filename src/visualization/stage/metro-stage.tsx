@@ -205,20 +205,34 @@ export const MetroStage: React.FC<MetroStageProps> = ({
     lineWidth: number;
     lineColor: string;
     lineStyle: 'straight' | 'curved' | 'orthogonal';
+    lineSmoothing: number;
     showLines: boolean;
     showNodes: boolean;
     showLabels: boolean;
     nodeSize: number;
     labelSize: number;
+    nodeColor: string;
+    labelColor: string;
+    textFont: string;
+    textWeight: 'normal' | 'bold';
+    nodeShape: 'circle' | 'square' | 'diamond';
+    nodeBorderWidth: number;
   }>({
     lineWidth: 4,
     lineColor: '#95a5a6',
     lineStyle: 'straight',
+    lineSmoothing: 0.5,
     showLines: true,
     showNodes: true,
     showLabels: true,
     nodeSize: 8,
     labelSize: 12,
+    nodeColor: '#45b7d1',
+    labelColor: '#ffffff',
+    textFont: 'Arial, sans-serif',
+    textWeight: 'normal',
+    nodeShape: 'circle',
+    nodeBorderWidth: 0,
   });
 
   // Window zoom state for CAD-style area selection
@@ -303,39 +317,50 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
   // Listen to MapSettings changes
   useEffect(() => {
-    const handleSettingsChange = (e: Event) => {
-      const event = e as CustomEvent;
-      const settings = event.detail;
-      if (settings) {
-        setMapSettings({
-          lineWidth: settings.line?.width ?? 4,
-          lineColor: settings.line?.color ?? '#95a5a6',
-          lineStyle: settings.line?.style ?? 'straight',
-          showLines: settings.line?.visible !== false,
-          showNodes: settings.node?.visible !== false,
-          showLabels: settings.text?.visible !== false,
-          nodeSize: settings.node?.size ?? 8,
-          labelSize: settings.text?.size ?? 12,
-        });
-      }
+    const handleSettingsChange = (event: Event) => {
+      const settings = (event as CustomEvent).detail ?? {};
+      setMapSettings((prev) => ({
+        lineWidth: settings.line?.width ?? prev.lineWidth,
+        lineColor: settings.line?.color ?? prev.lineColor,
+        lineStyle: settings.line?.style ?? prev.lineStyle,
+        lineSmoothing: settings.line?.smoothing ?? prev.lineSmoothing,
+        showLines: settings.line?.visible ?? prev.showLines,
+        showNodes: settings.node?.visible ?? prev.showNodes,
+        showLabels: settings.text?.visible ?? prev.showLabels,
+        nodeSize: settings.node?.size ?? prev.nodeSize,
+        labelSize: settings.text?.size ?? prev.labelSize,
+        textFont: settings.text?.font ?? prev.textFont,
+        textWeight: settings.text?.weight ?? prev.textWeight,
+        nodeShape: settings.node?.shape ?? prev.nodeShape,
+        nodeBorderWidth: settings.node?.borderWidth ?? prev.nodeBorderWidth,
+        nodeColor: settings.node?.color ?? prev.nodeColor,
+        labelColor: settings.text?.color ?? prev.labelColor,
+      }));
     };
-
+  
     const handleSettingsReset = () => {
       setMapSettings({
         lineWidth: 4,
         lineColor: '#95a5a6',
         lineStyle: 'straight',
+        lineSmoothing: 0.5,
         showLines: true,
         showNodes: true,
         showLabels: true,
         nodeSize: 8,
         labelSize: 12,
+        nodeColor: '#45b7d1',
+        labelColor: '#ffffff',
+        textFont: 'Arial, sans-serif',
+        textWeight: 'normal',
+        nodeShape: 'circle',
+        nodeBorderWidth: 0,
       });
     };
-
+  
     window.addEventListener('metro:settingsChange', handleSettingsChange);
     window.addEventListener('metro:settingsReset', handleSettingsReset);
-
+  
     return () => {
       window.removeEventListener('metro:settingsChange', handleSettingsChange);
       window.removeEventListener('metro:settingsReset', handleSettingsReset);
@@ -344,21 +369,43 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
   // Convert layout nodes to batch objects for optimized rendering
   const createBatchObjects = useCallback(
-    (layout: LayoutNodeLite[], _type: 'nodes' | 'edges' | 'labels', nodeScale: number): BatchObject[] => {
-      return layout.map((node, index) => ({
-        id: node.path,
-        x: node.x,
-        y: node.y,
-        scale: nodeScale,
-        color: selectedKeyRef.current === node.path ? 0xff6b35 :
-               hoveredKeyRef.current === node.path ? 0x4ecdc4 : 0x45b7d1,
-        alpha: 1.0,
-        visible: true,
-        priority: selectedKeyRef.current === node.path ? 100 :
-                 hoveredKeyRef.current === node.path ? 50 : index,
-      }));
+    (
+      layout: LayoutNodeLite[],
+      _type: 'nodes' | 'edges' | 'labels',
+      nodeScale: number,
+      defaultColor: number,
+      shape: 'circle' | 'square' | 'diamond',
+      borderWidth: number
+    ): BatchObject[] => {
+      const hexToInt = (c: string | number | undefined, fallback: number) => {
+        if (typeof c === 'number') return c;
+        if (typeof c === 'string') {
+          const normalized = c.startsWith('#') ? c.slice(1) : c;
+          const n = parseInt(normalized, 16);
+          return Number.isFinite(n) ? n : fallback;
+        }
+        return fallback;
+      };
+
+      return layout.map((node) => {
+        const isSelected = selectedKeyRef.current && node.key === selectedKeyRef.current;
+        const isHovered = hoveredKeyRef.current && node.key === hoveredKeyRef.current;
+        const baseColor = hexToInt((node as any).color, defaultColor);
+        return {
+          id: `${node.key}`,
+          x: node.pos.x,
+          y: node.pos.y,
+          scale: nodeScale,
+          alpha: 1.0,
+          color: isSelected ? 0xff6b35 : isHovered ? 0x4ecdc4 : baseColor,
+          visible: true,
+          priority: 1,
+          shape,
+          borderWidth,
+        } as BatchObject;
+      });
     },
-    []
+    [],
   );
 
   // Process delta changes for incremental updates
@@ -442,6 +489,12 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         showLabels: boolean;
         nodeSize: number;
         labelSize: number;
+        nodeColor?: string;
+        labelColor?: string;
+        nodeShape?: 'circle' | 'square' | 'diamond';
+        nodeBorderWidth?: number;
+        textFont?: string;
+        textWeight?: 'normal' | 'bold';
       }
     ) => {
       // Initialize BatchRenderer if not already created
@@ -450,7 +503,7 @@ export const MetroStage: React.FC<MetroStageProps> = ({
           maxBatchSize: 1000,
           enableAtlasing: true,
           atlasSize: 2048,
-          enableInstancing: true,
+          enableInstancing: false,
           cullingBuffer: 100,
         });
       }
@@ -495,7 +548,17 @@ export const MetroStage: React.FC<MetroStageProps> = ({
       // Create batch objects for nodes (respect visibility and size)
       if (settings.showNodes) {
         const nodeScale = Math.max(0.1, (settings.nodeSize ?? 8) / 5);
-        const nodeBatchObjects = createBatchObjects(filteredLayout, 'nodes', nodeScale);
+        const defaultNodeColor = (typeof settings.nodeColor === 'string' && settings.nodeColor.startsWith('#'))
+          ? parseInt(settings.nodeColor.slice(1), 16)
+          : 0x45b7d1;
+        const nodeBatchObjects = createBatchObjects(
+          filteredLayout,
+          'nodes',
+          nodeScale,
+          defaultNodeColor,
+          settings.nodeShape ?? 'circle',
+          settings.nodeBorderWidth ?? 0
+        );
         batchRenderer.createBatch('main-nodes', 'nodes', nodeBatchObjects);
       }
 
@@ -513,7 +576,15 @@ export const MetroStage: React.FC<MetroStageProps> = ({
         for (const node of filteredLayout) {
           const gn = adapter?.getNode(node.path);
           const labelText = gn?.name || (node.path.split(/[/\\]/).pop() || node.path);
-          const text = new Text({ text: labelText, style: { fill: '#ffffff', fontSize } });
+          const text = new Text({
+            text: labelText,
+            style: {
+              fill: settings.labelColor ?? '#ffffff',
+              fontSize,
+              fontFamily: settings.textFont ?? 'Arial, sans-serif',
+              fontWeight: settings.textWeight ?? 'normal',
+            }
+          });
           text.anchor.set(0.5);
           text.x = node.x;
           text.y = node.y - Math.max(4, fontSize * 0.6);
@@ -544,6 +615,9 @@ export const MetroStage: React.FC<MetroStageProps> = ({
           return 0x95a5a6;
         })();
         const lineWidth = settings.lineWidth;
+        const lineStyleSetting = settings.lineStyle ?? 'straight';
+        const smoothing = settings.lineSmoothing ?? 0.5;
+        const segmentsCount = Math.max(4, Math.round(10 + smoothing * 30));
 
         let currentGraphics: Graphics | null = null;
         let currentPath: { x: number; y: number }[] = [];
@@ -568,7 +642,14 @@ export const MetroStage: React.FC<MetroStageProps> = ({
 
             case 'L': // Line to
               if (currentGraphics) {
-                currentPath.push({ x: command.x, y: command.y });
+                const startPoint = currentPath[currentPath.length - 1];
+                if (lineStyleSetting === 'orthogonal' && startPoint) {
+                  // Break into horizontal then vertical segment
+                  currentPath.push({ x: command.x, y: startPoint.y });
+                  currentPath.push({ x: command.x, y: command.y });
+                } else {
+                  currentPath.push({ x: command.x, y: command.y });
+                }
               }
               break;
 
@@ -576,13 +657,21 @@ export const MetroStage: React.FC<MetroStageProps> = ({
               if (currentGraphics && command.x1 !== undefined && command.y1 !== undefined) {
                 const startPoint = currentPath[currentPath.length - 1];
                 if (startPoint) {
-                  // Generate curve points
-                  const segments = 20;
-                  for (let i = 1; i <= segments; i++) {
-                    const t = i / segments;
-                    const x = (1 - t) * (1 - t) * startPoint.x + 2 * (1 - t) * t * command.x1 + t * t * command.x;
-                    const y = (1 - t) * (1 - t) * startPoint.y + 2 * (1 - t) * t * command.y1 + t * t * command.y;
-                    currentPath.push({ x, y });
+                  if (lineStyleSetting === 'curved') {
+                    // Generate curve points based on smoothing
+                    for (let i = 1; i <= segmentsCount; i++) {
+                      const t = i / segmentsCount;
+                      const x = (1 - t) * (1 - t) * startPoint.x + 2 * (1 - t) * t * command.x1 + t * t * command.x;
+                      const y = (1 - t) * (1 - t) * startPoint.y + 2 * (1 - t) * t * command.y1 + t * t * command.y;
+                      currentPath.push({ x, y });
+                    }
+                  } else if (lineStyleSetting === 'orthogonal') {
+                    // Use right-angle path to end point
+                    currentPath.push({ x: command.x, y: startPoint.y });
+                    currentPath.push({ x: command.x, y: command.y });
+                  } else {
+                    // Treat as straight line to end point
+                    currentPath.push({ x: command.x, y: command.y });
                   }
                 }
               }

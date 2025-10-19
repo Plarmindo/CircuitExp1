@@ -22,6 +22,7 @@ export interface TextSettings {
   font: string;
   weight: 'normal' | 'bold';
   visible: boolean;
+  color: string;
 }
 
 export interface NodeSettings {
@@ -29,6 +30,7 @@ export interface NodeSettings {
   shape: 'circle' | 'square' | 'diamond';
   borderWidth: number;
   visible: boolean;
+  color: string;
 }
 
 export interface MapSettingsState {
@@ -60,12 +62,14 @@ const DEFAULT_SETTINGS: MapSettingsState = {
     font: 'Arial, sans-serif',
     weight: 'normal',
     visible: true,
+    color: '#ffffff',
   },
   node: {
     size: 8,
     shape: 'circle',
     borderWidth: 2,
     visible: true,
+    color: '#45b7d1',
   },
   showGrid: false,
   showMinimap: true,
@@ -122,6 +126,13 @@ export const MapSettingsControls: React.FC<MapSettingsControlsProps> = ({
     }));
   };
 
+  const handleLineColorChange = (color: string) => {
+    setSettings(prev => ({
+      ...prev,
+      line: { ...prev.line, color },
+    }));
+  };
+
   const handleTextSizeChange = (value: number) => {
     setSettings(prev => ({
       ...prev,
@@ -140,6 +151,13 @@ export const MapSettingsControls: React.FC<MapSettingsControlsProps> = ({
     setSettings(prev => ({
       ...prev,
       text: { ...prev.text, visible: !prev.text.visible },
+    }));
+  };
+
+  const handleTextColorChange = (color: string) => {
+    setSettings(prev => ({
+      ...prev,
+      text: { ...prev.text, color },
     }));
   };
 
@@ -168,6 +186,13 @@ export const MapSettingsControls: React.FC<MapSettingsControlsProps> = ({
     setSettings(prev => ({
       ...prev,
       node: { ...prev.node, visible: !prev.node.visible },
+    }));
+  };
+
+  const handleNodeColorChange = (color: string) => {
+    setSettings(prev => ({
+      ...prev,
+      node: { ...prev.node, color },
     }));
   };
 
@@ -269,6 +294,16 @@ export const MapSettingsControls: React.FC<MapSettingsControlsProps> = ({
               />
               <span className="value">{(settings.line.smoothing * 100).toFixed(0)}%</span>
             </div>
+
+            <div className="control-row">
+              <label>Color</label>
+              <input
+                type="color"
+                value={settings.line.color}
+                onChange={(e) => handleLineColorChange(e.target.value)}
+                title="Line color"
+              />
+            </div>
           </div>
 
           {/* Text Settings */}
@@ -319,6 +354,17 @@ export const MapSettingsControls: React.FC<MapSettingsControlsProps> = ({
                   Bold
                 </button>
               </div>
+            </div>
+
+            <div className="control-row">
+              <label>Color</label>
+              <input
+                type="color"
+                value={settings.text.color}
+                onChange={(e) => handleTextColorChange(e.target.value)}
+                disabled={!settings.text.visible}
+                title="Text color"
+              />
             </div>
           </div>
 
@@ -393,6 +439,17 @@ export const MapSettingsControls: React.FC<MapSettingsControlsProps> = ({
                 title={`Node border: ${settings.node.borderWidth}px`}
               />
               <span className="value">{settings.node.borderWidth}px</span>
+            </div>
+
+            <div className="control-row">
+              <label>Color</label>
+              <input
+                type="color"
+                value={settings.node.color}
+                onChange={(e) => handleNodeColorChange(e.target.value)}
+                disabled={!settings.node.visible}
+                title="Node color"
+              />
             </div>
           </div>
 

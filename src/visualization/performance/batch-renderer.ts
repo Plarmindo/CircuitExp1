@@ -38,6 +38,8 @@ export interface BatchObject {
   alpha: number;
   visible: boolean;
   priority: number;
+  shape?: 'circle' | 'square' | 'diamond';
+  borderWidth?: number;
 }
 
 export interface BatchStats {
@@ -627,8 +629,41 @@ export class BatchRenderer {
    * Draw a node sprite
    */
   private drawNode(graphics: Graphics, obj: BatchObject): void {
+    const size = obj.scale * 5;
+    const bw = obj.borderWidth ?? 0;
+    const shape = obj.shape ?? 'circle';
+
+    if (bw > 0) {
+      graphics.lineStyle(bw, 0x000000, obj.alpha);
+    } else {
+      graphics.lineStyle(0, 0, 0);
+    }
+
     graphics.beginFill(obj.color, obj.alpha);
-    graphics.drawCircle(obj.x, obj.y, obj.scale * 5);
+
+    switch (shape) {
+      case 'square': {
+        const half = size;
+        graphics.drawRoundedRect(obj.x - half, obj.y - half, half * 2, half * 2, 2);
+        break;
+      }
+      case 'diamond': {
+        const points = [
+          obj.x, obj.y - size,
+          obj.x + size, obj.y,
+          obj.x, obj.y + size,
+          obj.x - size, obj.y,
+        ];
+        graphics.drawPolygon(points);
+        break;
+      }
+      case 'circle':
+      default: {
+        graphics.drawCircle(obj.x, obj.y, size);
+        break;
+      }
+    }
+
     graphics.endFill();
   }
 
